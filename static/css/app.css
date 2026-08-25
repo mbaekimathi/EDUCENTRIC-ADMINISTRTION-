@@ -12466,21 +12466,21 @@ body.is-reordering-exam-subjects [data-marks-input] {
 .edit-employee-dialog {
   display: flex;
   flex-direction: column;
-  width: min(40rem, calc(100vw - 1.5rem));
-  max-height: min(92dvh, 44rem);
+  width: min(38rem, calc(100vw - 1.5rem));
+  max-height: min(90dvh, 40rem);
+  height: auto;
   overflow: hidden;
   border: 1px solid #d7e3f4;
-  background:
-    linear-gradient(180deg, #f7faff 0, #fff 7.5rem),
-    #fff;
-  box-shadow: 0 28px 70px #0b1b3648, 0 2px 8px #0b1b3614;
+  background: #fff;
+  box-shadow: 0 24px 60px #0b1b3640, 0 2px 8px #0b1b3612;
 }
 .edit-employee-header {
   flex: 0 0 auto;
   align-items: flex-start;
-  padding: 1.2rem 1.35rem 1rem;
+  gap: 0.75rem;
+  padding: 1.05rem 1.2rem 0.9rem;
   border-bottom: 1px solid #e4ecf6;
-  background: linear-gradient(180deg, #f4f8ff 0%, #fff 100%);
+  background: #f8faff;
 }
 .edit-employee-header-copy {
   min-width: 0;
@@ -12488,20 +12488,20 @@ body.is-reordering-exam-subjects [data-marks-input] {
 .edit-employee-header h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   letter-spacing: -0.03em;
 }
 .edit-employee-header-note {
-  margin: 0.35rem 0 0;
+  margin: 0.25rem 0 0;
   color: var(--muted);
-  font-size: 0.86rem;
-  line-height: 1.4;
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 .edit-employee-dialog .app-modal-close {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.1rem;
+  height: 2.1rem;
   border: 1px solid var(--line);
-  border-radius: 0.7rem;
+  border-radius: 0.65rem;
   background: #fff;
 }
 .edit-employee-dialog .app-modal-close:hover {
@@ -12512,64 +12512,63 @@ body.is-reordering-exam-subjects [data-marks-input] {
 .edit-employee-form {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   gap: 0;
   padding: 0;
 }
 .edit-employee-form-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 0.35rem 1.35rem 1.15rem;
-  scrollbar-gutter: stable;
+  padding: 0.25rem 1.2rem 1rem;
 }
 .edit-employee-section {
-  padding: 1rem 0 0.35rem;
+  padding: 0.9rem 0 0.2rem;
   border-top: 1px solid #e8eef8;
 }
 .edit-employee-section:first-child {
   border-top: 0;
-  padding-top: 0.85rem;
+  padding-top: 0.75rem;
 }
 .edit-employee-section-head {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.7rem;
 }
 .edit-employee-section-head h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 750;
   letter-spacing: -0.02em;
 }
 .edit-employee-section-head p {
-  margin: 0.15rem 0 0;
+  margin: 0.12rem 0 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   line-height: 1.35;
 }
 .edit-employee-form .field {
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.75rem;
 }
 .edit-employee-form .field label,
 .edit-employee-form .field-label {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.3rem;
   color: var(--ink-soft);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 750;
   letter-spacing: 0.01em;
 }
-.edit-employee-form input,
+.edit-employee-form input:not([type="checkbox"]):not([type="radio"]),
 .edit-employee-form select {
-  min-height: 2.65rem;
+  min-height: 2.5rem;
   border-color: #d5e0ef;
   background: #fbfdff;
 }
-.edit-employee-form input:hover,
+.edit-employee-form input:not([type="checkbox"]):not([type="radio"]):hover,
 .edit-employee-form select:hover {
   border-color: #c2d0e6;
 }
-.edit-employee-form input:focus,
+.edit-employee-form input:not([type="checkbox"]):not([type="radio"]):focus,
 .edit-employee-form select:focus {
   border-color: var(--blue);
   background: #fff;
@@ -12579,125 +12578,127 @@ body.is-reordering-exam-subjects [data-marks-input] {
 .edit-employee-actions {
   flex: 0 0 auto;
   justify-content: flex-end;
-  gap: 0.7rem;
+  gap: 0.6rem;
   margin: 0;
-  padding: 0.95rem 1.35rem calc(0.95rem + env(safe-area-inset-bottom));
+  padding: 0.85rem 1.2rem calc(0.85rem + env(safe-area-inset-bottom));
   border-top: 1px solid #e4ecf6;
-  background: linear-gradient(180deg, #fafcff 0%, #fff 100%);
+  background: #fafcff;
 }
 .edit-employee-actions .ghost-button,
 .edit-employee-actions .primary-button {
-  min-width: 7.5rem;
+  min-width: 7rem;
 }
 .employee-roles-field {
   padding: 0;
   border: 0;
   background: transparent;
 }
-.employee-roles-toggles {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+.employee-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
   margin-top: 0.55rem;
-  border: 1px solid #d7e2f3;
-  border-radius: 0.85rem;
-  background: #fff;
-  overflow: hidden;
-  box-shadow: inset 0 1px 0 #fff;
 }
-.employee-role-toggle {
-  display: flex;
+.edit-employee-form label.employee-role-option,
+.employee-role-option {
+  position: relative;
+  display: flex !important;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0;
-  padding: 0.78rem 0.95rem;
-  border-bottom: 1px solid #e8eef8;
+  gap: 0.6rem;
+  margin: 0 !important;
+  min-height: 2.7rem;
+  height: auto;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d7e2f3;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.84rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.3 !important;
   cursor: pointer;
   user-select: none;
-  transition: background 0.15s ease;
+  overflow: visible;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.employee-role-toggle:last-child {
-  border-bottom: 0;
-}
-.employee-role-toggle:hover {
+.edit-employee-form label.employee-role-option:hover,
+.employee-role-option:hover {
+  border-color: #b8c9ea;
   background: #f7faff;
 }
-.employee-role-toggle-name {
+.edit-employee-form .employee-role-option input[type="checkbox"],
+.employee-role-option input[type="checkbox"] {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer;
+}
+.employee-role-option-mark {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 1.5px solid #9aafd0;
+  border-radius: 0.32rem;
+  background: #fff;
+  pointer-events: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.employee-role-option-mark::after {
+  content: "";
+  display: block;
+  width: 0.7rem;
+  height: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.2 6.4 11l6-6.5' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.employee-role-option-label {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-width: 0;
+  overflow: visible;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 650;
   line-height: 1.3;
-}
-.employee-role-toggle input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.employee-role-switch {
-  position: relative;
-  flex: 0 0 auto;
-  width: 3.35rem;
-  height: 1.7rem;
-  border-radius: 999px;
-  background: #c5d0e0;
-  transition: background 0.18s ease;
-}
-.employee-role-switch-track {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0.42rem 0 0.48rem;
+  white-space: normal;
   pointer-events: none;
 }
-.employee-role-switch-state {
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1;
-  transition: opacity 0.15s ease;
+.edit-employee-form label.employee-role-option:has(input:checked),
+.employee-role-option:has(input:checked) {
+  border-color: #8eadeb;
+  background: #eef4ff;
+  box-shadow: inset 0 0 0 1px #c9daf8;
 }
-.employee-role-switch-state.is-off {
-  color: #5b6b86;
-  opacity: 1;
-}
-.employee-role-switch-state.is-on {
-  color: #fff;
-  opacity: 0;
-}
-.employee-role-switch-knob {
-  position: absolute;
-  top: 0.18rem;
-  left: 0.18rem;
-  width: 1.34rem;
-  height: 1.34rem;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px #15233f33;
-  transition: transform 0.18s ease;
-}
-.employee-role-toggle:has(input:checked) .employee-role-switch {
+.employee-role-option:has(input:checked) .employee-role-option-mark {
+  border-color: var(--blue);
   background: var(--blue);
 }
-.employee-role-toggle:has(input:checked) .employee-role-switch-state.is-off {
-  opacity: 0;
-}
-.employee-role-toggle:has(input:checked) .employee-role-switch-state.is-on {
+.employee-role-option:has(input:checked) .employee-role-option-mark::after {
   opacity: 1;
 }
-.employee-role-toggle:has(input:checked) .employee-role-switch-knob {
-  transform: translateX(1.65rem);
-}
-.employee-role-toggle:has(input:focus-visible) .employee-role-switch {
+.employee-role-option:has(input:focus-visible) {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
@@ -12709,8 +12710,11 @@ body.is-reordering-exam-subjects [data-marks-input] {
   .edit-employee-header,
   .edit-employee-form-body,
   .edit-employee-actions {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.95rem;
+    padding-right: 0.95rem;
+  }
+  .employee-roles-grid {
+    grid-template-columns: 1fr;
   }
   .edit-employee-actions {
     flex-direction: column-reverse;
