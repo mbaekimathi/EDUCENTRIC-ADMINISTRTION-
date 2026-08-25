@@ -3,18 +3,13 @@
 {% block header_eyebrow %}Class management{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/class_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/class_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="{{ page.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Class management</p>
-      <h2>{{ page.title }}</h2>
-      <p>{{ page.copy }}</p>
-    </div>
-  </section>
-
   <section class="exam-tool-empty">
     <span class="exam-tool-empty-icon" aria-hidden="true">CL</span>
     <strong>Tools coming soon</strong>

@@ -55,7 +55,7 @@ class AcademicClass(models.Model):
         null=True,
         blank=True,
         related_name="led_classes",
-        limit_choices_to={"role": "TEACHER"},
+        limit_choices_to={"assigned_roles__role": "TEACHER"},
         verbose_name="class teacher",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -73,7 +73,7 @@ class AcademicClass(models.Model):
         ]
 
     def clean(self):
-        if self.class_teacher_id and self.class_teacher.role != "TEACHER":
+        if self.class_teacher_id and not self.class_teacher.has_role("TEACHER"):
             raise ValidationError(
                 {"class_teacher": "Only employees with the teacher role can be allocated as class teachers."}
             )
@@ -295,7 +295,7 @@ class ClassSubjectAllocation(models.Model):
         "employees.Employee",
         on_delete=models.CASCADE,
         related_name="subject_allocations",
-        limit_choices_to={"role": "TEACHER"},
+        limit_choices_to={"assigned_roles__role": "TEACHER"},
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -317,7 +317,7 @@ class ClassSubjectAllocation(models.Model):
         verbose_name_plural = "class subject allocations"
 
     def clean(self):
-        if self.teacher_id and self.teacher.role != "TEACHER":
+        if self.teacher_id and not self.teacher.has_role("TEACHER"):
             raise ValidationError({"teacher": "Only employees with the teacher role can be allocated a subject."})
         if (
             self.academic_class_id
@@ -349,7 +349,7 @@ class ELearningSubjectAllocation(models.Model):
         "employees.Employee",
         on_delete=models.CASCADE,
         related_name="elearning_subject_allocations",
-        limit_choices_to={"role": "TEACHER"},
+        limit_choices_to={"assigned_roles__role": "TEACHER"},
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -370,7 +370,7 @@ class ELearningSubjectAllocation(models.Model):
         verbose_name_plural = "e-learning subject allocations"
 
     def clean(self):
-        if self.teacher_id and self.teacher.role != "TEACHER":
+        if self.teacher_id and not self.teacher.has_role("TEACHER"):
             raise ValidationError({"teacher": "Only employees with the teacher role can be allocated a subject."})
         if (
             self.academic_level_id
@@ -402,7 +402,7 @@ class ExamSupervisorAllocation(models.Model):
         "employees.Employee",
         on_delete=models.CASCADE,
         related_name="exam_supervisor_allocations",
-        limit_choices_to={"role": "TEACHER"},
+        limit_choices_to={"assigned_roles__role": "TEACHER"},
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -424,7 +424,7 @@ class ExamSupervisorAllocation(models.Model):
         verbose_name_plural = "exam supervisor allocations"
 
     def clean(self):
-        if self.supervisor_id and self.supervisor.role != "TEACHER":
+        if self.supervisor_id and not self.supervisor.has_role("TEACHER"):
             raise ValidationError(
                 {"supervisor": "Only employees with the teacher role can be allocated as exam supervisors."}
             )
@@ -950,7 +950,7 @@ class GeneratedELearningLesson(models.Model):
         "employees.Employee",
         on_delete=models.CASCADE,
         related_name="generated_elearning_lessons",
-        limit_choices_to={"role": "TEACHER"},
+        limit_choices_to={"assigned_roles__role": "TEACHER"},
     )
     weekday = models.CharField(max_length=3)
     period_name = models.CharField(max_length=120)
@@ -1084,6 +1084,12 @@ class ExamMark(models.Model):
         verbose_name="subject",
     )
     marks = models.PositiveIntegerField()
+    out_of_marks = models.PositiveIntegerField(
+        "out of marks",
+        null=True,
+        blank=True,
+        help_text="Out-of value that applied when this mark was saved. Kept until the mark is edited.",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -1573,6 +1579,12 @@ class ELearningAssessmentMark(models.Model):
         verbose_name="subject",
     )
     marks = models.PositiveIntegerField()
+    out_of_marks = models.PositiveIntegerField(
+        "out of marks",
+        null=True,
+        blank=True,
+        help_text="Out-of value that applied when this mark was saved. Kept until the mark is edited.",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

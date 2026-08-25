@@ -8,24 +8,25 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="exam-tool-page learning-materials-page" data-learning-materials-page>
   {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
-  <section class="exam-tool-hero learning-materials-hero" aria-label="Learning materials overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">E-learning</p>
-      <h2>{{ page.title }}</h2>
-      <p>Share portal-ready notes, slides, video, audio, and quizzes with students and parents.</p>
+  <div class="teacher-page-bar no-print" aria-label="Learning materials actions">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ materials|length }}</strong>
+        <span>Uploaded</span>
+      </div>
     </div>
-    <div class="learning-materials-hero-actions">
-      {% if allocations %}
-      <button type="button" class="primary-button exam-tool-cta" data-open-modal="learning-material-upload">
+    {% if allocations %}
+    <div class="teacher-page-bar-actions">
+      <button type="button" class="primary-button" data-open-modal="learning-material-upload">
         Upload learning material
       </button>
-      {% endif %}
-      <span class="exam-tool-panel-count">{{ materials|length }} uploaded</span>
     </div>
-  </section>
+    {% endif %}
+  </div>
 
   <section class="exam-tool-panel learning-materials-library" aria-label="Uploaded learning materials">
     <header class="exam-tool-panel-head">

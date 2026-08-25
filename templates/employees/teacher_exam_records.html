@@ -3,28 +3,13 @@
 {% block header_eyebrow %}Teacher{% endblock %}
 {% block header_title %}Exam records{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher.html" %}
 <div class="sa-hub-page exam-hub-page">
-  <section class="teacher-dash-hero" aria-label="Exam records overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">Assessment</p>
-      <h2>Exam records</h2>
-      <p>Open a registered exam, then select one of your allocated classes to enter or review marks.</p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
-        <strong>{{ exam_count }}</strong>
-        <span>Exam{{ exam_count|pluralize }}</span>
-      </div>
-      <div class="teacher-dash-stat">
-        <strong>{{ exam_groups|length }}</strong>
-        <span>Year{{ exam_groups|length|pluralize }}</span>
-      </div>
-    </div>
-  </section>
-
   {% if exam_groups %}
   <div class="sa-hub-scroll">
     <p class="sr-only">Registered exams</p>

@@ -21,6 +21,7 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/curriculum_settings.html" %}
 <div class="settings-toolbar">
   <div class="settings-toolbar-copy">
     <h2>{{ config_heading }}</h2>

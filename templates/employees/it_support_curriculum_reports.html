@@ -3,33 +3,20 @@
 {% block header_eyebrow %}Reports{% endblock %}
 {% block header_title %}{{ section.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/curriculum_reports_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="{{ section.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Reports</p>
-      <h2>{{ section.title }}</h2>
-      <p>{{ section.copy }}</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ curriculum_report_pages|length }}</strong>
-          <span>Areas</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="module-grid" aria-label="Curriculum report areas">
+  <section class="teacher-dash-actions is-nav-links" aria-label="Curriculum report areas">
     {% for page in curriculum_report_pages %}
-    <a class="module-card" href="{% url 'employees:it_support_curriculum_report_page' page.slug %}">
-      <span class="module-icon">{{ page.icon }}</span>
-      <h3>{{ page.title }}</h3>
-      <p>{{ page.summary }}</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:it_support_curriculum_report_page' page.slug %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">{{ page.icon }}</span>
+      <span class="teacher-dash-action-copy">
+        <strong>{{ page.title }}</strong>
+        <span>{{ page.summary }}</span>
+      </span>
     </a>
     {% endfor %}
   </section>

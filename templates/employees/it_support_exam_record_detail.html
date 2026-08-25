@@ -10,10 +10,11 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/exam_record_levels.html" %}
 {% if selected_level %}
 <section class="exam-record-sheet exam-detail-sheet">
   {% if students %}
-  <form method="post" class="exam-record-marks-form" data-exam-marks>
+  <form method="post" class="exam-record-marks-form" data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
     {% if selected_class %}<input type="hidden" name="class_id" value="{{ selected_class.id }}">{% endif %}
     <header class="exam-record-bar exam-detail-bar">
@@ -67,6 +68,11 @@
         </div>
       </div>
     </header>
+    {% if out_of_settings_changed %}
+    <div class="notice warning" data-out-of-changed-notice>
+      Out-of marks settings have changed since some scores were saved. Saved percentages stay as they were until you edit and save; saving will apply the current out-of values.
+    </div>
+    {% endif %}
 
     <div class="settings-table-panel exam-record-sheet-table">
       <table class="settings-table settings-table-responsive exam-record-students-table">

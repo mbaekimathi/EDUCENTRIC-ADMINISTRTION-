@@ -431,6 +431,12 @@ class EmployeeRegistrationForm(UserCreationForm):
 
 class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
     uppercase_fields = ("first_name", "last_name", "employee_code")
+    roles = forms.MultipleChoiceField(
+        choices=Employee.Role.choices,
+        widget=forms.CheckboxSelectMultiple,
+        label="Roles",
+        help_text="Select every workspace role this employee should have.",
+    )
 
     class Meta:
         model = Employee
@@ -445,6 +451,12 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
             "role",
             "approval_status",
         )
+        labels = {
+            "role": "Primary role",
+        }
+        help_texts = {
+            "role": "Default workspace after sign-in when more than one role is assigned.",
+        }
         widgets = {
             "title": forms.Select(attrs={"class": "uppercase-input"}),
             "first_name": forms.TextInput(attrs={"class": "uppercase-input"}),
@@ -478,6 +490,10 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
         title_field.empty_label = "Select title"
         title_field.choices = [("", "Select title"), *Employee.Title.choices]
         title_field.widget.attrs.update({"required": "required", "aria-required": "true"})
+        if self.instance and self.instance.pk:
+            self.fields["roles"].initial = self.instance.role_values()
+        elif self.instance and self.instance.role:
+            self.fields["roles"].initial = [self.instance.role]
 
     def clean_title(self):
         title = (self.cleaned_data.get("title") or "").strip().upper()
@@ -501,3 +517,31 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
                 "This employment number has already been used and cannot be reused."
             )
         return number
+
+    def clean(self):
+        cleaned_data = super().clean()
+        roles = cleaned_data.get("roles") or []
+        # Allow legacy single-role posts that only send `role`.
+        if not roles and cleaned_data.get("role"):
+            roles = [cleaned_data["role"]]
+            cleaned_data["roles"] = roles
+        primary = cleaned_data.get("role")
+        if roles and primary and primary not in roles:
+            self.add_error(
+                "role",
+                "Primary role must be one of the selected roles.",
+            )
+        elif roles and not primary:
+            cleaned_data["role"] = roles[0]
+        return cleaned_data
+
+    def save(self, commit=True):
+        employee = super().save(commit=commit)
+        roles = self.cleaned_data.get("roles") or [employee.role]
+        primary = self.cleaned_data.get("role") or roles[0]
+        if commit:
+            employee.set_roles(roles, primary=primary)
+        else:
+            employee._pending_roles = roles
+            employee._pending_primary_role = primary
+        return employee

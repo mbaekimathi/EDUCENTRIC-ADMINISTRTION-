@@ -11,6 +11,7 @@ from apps.curriculum.models import (
     AcademicTerm,
     AcademicYear,
     ExamMark,
+    ExamSubjectSetting,
     GeneratedExamTimetable,
     LearningArea,
 )
@@ -37,6 +38,13 @@ def import_exam_marks_csv(csv_path, *, dry_run=False):
     subjects_by_code = {
         code.strip().upper(): subject_id
         for code, subject_id in LearningArea.objects.values_list("code", "id")
+    }
+    area_totals = dict(LearningArea.objects.values_list("id", "total_marks"))
+    settings_out_of = {
+        (level_id, area_id): out_of
+        for level_id, area_id, out_of in ExamSubjectSetting.objects.values_list(
+            "academic_level_id", "learning_area_id", "out_of_marks"
+        )
     }
     levels = list(AcademicLevel.objects.all())
 
@@ -143,12 +151,19 @@ def import_exam_marks_csv(csv_path, *, dry_run=False):
             continue
         existing_keys.add(key)
 
+        out_of = None
+        if level is not None:
+            out_of = settings_out_of.get((level.id, subject_id))
+        if out_of is None:
+            out_of = area_totals.get(subject_id, 100)
+
         pending_by_exam[exam.id].append(
             ExamMark(
                 generation_id=exam.id if not dry_run else None,
                 student_id=student_id,
                 learning_area_id=subject_id,
                 marks=marks,
+                out_of_marks=out_of,
             )
         )
 

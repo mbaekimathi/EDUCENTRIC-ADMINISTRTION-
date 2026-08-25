@@ -1,0 +1,30 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="My class tools">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">RA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Register class attendance</strong>
+      <span>Register class attendance</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">CA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Students class attendance</strong>
+      <span>Students class attendance</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'students-discipline' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SD</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Students discipline</strong>
+      <span>Students discipline</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'student-books' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SB</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Student books</strong>
+      <span>Student books</span>
+    </span>
+  </a>
+</section>

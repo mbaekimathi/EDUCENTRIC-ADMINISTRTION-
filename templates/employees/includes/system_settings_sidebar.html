@@ -1,0 +1,36 @@
+<p class="workspace-nav-label">Settings</p>
+<a
+  class="workspace-nav-link {% if active_settings == 'school-profile' %}is-active{% endif %}"
+  href="{% url 'employees:school_profile_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">SP</span>
+  School profile
+</a>
+<a
+  class="workspace-nav-link {% if active_settings == 'curriculum' %}is-active{% endif %}"
+  href="{% url 'employees:curriculum_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">CU</span>
+  Curriculum
+</a>
+<a
+  class="workspace-nav-link {% if active_settings == 'finance' %}is-active{% endif %}"
+  href="{% url 'employees:finance_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">FN</span>
+  Finance
+</a>
+<a
+  class="workspace-nav-link {% if active_settings == 'hr' %}is-active{% endif %}"
+  href="{% url 'employees:hr_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">HR</span>
+  HR
+</a>
+<a
+  class="workspace-nav-link {% if active_settings == 'academic-calendar' %}is-active{% endif %}"
+  href="{% url 'employees:academic_calendar_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">AC</span>
+  Academic calendar
+</a>

@@ -3,188 +3,285 @@
 {% block header_eyebrow %}Human resource management{% endblock %}
 {% block header_title %}Employee management{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/human_resource_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
-<div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Employee management overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Human resource management</p>
-      <h2>Employee management</h2>
-      <p>Staff are grouped by role. Edit details, suspend login access, or delete an employee from the system.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ employee_count }}</strong>
-          <span>Employee{{ employee_count|pluralize }}</span>
-        </div>
-        <div class="exam-tool-stat">
-          <strong>{{ role_groups|length }}</strong>
-          <span>Role{{ role_groups|length|pluralize }}</span>
-        </div>
-      </div>
-    </div>
+<div class="exam-tool-page employee-mgmt-page">
+  <section class="teacher-dash-actions is-nav-links" aria-label="Human resource tools">
+    <a class="teacher-dash-action" href="{% url 'employees:it_support_employee_management' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">EM</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Employee management</strong>
+        <span>List staff, edit details, suspend access, or remove employees.</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
+      <span class="teacher-dash-action-copy">
+        <strong>HR settings</strong>
+        <span>Staff roles, employment defaults, and people policies.</span>
+      </span>
+    </a>
   </section>
 
-  <div class="settings-toolbar">
-    <div class="settings-toolbar-copy">
-      <h2>Registered employees</h2>
-      <p class="subtle">{{ employee_count }} employee{{ employee_count|pluralize }} across {{ role_groups|length }} role{{ role_groups|length|pluralize }}.</p>
+  <div class="teacher-page-bar" aria-label="Employee management overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ employee_count }}</strong>
+        <span>Employees</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ approved_count }}</strong>
+        <span>Approved</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ pending_count }}</strong>
+        <span>Pending</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ suspended_count }}</strong>
+        <span>Suspended</span>
+      </div>
     </div>
   </div>
 
-{% if role_groups %}
-<div class="settings-category-list">
-  {% for group in role_groups %}
-  <section class="settings-category" aria-label="{{ group.label }}">
-    <header class="settings-category-header">
-      <h3 class="settings-category-title is-uppercase">{{ group.label }}</h3>
-      <span class="settings-category-count">{{ group.employees|length }} employee{{ group.employees|length|pluralize }}</span>
-    </header>
-    <div class="settings-table-panel">
-      <table class="settings-table settings-table-responsive">
-        <thead>
-          <tr>
-            <th>Employee</th>
-            <th>Code</th>
-            <th>Employment no.</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Approval</th>
-            <th>Access</th>
-            <th><span class="sr-only">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for employee in group.employees %}
-          <tr>
-            <td data-label="Employee">
-              <div class="settings-stack">
-                <strong class="is-uppercase">{{ employee.display_name }}</strong>
-                <span class="subtle">{{ employee.get_role_display }}</span>
-              </div>
-            </td>
-            <td data-label="Code"><code class="is-uppercase">{{ employee.employee_code }}</code></td>
-            <td data-label="Employment no."><code>{{ employee.employment_number }}</code></td>
-            <td data-label="Email">{{ employee.email }}</td>
-            <td data-label="Phone">{{ employee.phone_number }}</td>
-            <td data-label="Approval">
-              <span class="status-pill is-uppercase {% if employee.approval_status == 'APPROVED' %}is-active{% else %}is-inactive{% endif %}">
-                {{ employee.get_approval_status_display }}
-              </span>
-            </td>
-            <td data-label="Access">
-              <span class="status-pill is-uppercase {% if employee.is_suspended %}is-inactive{% elif employee.is_active %}is-active{% else %}is-inactive{% endif %}">
-                {% if employee.is_suspended %}Suspended{% elif employee.is_active %}Active{% else %}Inactive{% endif %}
-              </span>
-            </td>
-            <td data-label="Actions">
-              <div class="record-actions">
-                <button
-                  type="button"
-                  class="record-action"
-                  data-edit-employee
-                  data-title="{{ employee.title }}"
-                  data-first-name="{{ employee.first_name }}"
-                  data-last-name="{{ employee.last_name }}"
-                  data-email="{{ employee.email }}"
-                  data-phone-number="{{ employee.phone_number }}"
-                  data-employee-code="{{ employee.employee_code }}"
-                  data-employment-number="{{ employee.employment_number }}"
-                  data-role="{{ employee.role }}"
-                  data-approval-status="{{ employee.approval_status }}"
-                  data-update-url="{% url 'employees:update_workspace_employee' employee.id %}"
-                >Edit</button>
-                {% if employee.id != request.user.id %}
-                <form method="post" action="{% url 'employees:toggle_workspace_employee_status' employee.id %}">
-                  {% csrf_token %}
-                  <button type="submit" class="record-action">
-                    {% if employee.is_suspended %}Unsuspend{% else %}Suspend{% endif %}
-                  </button>
-                </form>
-                <form method="post" action="{% url 'employees:delete_workspace_employee' employee.id %}" onsubmit="return confirm('Delete {{ employee.display_name|escapejs }}? This cannot be undone.');">
-                  {% csrf_token %}
-                  <button type="submit" class="record-action is-danger">Delete</button>
-                </form>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endfor %}
-</div>
-{% else %}
-<p class="settings-empty">No employees are registered yet.</p>
-{% endif %}
+  {% if employees %}
+  <div class="employee-mgmt-controls" data-employee-controls>
+    <label class="employee-mgmt-search">
+      <span class="sr-only">Search employees</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm7.03 10.47 3.5 3.5-1.06 1.06-3.5-3.5 1.06-1.06z"/></svg>
+      <input type="search" placeholder="Search by name, code, email, phone, or role" data-employee-search autocomplete="off">
+    </label>
+  </div>
+
+  <div class="employee-directory" data-employee-directory>
+    <article class="employee-role-card">
+      <div class="employee-table-wrap">
+        <table class="employee-table">
+          <colgroup>
+            <col class="col-employee">
+            <col class="col-code">
+            <col class="col-employment">
+            <col class="col-contact">
+            <col class="col-approval">
+            <col class="col-access">
+            <col class="col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Emp. no.</th>
+              <th>Code</th>
+              <th>Contact</th>
+              <th>Approval</th>
+              <th>Access</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in employees %}
+            <tr
+              data-employee-row
+              data-search="{{ employee.display_name }} {{ employee.employee_code }} {{ employee.employment_number }} {{ employee.email }} {{ employee.phone_number }} {% for value in employee.role_values %}{% for choice_value, choice_label in role_choices %}{% if choice_value == value %}{{ choice_label }} {% endif %}{% endfor %}{% endfor %}"
+            >
+              <td data-label="Employee">
+                <div class="employee-name-cell">
+                  {% if employee.profile_image %}
+                  <img class="employee-avatar employee-avatar-photo" src="{{ employee.profile_image.url }}" alt="">
+                  {% else %}
+                  <span class="employee-avatar" aria-hidden="true">{{ employee.first_name|slice:":1" }}{{ employee.last_name|slice:":1" }}</span>
+                  {% endif %}
+                  <div class="employee-name-copy">
+                    <strong class="is-uppercase">{{ employee.display_name }}</strong>
+                    <span class="employee-role-chips">
+                      {% for value in employee.role_values %}
+                      <span class="employee-role-chip{% if value == employee.role %} is-primary{% endif %}">
+                        {% for choice_value, choice_label in role_choices %}{% if choice_value == value %}{{ choice_label }}{% endif %}{% endfor %}
+                      </span>
+                      {% endfor %}
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Emp. no."><code class="employee-code is-uppercase">{{ employee.employee_code }}</code></td>
+              <td data-label="Code"><code class="employee-code">{{ employee.employment_number }}</code></td>
+              <td data-label="Contact">
+                <div class="employee-contact-cell">
+                  <span>{{ employee.email }}</span>
+                  <small>{{ employee.phone_number }}</small>
+                </div>
+              </td>
+              <td data-label="Approval">
+                <span class="status-pill is-uppercase {% if employee.approval_status == 'APPROVED' %}is-active{% elif employee.approval_status == 'PENDING_APPROVAL' %}is-warn{% else %}is-inactive{% endif %}">
+                  {{ employee.get_approval_status_display }}
+                </span>
+              </td>
+              <td data-label="Access">
+                <span class="status-pill is-uppercase {% if employee.is_suspended %}is-inactive{% elif employee.is_active %}is-active{% else %}is-inactive{% endif %}">
+                  {% if employee.is_suspended %}Suspended{% elif employee.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </td>
+              <td data-label="Actions">
+                <div class="record-actions">
+                  <button
+                    type="button"
+                    class="record-action"
+                    data-edit-employee
+                    data-title="{{ employee.title }}"
+                    data-first-name="{{ employee.first_name }}"
+                    data-last-name="{{ employee.last_name }}"
+                    data-email="{{ employee.email }}"
+                    data-phone-number="{{ employee.phone_number }}"
+                    data-employee-code="{{ employee.employee_code }}"
+                    data-employment-number="{{ employee.employment_number }}"
+                    data-role="{{ employee.role }}"
+                    data-roles="{{ employee.role_values|join:',' }}"
+                    data-approval-status="{{ employee.approval_status }}"
+                    data-update-url="{% url 'employees:update_workspace_employee' employee.id %}"
+                  >Edit</button>
+                  {% if employee.id != request.user.id %}
+                  <form method="post" action="{% url 'employees:toggle_workspace_employee_status' employee.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="record-action">
+                      {% if employee.is_suspended %}Unsuspend{% else %}Suspend{% endif %}
+                    </button>
+                  </form>
+                  <form method="post" action="{% url 'employees:delete_workspace_employee' employee.id %}" onsubmit="return confirm('Delete {{ employee.display_name|escapejs }}? This cannot be undone.');">
+                    {% csrf_token %}
+                    <button type="submit" class="record-action is-danger">Delete</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+    <p class="employee-mgmt-empty" data-employee-empty hidden>No employees match your search.</p>
+  </div>
+  {% else %}
+  <div class="employee-mgmt-blank">
+    <strong>No employees yet</strong>
+    <p>Registered staff will appear here.</p>
+  </div>
+  {% endif %}
 </div>
 
 <div class="app-modal" id="edit-employee-modal" data-edit-employee-modal hidden>
   <div class="app-modal-backdrop" data-edit-employee-close></div>
-  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="edit-employee-title">
-    <div class="app-modal-header">
-      <h2 id="edit-employee-title">Edit employee</h2>
+  <div class="app-modal-dialog app-modal-dialog-wide edit-employee-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-employee-title">
+    <div class="app-modal-header edit-employee-header">
+      <div class="edit-employee-header-copy">
+        <p class="employee-modal-kicker">Human resource</p>
+        <h2 id="edit-employee-title">Edit employee</h2>
+        <p class="edit-employee-header-note">Update identity, contact details, and workspace access.</p>
+      </div>
       <button type="button" class="app-modal-close" data-edit-employee-close aria-label="Close">×</button>
     </div>
-    <form method="post" class="app-modal-form" data-edit-employee-form>
+    <form method="post" class="app-modal-form edit-employee-form" data-edit-employee-form>
       {% csrf_token %}
-      <div class="form-grid">
-        <div class="field">
-          <label for="edit-employee-title-field">Title <span class="required">*</span></label>
-          <select id="edit-employee-title-field" class="uppercase-input" name="title" required>
-            {% for value, label in title_choices %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field">
-          <label for="edit-employee-code">Employee code <span class="required">*</span></label>
-          <input id="edit-employee-code" class="uppercase-input" name="employee_code" required maxlength="6" inputmode="numeric">
-        </div>
-        <div class="field">
-          <label for="edit-employment-number">Employment number <span class="required">*</span></label>
-          <input id="edit-employment-number" name="employment_number" type="number" min="1" step="1" required>
-        </div>
-        <div class="field">
-          <label for="edit-employee-first-name">First name <span class="required">*</span></label>
-          <input id="edit-employee-first-name" class="uppercase-input" name="first_name" required>
-        </div>
-        <div class="field">
-          <label for="edit-employee-last-name">Last name <span class="required">*</span></label>
-          <input id="edit-employee-last-name" class="uppercase-input" name="last_name" required>
-        </div>
-        <div class="field span-two">
-          <label for="edit-employee-email">Email <span class="required">*</span></label>
-          <input id="edit-employee-email" type="email" name="email" required>
-        </div>
-        <div class="field span-two">
-          <label for="edit-employee-phone">Phone <span class="required">*</span></label>
-          <input id="edit-employee-phone" name="phone_number" required>
-        </div>
-        <div class="field">
-          <label for="edit-employee-role">Role <span class="required">*</span></label>
-          <select id="edit-employee-role" class="uppercase-input" name="role" required>
-            {% for value, label in role_choices %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field">
-          <label for="edit-employee-approval">Approval status <span class="required">*</span></label>
-          <select id="edit-employee-approval" class="uppercase-input" name="approval_status" required>
-            {% for value, label in approval_choices %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      <div class="edit-employee-form-body">
+        <section class="edit-employee-section" aria-labelledby="edit-employee-identity-heading">
+          <div class="edit-employee-section-head">
+            <h3 id="edit-employee-identity-heading">Identity</h3>
+            <p>Name and staff identifiers</p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="edit-employee-title-field">Title <span class="required">*</span></label>
+              <select id="edit-employee-title-field" class="uppercase-input" name="title" required>
+                {% for value, label in title_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="edit-employee-code">Employment number <span class="required">*</span></label>
+              <input id="edit-employee-code" class="uppercase-input" name="employee_code" required maxlength="6" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="edit-employment-number">Employee code <span class="required">*</span></label>
+              <input id="edit-employment-number" name="employment_number" type="number" min="1" step="1" required>
+            </div>
+            <div class="field">
+              <label for="edit-employee-first-name">First name <span class="required">*</span></label>
+              <input id="edit-employee-first-name" class="uppercase-input" name="first_name" required>
+            </div>
+            <div class="field span-two">
+              <label for="edit-employee-last-name">Last name <span class="required">*</span></label>
+              <input id="edit-employee-last-name" class="uppercase-input" name="last_name" required>
+            </div>
+          </div>
+        </section>
+
+        <section class="edit-employee-section" aria-labelledby="edit-employee-contact-heading">
+          <div class="edit-employee-section-head">
+            <h3 id="edit-employee-contact-heading">Contact</h3>
+            <p>How the school reaches this person</p>
+          </div>
+          <div class="form-grid">
+            <div class="field span-two">
+              <label for="edit-employee-email">Email <span class="required">*</span></label>
+              <input id="edit-employee-email" type="email" name="email" required>
+            </div>
+            <div class="field span-two">
+              <label for="edit-employee-phone">Phone <span class="required">*</span></label>
+              <input id="edit-employee-phone" name="phone_number" required>
+            </div>
+          </div>
+        </section>
+
+        <section class="edit-employee-section" aria-labelledby="edit-employee-access-heading">
+          <div class="edit-employee-section-head">
+            <h3 id="edit-employee-access-heading">Access</h3>
+            <p>Workspace roles and approval</p>
+          </div>
+          <div class="form-grid">
+            <div class="field span-two employee-roles-field">
+              <span class="field-label">Roles <span class="required">*</span></span>
+              <p class="subtle field-hint">Turn on every workspace this employee should access. At sign-in they choose which role to open.</p>
+              <div class="employee-roles-toggles" data-edit-employee-roles>
+                {% for value, label in role_choices %}
+                <label class="employee-role-toggle">
+                  <span class="employee-role-toggle-name">{{ label }}</span>
+                  <input type="checkbox" name="roles" value="{{ value }}" data-role-option="{{ value }}">
+                  <span class="employee-role-switch" aria-hidden="true">
+                    <span class="employee-role-switch-track">
+                      <span class="employee-role-switch-state is-off">Off</span>
+                      <span class="employee-role-switch-state is-on">On</span>
+                    </span>
+                    <span class="employee-role-switch-knob"></span>
+                  </span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="field">
+              <label for="edit-employee-role">Primary role <span class="required">*</span></label>
+              <select id="edit-employee-role" class="uppercase-input" name="role" required data-edit-primary-role>
+                {% for value, label in role_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="edit-employee-approval">Approval status <span class="required">*</span></label>
+              <select id="edit-employee-approval" class="uppercase-input" name="approval_status" required>
+                {% for value, label in approval_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </section>
       </div>
-      <div class="app-modal-actions">
+      <div class="app-modal-actions edit-employee-actions">
         <button type="button" class="ghost-button" data-edit-employee-close>Cancel</button>
         <button type="submit" class="primary-button">Save changes</button>
       </div>
@@ -198,6 +295,8 @@
 (function () {
   const modal = document.querySelector("[data-edit-employee-modal]");
   const form = document.querySelector("[data-edit-employee-form]");
+  const searchInput = document.querySelector("[data-employee-search]");
+  const emptyState = document.querySelector("[data-employee-empty]");
   const fields = {
     title: document.querySelector("#edit-employee-title-field"),
     firstName: document.querySelector("#edit-employee-first-name"),
@@ -209,6 +308,20 @@
     role: document.querySelector("#edit-employee-role"),
     approvalStatus: document.querySelector("#edit-employee-approval"),
   };
+  const roleChecks = () => Array.from(document.querySelectorAll("[data-role-option]"));
+
+  function syncPrimaryOptions() {
+    const selected = roleChecks()
+      .filter((input) => input.checked)
+      .map((input) => input.value);
+    Array.from(fields.role.options).forEach((option) => {
+      option.hidden = selected.length > 0 && !selected.includes(option.value);
+      option.disabled = option.hidden;
+    });
+    if (selected.length && !selected.includes(fields.role.value)) {
+      fields.role.value = selected[0];
+    }
+  }
 
   function setOpen(open) {
     if (!modal) return;
@@ -216,6 +329,18 @@
     modal.classList.toggle("is-open", open);
     document.body.classList.toggle("modal-open", open);
     if (open) fields.firstName?.focus();
+  }
+
+  function filterEmployees() {
+    const query = (searchInput?.value || "").trim().toLowerCase();
+    let visibleRows = 0;
+    document.querySelectorAll("[data-employee-row]").forEach((row) => {
+      const haystack = (row.dataset.search || "").toLowerCase();
+      const match = !query || haystack.includes(query);
+      row.hidden = !match;
+      if (match) visibleRows += 1;
+    });
+    if (emptyState) emptyState.hidden = visibleRows > 0 || !query;
   }
 
   document.querySelectorAll("[data-edit-employee]").forEach((button) => {
@@ -230,8 +355,30 @@
       fields.employmentNumber.value = button.dataset.employmentNumber || "";
       fields.role.value = button.dataset.role || "";
       fields.approvalStatus.value = button.dataset.approvalStatus || "";
+      const roles = (button.dataset.roles || button.dataset.role || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      roleChecks().forEach((input) => {
+        input.checked = roles.includes(input.value);
+      });
+      syncPrimaryOptions();
       setOpen(true);
     });
+  });
+
+  roleChecks().forEach((input) => {
+    input.addEventListener("change", syncPrimaryOptions);
+  });
+
+  searchInput?.addEventListener("input", filterEmployees);
+
+  form?.addEventListener("submit", (event) => {
+    const selected = roleChecks().filter((input) => input.checked);
+    if (!selected.length) {
+      event.preventDefault();
+      alert("Select at least one role.");
+    }
   });
 
   modal?.querySelectorAll("[data-edit-employee-close]").forEach((button) => {

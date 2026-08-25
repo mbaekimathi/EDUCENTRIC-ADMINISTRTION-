@@ -8,6 +8,7 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_elearning_attendance.html" %}
 <div class="subject-profile-page" data-subject-profile>
   {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
@@ -22,7 +23,6 @@
         <button type="button" data-profile-tab="attendance">Attendance</button>
         <button type="button" data-profile-tab="outcome">Outcome</button>
       </nav>
-      <a class="exam-back-link" href="{% url 'employees:teacher_elearning_attendance_level' selected_level.id %}">Back to subjects</a>
     </div>
   </section>
 
@@ -180,101 +180,89 @@
         {% csrf_token %}
         <input type="hidden" name="form_action" value="attendance">
 
-        <section class="lesson-plan-section">
-          <header class="lesson-plan-section-header">
-            <span class="lesson-plan-step">1</span>
-            <span>
-              <strong>Session details</strong>
-              <span class="subtle">Choose the lesson date and optional notes</span>
-            </span>
-          </header>
-          <div class="lesson-plan-fields lesson-plan-fields-2">
-            <label class="lesson-plan-field">
-              <span class="lesson-plan-label">Lesson date</span>
-              <input type="date" name="lesson_date" value="{{ lesson_date|date:'Y-m-d' }}" required data-attendance-date>
-            </label>
-            <label class="lesson-plan-field">
-              <span class="lesson-plan-label">Notes</span>
-              <input type="text" name="attendance_notes" value="{% if attendance_session %}{{ attendance_session.notes }}{% endif %}" placeholder="Optional session notes…">
-            </label>
-          </div>
-        </section>
+        <div class="attendance-form-controls">
+          <label class="attendance-control">
+            <span>Lesson date</span>
+            <input type="date" name="lesson_date" value="{{ lesson_date|date:'Y-m-d' }}" required data-attendance-date>
+          </label>
+          <label class="attendance-control is-wide">
+            <span>Notes</span>
+            <input type="text" name="attendance_notes" value="{% if attendance_session %}{{ attendance_session.notes }}{% endif %}" placeholder="Optional session notes…">
+          </label>
+        </div>
 
         {% if students %}
-        <section class="lesson-plan-section attendance-roll-section">
-          <header class="lesson-plan-section-header">
-            <span class="lesson-plan-step">2</span>
-            <span>
-              <strong>Level roll</strong>
-              <span class="subtle">Set each learner’s status for this e-learning session</span>
-            </span>
-          </header>
-
-          <div class="attendance-summary" data-attendance-summary aria-live="polite">
-            <div class="attendance-summary-item is-present">
-              <strong data-count="PRESENT">0</strong>
-              <span>Present</span>
-            </div>
-            <div class="attendance-summary-item is-absent">
-              <strong data-count="ABSENT">0</strong>
-              <span>Absent</span>
-            </div>
-            <div class="attendance-summary-item is-late">
-              <strong data-count="LATE">0</strong>
-              <span>Late</span>
-            </div>
-            <div class="attendance-summary-item is-excused">
-              <strong data-count="EXCUSED">0</strong>
-              <span>Excused</span>
-            </div>
+        <div class="attendance-summary attendance-summary-binary" data-attendance-summary aria-live="polite">
+          <div class="attendance-summary-item is-present">
+            <strong data-count="PRESENT">0</strong>
+            <span>Present</span>
           </div>
-
-          <div class="attendance-quick-actions">
-            <button type="button" class="ghost-button" data-mark-all="PRESENT">All present</button>
-            <button type="button" class="ghost-button" data-mark-all="ABSENT">All absent</button>
-            <button type="button" class="ghost-button" data-mark-all="LATE">All late</button>
-            <button type="button" class="ghost-button" data-mark-all="EXCUSED">All excused</button>
+          <div class="attendance-summary-item is-absent">
+            <strong data-count="ABSENT">0</strong>
+            <span>Absent</span>
           </div>
+        </div>
 
-          <div class="settings-table-panel attendance-roll-table">
-            <table class="settings-table settings-table-responsive">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Student</th>
-                  <th>Admission</th>
-                  <th>Class</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for student in students %}
-                <tr>
-                  <td data-label="#">{{ forloop.counter }}</td>
-                  <td data-label="Student">
-                    <strong class="is-uppercase">{{ student.display_name }}</strong>
-                  </td>
-                  <td data-label="Admission">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</td>
-                  <td data-label="Class">{{ student.class_group|default:"—" }}</td>
-                  <td data-label="Status">
-                    <label class="sr-only" for="status_{{ student.id }}">Attendance for {{ student.display_name }}</label>
-                    <select
-                      id="status_{{ student.id }}"
-                      name="status_{{ student.id }}"
-                      class="attendance-status-select status-{{ student.attendance_status|lower }}"
-                      data-attendance-status
-                    >
-                      {% for value, label in attendance_statuses %}
-                      <option value="{{ value }}" {% if student.attendance_status == value %}selected{% endif %}>{{ label }}</option>
-                      {% endfor %}
-                    </select>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <div class="attendance-quick-actions">
+          <button type="button" class="ghost-button" data-mark-all="PRESENT">All present</button>
+          <button type="button" class="ghost-button" data-mark-all="ABSENT">All absent</button>
+          <button type="submit" class="primary-button">Save attendance</button>
+        </div>
+
+        <div class="settings-table-panel attendance-roll-table">
+          <table class="settings-table attendance-students-table is-binary">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th class="attendance-presence-col">Attendance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for student in students %}
+              <tr>
+                <td data-label="Student">
+                  <span class="attendance-student-cell">
+                    <strong class="is-uppercase exam-student-name">
+                      <span class="sa-student-index" aria-hidden="true">{{ forloop.counter }}.</span>
+                      <span class="exam-student-first">{{ student.first_name }}</span>
+                      <span class="exam-student-last">{{ student.last_name }}</span>
+                    </strong>
+                    <span class="attendance-student-meta">
+                      {% if student.admission_number %}{{ student.admission_number }}{% endif %}
+                      {% if student.admission_number and student.class_group %} · {% endif %}
+                      {% if student.class_group %}{{ student.class_group }}{% endif %}
+                    </span>
+                  </span>
+                </td>
+                <td data-label="Attendance" class="attendance-presence-col">
+                  <div class="attendance-presence" role="group" aria-label="Attendance for {{ student.display_name }}">
+                    <label class="attendance-presence-option is-present">
+                      <input
+                        type="radio"
+                        name="status_{{ student.id }}"
+                        value="PRESENT"
+                        {% if student.attendance_status == "PRESENT" or student.attendance_status == "LATE" %}checked{% endif %}
+                        data-attendance-status
+                      >
+                      <span>Present</span>
+                    </label>
+                    <label class="attendance-presence-option is-absent">
+                      <input
+                        type="radio"
+                        name="status_{{ student.id }}"
+                        value="ABSENT"
+                        {% if student.attendance_status != "PRESENT" and student.attendance_status != "LATE" %}checked{% endif %}
+                        data-attendance-status
+                      >
+                      <span>Absent</span>
+                    </label>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
 
         <div class="subject-profile-actions lesson-plan-actions">
           <button type="submit" class="primary-button">Save attendance</button>
@@ -285,9 +273,7 @@
           {% endif %}
         </div>
         {% else %}
-        <div class="lesson-plan-section">
-          <p class="settings-empty">No students are registered in {{ selected_level.name }}.</p>
-        </div>
+        <p class="settings-empty">No students are registered in {{ selected_level.name }}.</p>
         {% endif %}
       </form>
     </section>
@@ -408,14 +394,10 @@
     });
   }
 
-  function syncStatusClass(select) {
-    select.className = `attendance-status-select status-${String(select.value || "present").toLowerCase()}`;
-  }
-
   function updateSummary() {
-    const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 };
-    form.querySelectorAll("[data-attendance-status]").forEach((select) => {
-      const value = String(select.value || "PRESENT").toUpperCase();
+    const counts = { PRESENT: 0, ABSENT: 0 };
+    form.querySelectorAll("[data-attendance-status]:checked").forEach((input) => {
+      const value = String(input.value || "PRESENT").toUpperCase();
       if (counts[value] != null) counts[value] += 1;
     });
     Object.keys(counts).forEach((key) => {
@@ -427,20 +409,15 @@
   form.querySelectorAll("[data-mark-all]").forEach((button) => {
     button.addEventListener("click", () => {
       const status = button.getAttribute("data-mark-all");
-      form.querySelectorAll("[data-attendance-status]").forEach((select) => {
-        select.value = status;
-        syncStatusClass(select);
+      form.querySelectorAll(`[data-attendance-status][value="${status}"]`).forEach((input) => {
+        input.checked = true;
       });
       updateSummary();
     });
   });
 
-  form.querySelectorAll("[data-attendance-status]").forEach((select) => {
-    syncStatusClass(select);
-    select.addEventListener("change", () => {
-      syncStatusClass(select);
-      updateSummary();
-    });
+  form.querySelectorAll("[data-attendance-status]").forEach((input) => {
+    input.addEventListener("change", updateSummary);
   });
 
   updateSummary();

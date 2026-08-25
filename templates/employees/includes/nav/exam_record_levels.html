@@ -1,0 +1,18 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Exam levels">
+  <a class="teacher-dash-action" href="{% url 'employees:it_support_exam_page' 'exam-records' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AE</span>
+    <span class="teacher-dash-action-copy">
+      <strong>All exams</strong>
+      <span>Back to exam records</span>
+    </span>
+  </a>
+  {% for level in academic_levels %}
+  <a class="teacher-dash-action" href="{% url 'employees:exam_record_level' exam.id level.id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|default:level.name|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ level.name }}</strong>
+      <span>{{ level.code }}</span>
+    </span>
+  </a>
+  {% endfor %}
+</section>

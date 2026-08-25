@@ -1,0 +1,25 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="E-learning assessments">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_page' 'assessments' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>All assessments</strong>
+      <span>Back to assessments</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{{ teacher_elearning_assessment_home_url }}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SC</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Select class</strong>
+      <span>Choose a class</span>
+    </span>
+  </a>
+  {% for academic_class in assessment_classes %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_assessment_class' assessment.id academic_class.id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ academic_class.display_label|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+      <span>{{ academic_class.code }}</span>
+    </span>
+  </a>
+  {% endfor %}
+</section>

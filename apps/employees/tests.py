@@ -68,6 +68,35 @@ class EmployeeAuthenticationTests(TestCase):
             reverse("employees:role_dashboard", kwargs={"role": "teacher"}),
         )
 
+    def test_multi_role_employee_must_select_workspace_role(self):
+        self.employee.set_roles(
+            [Employee.Role.TEACHER, Employee.Role.ACCOUNTANT],
+            primary=Employee.Role.TEACHER,
+        )
+        response = self.client.post(
+            reverse("employees:login"),
+            {"employee_code": "123456", "password": "ReliablePass456"},
+        )
+        self.assertRedirects(response, reverse("employees:select_login_role"))
+        response = self.client.get(reverse("employees:select_login_role"))
+        self.assertContains(response, "Select a role")
+        self.assertContains(response, "Teacher")
+        self.assertContains(response, "Accountant")
+        response = self.client.post(
+            reverse("employees:select_login_role"),
+            {"role": Employee.Role.ACCOUNTANT},
+        )
+        self.assertRedirects(
+            response,
+            reverse("employees:role_dashboard", kwargs={"role": "accountant"}),
+        )
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "accountant"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Switch role")
+
+
     def test_registration_creates_employee(self):
         response = self.client.post(
             reverse("employees:register"),
@@ -937,7 +966,7 @@ class EmployeeManagementTests(TestCase):
         )
         self.client.force_login(self.support)
 
-    def test_lists_employees_grouped_by_role(self):
+    def test_lists_employees_in_single_directory(self):
         response = self.client.get(reverse("employees:it_support_employee_management"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Teacher")
@@ -947,7 +976,9 @@ class EmployeeManagementTests(TestCase):
         self.assertContains(response, "GRACE FINANCE")
         self.assertContains(response, "135790")
         self.assertContains(response, self.teacher.employment_number)
-        self.assertContains(response, "Employment no.")
+        self.assertContains(response, "Emp. no.")
+        self.assertNotContains(response, "employees in this role")
+        self.assertNotContains(response, "Jump to role")
 
     def test_other_roles_cannot_open_employee_management(self):
         self.client.force_login(self.teacher)
@@ -969,6 +1000,7 @@ class EmployeeManagementTests(TestCase):
                 "employee_code": "135790",
                 "employment_number": "99",
                 "role": Employee.Role.CURRICULUM_COORDINATOR,
+                "roles": [Employee.Role.CURRICULUM_COORDINATOR],
                 "approval_status": Employee.ApprovalStatus.APPROVED,
             },
         )
@@ -977,8 +1009,38 @@ class EmployeeManagementTests(TestCase):
         self.assertEqual(self.teacher.last_name, "KARIUKI")
         self.assertEqual(self.teacher.email, "ali.kariuki@example.com")
         self.assertEqual(self.teacher.role, Employee.Role.CURRICULUM_COORDINATOR)
+        self.assertEqual(self.teacher.role_values(), [Employee.Role.CURRICULUM_COORDINATOR])
         self.assertEqual(self.teacher.title, Employee.Title.DR)
         self.assertEqual(self.teacher.employment_number, 99)
+
+    def test_can_assign_multiple_roles(self):
+        response = self.client.post(
+            reverse("employees:update_workspace_employee", kwargs={"employee_id": self.teacher.id}),
+            {
+                "title": "MR",
+                "first_name": "ALI",
+                "last_name": "TEACHER",
+                "email": "teacher@example.com",
+                "phone_number": "+254700000222",
+                "employee_code": "135790",
+                "employment_number": self.teacher.employment_number,
+                "role": Employee.Role.TEACHER,
+                "roles": [Employee.Role.TEACHER, Employee.Role.ACCOUNTANT],
+                "approval_status": Employee.ApprovalStatus.APPROVED,
+            },
+        )
+        self.assertRedirects(response, reverse("employees:it_support_employee_management"))
+        self.teacher.refresh_from_db()
+        self.assertEqual(self.teacher.role, Employee.Role.TEACHER)
+        self.assertCountEqual(
+            self.teacher.role_values(),
+            [Employee.Role.TEACHER, Employee.Role.ACCOUNTANT],
+        )
+        response = self.client.get(reverse("employees:it_support_employee_management"))
+        self.assertContains(response, "Accountant")
+        self.assertContains(response, "Teacher")
+        # Multi-role employee appears once in the flat directory.
+        self.assertContains(response, "ALI TEACHER", count=1)
 
     def test_can_suspend_and_unsuspend_employee(self):
         response = self.client.post(
@@ -2813,6 +2875,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertRedirects(converted, level_url)
         mark.refresh_from_db()
         self.assertEqual(mark.marks, 25)
+        self.assertEqual(mark.out_of_marks, 50)
         converted_page = self.client.get(level_url)
         self.assertContains(converted_page, 'value="50"')
         self.assertNotContains(converted_page, "/ 50 → 100%")
@@ -3022,7 +3085,6 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(response, "Locked")
         self.assertNotContains(response, reverse("employees:teacher_my_class"))
         self.assertNotContains(response, reverse("employees:teacher_elearning"))
-        self.assertContains(response, "Teaching workspace")
         self.assertContains(
             response,
             "Your session timetable will appear here once IT Support generates",
@@ -3480,7 +3542,7 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(response, "Wednesday")
         page = self.client.get(reverse("employees:teacher_elearning"))
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "Your e-learning subjects")
+        self.assertContains(page, "Allocated subjects")
         self.assertContains(page, "MATH")
         self.assertContains(page, "E-learning this week")
         self.assertContains(page, "E-learning attendance")
@@ -3656,7 +3718,7 @@ class TeacherExamRecordsTests(TestCase):
             )
         )
         self.assertEqual(detail.status_code, 200)
-        self.assertContains(detail, "Select a class")
+        self.assertContains(detail, "choose a class to enter marks")
         self.assertContains(detail, "Grade 1 East")
         self.assertContains(
             detail,
@@ -3853,7 +3915,7 @@ class TeacherExamRecordsTests(TestCase):
             reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": self.exam.id})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Select a class from the sidebar")
+        self.assertContains(response, "Allocated classes")
         self.assertContains(response, "Exam analytics")
         self.assertContains(
             response,
@@ -3868,8 +3930,49 @@ class TeacherExamRecordsTests(TestCase):
             ),
         )
         self.assertNotContains(response, "Grade 2 West")
+        self.assertNotContains(response, "workspace-nav-label")
+        self.assertNotContains(response, "Select a class from the sidebar")
 
-    def test_teacher_exam_analytics_lists_all_classes_and_results(self):
+    def test_teacher_exam_analytics_lists_allocated_classes_for_selection(self):
+        other_stream = AcademicClass.objects.create(
+            academic_level=self.level,
+            name="Grade 1 West",
+            code="G1W",
+            order=2,
+        )
+
+        response = self.client.get(
+            reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Allocated classes")
+        self.assertContains(response, "Other classes")
+        self.assertContains(response, "All classes")
+        self.assertContains(response, "Grade 1 East")
+        self.assertContains(response, "Grade 1 West")
+        self.assertContains(
+            response,
+            reverse("employees:teacher_exam_analytics_all", kwargs={"exam_id": self.exam.id}),
+        )
+        self.assertContains(
+            response,
+            reverse(
+                "employees:teacher_exam_analytics_class",
+                kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+            ),
+        )
+        self.assertContains(
+            response,
+            reverse(
+                "employees:teacher_exam_analytics_class",
+                kwargs={"exam_id": self.exam.id, "class_id": other_stream.id},
+            ),
+        )
+        self.assertNotContains(response, "Grade 2 West")
+        self.assertNotContains(response, "workspace-nav-label")
+
+    def test_teacher_exam_analytics_all_classes_shows_every_allocated_class(self):
         from apps.admissions.models import ParentGuardian, Student
 
         second_class = AcademicClass.objects.create(
@@ -3877,6 +3980,84 @@ class TeacherExamRecordsTests(TestCase):
             name="Grade 1 West",
             code="G1W",
             order=2,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=second_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700001011",
+            email="pat.all@example.com",
+        )
+        student_east = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1011",
+            class_group="G1E",
+            assessment_number="A1011",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        student_west = Student.objects.create(
+            first_name="BEN",
+            last_name="WEST",
+            date_of_birth="2018-02-02",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1012",
+            class_group="G1W",
+            assessment_number="A1012",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student_east,
+            learning_area=self.subject,
+            marks=42,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student_west,
+            learning_area=self.subject,
+            marks=31,
+        )
+
+        response = self.client.get(
+            reverse("employees:teacher_exam_analytics_all", kwargs={"exam_id": self.exam.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grade 1 East")
+        self.assertContains(response, "Grade 1 West")
+        self.assertContains(response, "ANN EAST")
+        self.assertContains(response, "BEN WEST")
+        self.assertContains(response, "42")
+        self.assertContains(response, "31")
+        self.assertNotContains(response, "Grade 2 West")
+        self.assertContains(
+            response,
+            reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id}),
+        )
+    def test_teacher_exam_analytics_shows_selected_class_results(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        second_class = AcademicClass.objects.create(
+            academic_level=self.level,
+            name="Grade 1 West",
+            code="G1W",
+            order=2,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=second_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
         )
         parent = ParentGuardian.objects.create(
             full_name="PAT EAST",
@@ -3922,24 +4103,40 @@ class TeacherExamRecordsTests(TestCase):
         )
 
         response = self.client.get(
-            reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id})
+            reverse(
+                "employees:teacher_exam_analytics_class",
+                kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+            )
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Exam analytics")
         self.assertContains(response, "Grade 1 East")
-        self.assertContains(response, "Grade 1 West")
         self.assertContains(response, "ANN EAST")
-        self.assertContains(response, "BEN WEST")
         self.assertContains(response, "42")
-        self.assertContains(response, "31")
+        self.assertNotContains(response, "BEN WEST")
+        self.assertNotContains(response, "31")
         self.assertContains(
             response,
-            reverse("employees:teacher_exam_record_class", kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id}),
+            reverse(
+                "employees:teacher_exam_record_class",
+                kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+            ),
         )
         self.assertContains(
             response,
-            reverse("employees:teacher_exam_record_class", kwargs={"exam_id": self.exam.id, "class_id": second_class.id}),
+            reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id}),
+        )
+
+        denied = self.client.get(
+            reverse(
+                "employees:teacher_exam_analytics_class",
+                kwargs={"exam_id": self.exam.id, "class_id": self.other_class.id},
+            )
+        )
+        self.assertRedirects(
+            denied,
+            reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id}),
         )
 
     def test_teacher_can_view_selected_class_records(self):
@@ -4026,6 +4223,7 @@ class TeacherExamRecordsTests(TestCase):
         self.assertRedirects(response, class_url)
         mark = ExamMark.objects.get(student=student, learning_area=self.subject)
         self.assertEqual(mark.marks, 25)
+        self.assertEqual(mark.out_of_marks, 50)
         saved = self.client.get(class_url)
         self.assertContains(saved, 'value="25"')
         self.assertContains(saved, "50%")
@@ -4037,6 +4235,64 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(invalid, "within each subject's total marks")
         mark.refresh_from_db()
         self.assertEqual(mark.marks, 25)
+
+    def test_changing_out_of_settings_does_not_alter_saved_percent_until_edit(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000555",
+            email="pat.east@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=self.subject,
+            out_of_marks=50,
+        )
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+        self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "25"})
+        mark = ExamMark.objects.get(student=student, learning_area=self.subject)
+        self.assertEqual(mark.marks, 25)
+        self.assertEqual(mark.out_of_marks, 50)
+
+        setting.out_of_marks = 100
+        setting.save(update_fields=["out_of_marks", "updated_at"])
+
+        page = self.client.get(class_url)
+        self.assertContains(page, 'value="25"')
+        self.assertContains(page, "50%")
+        self.assertContains(page, 'data-out-of-changed="1"')
+        self.assertContains(page, "Out-of marks settings have changed")
+        self.assertContains(page, 'data-saved-out-of="50"')
+        self.assertContains(page, 'data-current-out-of="100"')
+        mark.refresh_from_db()
+        self.assertEqual(mark.marks, 25)
+        self.assertEqual(mark.out_of_marks, 50)
+
+        save_response = self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "25"})
+        self.assertRedirects(save_response, class_url)
+        mark.refresh_from_db()
+        self.assertEqual(mark.marks, 25)
+        self.assertEqual(mark.out_of_marks, 100)
+        rebound = self.client.get(class_url)
+        self.assertContains(rebound, "25%")
+        self.assertNotContains(rebound, 'data-out-of-changed="1"')
 
     def test_teacher_cannot_open_a_class_that_is_not_allocated(self):
         response = self.client.get(

@@ -10,26 +10,20 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/elearning_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="E-learning subject allocation overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">E-learning management</p>
-      <h2>Allocate subjects</h2>
-      <p>Assign a teacher to each subject for e-learning delivery at every academic level.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ level_groups|length }}</strong>
-          <span>Categor{{ level_groups|length|pluralize:"y,ies" }}</span>
-        </div>
-        <div class="exam-tool-stat">
-          <strong>{{ teachers|length }}</strong>
-          <span>Teacher{{ teachers|length|pluralize }}</span>
-        </div>
+  <div class="teacher-page-bar" aria-label="E-learning subject allocation overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ level_groups|length }}</strong>
+        <span>Categor{{ level_groups|length|pluralize:"y,ies" }}</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ teachers|length }}</strong>
+        <span>Teacher{{ teachers|length|pluralize }}</span>
       </div>
     </div>
-  </section>
+  </div>
 
   {% if not teachers %}
   <p class="notice">No approved teachers are available yet. Register and approve employees with the teacher role to allocate subjects.</p>

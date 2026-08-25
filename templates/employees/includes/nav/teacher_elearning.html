@@ -1,0 +1,27 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="E-learning modules">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">OV</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Overview</strong>
+      <span>E-learning home</span>
+    </span>
+  </a>
+  {% for tool in elearning_pages %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong>{{ tool.title }}</strong>
+      <span>{{ tool.summary }}</span>
+    </span>
+  </a>
+  {% endfor %}
+  {% for tool in elearning_report_pages %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong>{{ tool.title }}</strong>
+      <span>{{ tool.summary }}</span>
+    </span>
+  </a>
+  {% endfor %}
+</section>

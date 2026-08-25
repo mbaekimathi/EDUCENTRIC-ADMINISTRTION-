@@ -1,0 +1,44 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Teacher modules">
+  <a class="teacher-dash-action" href="{% url 'employees:role_dashboard' role='teacher' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">ST</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Session timetable</strong>
+      <span>Session timetable</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">MC</span>
+    <span class="teacher-dash-action-copy">
+      <strong>My class</strong>
+      <span>My class</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">EL</span>
+    <span class="teacher-dash-action-copy">
+      <strong>E-learning</strong>
+      <span>E-learning</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Subject attendance</strong>
+      <span>Subject attendance</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_learning_reports' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">LR</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Learning reports</strong>
+      <span>Learning reports</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% if teacher_exam_home_url %}{{ teacher_exam_home_url }}{% else %}{% url 'employees:teacher_exam_records' %}{% endif %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">ER</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Exam records</strong>
+      <span>Exam records</span>
+    </span>
+  </a>
+</section>

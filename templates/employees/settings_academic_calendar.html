@@ -32,6 +32,8 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/system_settings.html" %}
+
 <div class="settings-toolbar">
   <div class="settings-toolbar-copy">
     <h2>Academic years and terms</h2>

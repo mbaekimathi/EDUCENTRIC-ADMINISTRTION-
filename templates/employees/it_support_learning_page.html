@@ -3,25 +3,20 @@
 {% block header_eyebrow %}Learning management{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/learning_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="{{ page.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Learning management</p>
-      <h2>{{ page.title }}</h2>
-      <p>{{ page.copy }}</p>
-    </div>
-  </section>
-
   {% if page.slug == 'timetable-management' %}
-  <section class="module-grid" aria-label="Timetable management tools">
-    <a class="module-card" href="{% url 'employees:learning_timetable_settings' %}">
-      <span class="module-icon">LT</span>
-      <h3>Learning timetable settings</h3>
-      <p>Configure sessions and structure used for regular learning timetables.</p>
-      <span class="module-meta">Open →</span>
+  <section class="teacher-dash-actions is-nav-links" aria-label="Timetable management tools">
+    <a class="teacher-dash-action" href="{% url 'employees:learning_timetable_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">LT</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Learning timetable settings</strong>
+        <span>Configure sessions and structure used for regular learning timetables.</span>
+      </span>
     </a>
   </section>
   {% else %}

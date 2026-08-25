@@ -1,0 +1,29 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="E-learning attendance">
+  <a class="teacher-dash-action" href="{{ teacher_elearning_attendance_home_url }}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AL</span>
+    <span class="teacher-dash-action-copy">
+      <strong>All levels</strong>
+      <span>Back to levels</span>
+    </span>
+  </a>
+  {% for level in allocated_levels %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_attendance_level' level.id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|default:level.name|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ level.name }}</strong>
+      <span>{{ level.code }}</span>
+    </span>
+  </a>
+  {% endfor %}
+  {% if selected_level and allocations %}
+  {% for item in allocations %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_attendance_profile' selected_level.id item.learning_area_id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ item.learning_area.code|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ item.learning_area.code }}</strong>
+      <span>{{ item.learning_area.name }}</span>
+    </span>
+  </a>
+  {% endfor %}
+  {% endif %}
+</section>

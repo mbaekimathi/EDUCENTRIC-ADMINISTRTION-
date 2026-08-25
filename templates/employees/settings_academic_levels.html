@@ -4,7 +4,8 @@
 {% block header_title %}Academic levels{% endblock %}
 
 {% block sidebar_modules %}
-<p class="workspace-nav-label">Academic levels</p>
+{% include "employees/includes/curriculum_settings_sidebar.html" %}
+<p class="workspace-nav-label">This page</p>
 <button
   type="button"
   class="workspace-nav-link workspace-nav-action"
@@ -20,6 +21,7 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/curriculum_settings.html" %}
 <div class="settings-toolbar">
   <div class="settings-toolbar-copy">
     <h2>Registered levels</h2>

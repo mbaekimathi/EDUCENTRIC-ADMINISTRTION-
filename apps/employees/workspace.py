@@ -2,30 +2,96 @@ from .models import Employee
 
 WORKSPACE_ROLE_SESSION_KEY = "workspace_role"
 WORKSPACE_VIEW_EMPLOYEE_SESSION_KEY = "workspace_view_employee_id"
+ACTIVE_WORKSPACE_ROLE_SESSION_KEY = "active_workspace_role"
 
 
 def _valid_roles():
     return {value for value, _label in Employee.Role.choices}
 
 
+def user_role_values(user):
+    if user is None or not getattr(user, "is_authenticated", False):
+        return []
+    if hasattr(user, "role_values"):
+        return user.role_values()
+    role = getattr(user, "role", None)
+    return [role] if role else []
+
+
 def can_switch_workspace_role(user):
     return bool(
         user is not None
         and getattr(user, "is_authenticated", False)
-        and user.role == Employee.Role.IT_SUPPORT
+        and (
+            user.has_role(Employee.Role.IT_SUPPORT)
+            if hasattr(user, "has_role")
+            else user.role == Employee.Role.IT_SUPPORT
+        )
     )
+
+
+def can_choose_own_workspace_role(user):
+    return len(user_role_values(user)) > 1
+
+
+def set_active_workspace_role(request, role):
+    role = (role or "").upper()
+    if role not in user_role_values(request.user):
+        return False
+    request.session[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = role
+    return True
+
+
+def clear_active_workspace_role(request):
+    request.session.pop(ACTIVE_WORKSPACE_ROLE_SESSION_KEY, None)
+
+
+def is_workspace_preview(request):
+    user = getattr(request, "user", None)
+    if not can_switch_workspace_role(user):
+        return False
+    employee_id = request.session.get(WORKSPACE_VIEW_EMPLOYEE_SESSION_KEY)
+    viewing = request.session.get(WORKSPACE_ROLE_SESSION_KEY)
+    if not employee_id or viewing not in _valid_roles():
+        return False
+    return employee_id != user.pk or viewing not in user_role_values(user)
+
+
+def needs_login_role_selection(request):
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return False
+    roles = user_role_values(user)
+    if len(roles) <= 1:
+        if roles and not request.session.get(ACTIVE_WORKSPACE_ROLE_SESSION_KEY):
+            request.session[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = roles[0]
+        return False
+    if is_workspace_preview(request):
+        return False
+    active = request.session.get(ACTIVE_WORKSPACE_ROLE_SESSION_KEY)
+    return active not in roles
 
 
 def workspace_role(request):
     user = getattr(request, "user", None)
     if user is None or not user.is_authenticated:
         return None
-    if not can_switch_workspace_role(user):
-        return user.role
-    viewing = request.session.get(WORKSPACE_ROLE_SESSION_KEY)
-    if viewing in _valid_roles():
-        return viewing
-    return user.role
+
+    roles = user_role_values(user)
+
+    if can_switch_workspace_role(user):
+        viewing = request.session.get(WORKSPACE_ROLE_SESSION_KEY)
+        employee_id = request.session.get(WORKSPACE_VIEW_EMPLOYEE_SESSION_KEY)
+        if employee_id and viewing in _valid_roles():
+            return viewing
+        if viewing in roles:
+            return viewing
+
+    active = request.session.get(ACTIVE_WORKSPACE_ROLE_SESSION_KEY)
+    if active in roles:
+        return active
+
+    return user.role if user.role in roles else (roles[0] if roles else user.role)
 
 
 def workspace_role_label(role):
@@ -33,12 +99,16 @@ def workspace_role_label(role):
 
 
 def employees_for_workspace_role(role):
-    return Employee.objects.filter(
-        role=role,
-        approval_status=Employee.ApprovalStatus.APPROVED,
-        is_active=True,
-        is_suspended=False,
-    ).order_by("last_name", "first_name", "employee_code")
+    return (
+        Employee.objects.filter(
+            assigned_roles__role=role,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+            is_suspended=False,
+        )
+        .distinct()
+        .order_by("last_name", "first_name", "employee_code")
+    )
 
 
 def workspace_view_employee(request):

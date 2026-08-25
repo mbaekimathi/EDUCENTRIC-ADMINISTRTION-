@@ -1,0 +1,27 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Class attendance tools">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">RA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Register class attendance</strong>
+      <span>Mark daily attendance</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">CA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Students class attendance</strong>
+      <span>Attendance analytics</span>
+    </span>
+  </a>
+  {% if led_classes %}
+  {% for academic_class in led_classes %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance_class' academic_class.id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ academic_class.display_label|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+      <span>Subject attendance</span>
+    </span>
+  </a>
+  {% endfor %}
+  {% endif %}
+</section>

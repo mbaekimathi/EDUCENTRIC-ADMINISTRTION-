@@ -3,42 +3,40 @@
 {% block header_eyebrow %}Exam management{% endblock %}
 {% block header_title %}Generate exam timetable{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/exam_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Generate exam timetable overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Exam management</p>
-      <h2>Generate exam timetable</h2>
-      <p>Select academic levels, then choose the academic year, term, and when exams start. The end date is calculated from the exam sessions so every subject gets one session.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ viable_count }}</strong>
-          <span>Viable</span>
-        </div>
+  <div class="teacher-page-bar" aria-label="Generate exam timetable overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ viable_count }}</strong>
+        <span>Viable</span>
       </div>
+    </div>
+    <div class="teacher-page-bar-actions">
       <a
-        class="ghost-button exam-tool-cta"
+        class="ghost-button"
         href="{% url 'employees:exam_manual_supervisor_allocation' %}"
       >
         Manual allocation
       </a>
       <a
-        class="ghost-button exam-tool-cta"
+        class="ghost-button"
         href="{% url 'employees:it_support_exam_page' 'exam-records' %}"
       >
         All exams
       </a>
-      <button type="button" class="primary-button exam-tool-cta" data-open-modal="exam-timetable-generation">
+      <button type="button" class="primary-button" data-open-modal="exam-timetable-generation">
         Generate exam timetable
       </button>
     </div>
-  </section>
+  </div>
 
   {% include "employees/includes/exam_generated_timetable.html" %}
 </div>

@@ -11,3 +11,5 @@ venv/
 .qodo/
 .idea/
 .vscode/
+.auto_migrate_stamp
+.auto_migrate.lock

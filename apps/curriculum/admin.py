@@ -215,7 +215,7 @@ class GeneratedExamSittingAdmin(admin.ModelAdmin):
 
 @admin.register(ExamMark)
 class ExamMarkAdmin(admin.ModelAdmin):
-    list_display = ("student", "learning_area", "marks", "generation", "updated_at")
+    list_display = ("student", "learning_area", "marks", "out_of_marks", "generation", "updated_at")
     list_filter = ("generation", "learning_area")
     search_fields = (
         "student__first_name",

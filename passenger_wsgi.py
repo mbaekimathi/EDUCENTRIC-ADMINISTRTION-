@@ -1,12 +1,8 @@
 """
-cPanel / Phusion Passenger entrypoint.
+cPanel may auto-manage this file. Prefer django_wsgi.py as the startup file.
 
-In cPanel → Setup Python App:
-  Application root = this project folder
-  Application startup file = passenger_wsgi.py
-  Application Entry point = application
-
-After code changes on the server, touch tmp/restart.txt to reload.
+If you keep this file as the real entrypoint, it must define `application`
+directly and must NOT call load_source(..., 'passenger_wsgi.py').
 """
 
 import os
@@ -21,3 +17,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 from django.core.wsgi import get_wsgi_application
 
 application = get_wsgi_application()
+
+from config.startup import apply_pending_migrations
+
+apply_pending_migrations()

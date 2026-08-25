@@ -3,11 +3,14 @@
 {% block header_eyebrow %}Academic grading system{% endblock %}
 {% block header_title %}{{ page_title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_settings_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/exam_settings.html" %}
 <p class="exam-back-row">
   <a class="exam-back-link" href="{{ back_url }}">← Grading system</a>
 </p>

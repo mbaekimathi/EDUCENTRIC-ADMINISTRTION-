@@ -1,0 +1,29 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Subject attendance">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AC</span>
+    <span class="teacher-dash-action-copy">
+      <strong>All classes</strong>
+      <span>Back to class list</span>
+    </span>
+  </a>
+  {% for academic_class in allocated_classes %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance_class' academic_class.id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ academic_class.display_label|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+      <span>{{ academic_class.code }}</span>
+    </span>
+  </a>
+  {% endfor %}
+  {% if selected_class and allocations %}
+  {% for item in allocations %}
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance_profile' selected_class.id item.learning_area_id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ item.learning_area.code|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ item.learning_area.code }}</strong>
+      <span>{{ item.learning_area.name }}</span>
+    </span>
+  </a>
+  {% endfor %}
+  {% endif %}
+</section>

@@ -21,24 +21,27 @@
       </div>
     </section>
 
-    <section class="module-grid" aria-label="Workspace modules">
-      <a class="module-card" href="{% url 'admissions:admit_student' %}">
-        <span class="module-icon">AD</span>
-        <h3>Admissions</h3>
-        <p>Register new students and set up parent portal access.</p>
-        <span class="module-meta">Open admissions →</span>
+    <section class="teacher-dash-actions" aria-label="Workspace modules">
+      <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
+        <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
+        <span class="teacher-dash-action-copy">
+          <strong>Admissions</strong>
+          <span>Register new students and set up parent portal access.</span>
+        </span>
       </a>
-      <div class="module-card is-static">
-        <span class="module-icon">AT</span>
-        <h3>Attendance</h3>
-        <p>Daily class attendance tools will appear here soon.</p>
-        <span class="module-meta">Coming soon</span>
+      <div class="teacher-dash-action is-static" aria-disabled="true">
+        <span class="teacher-dash-action-icon" aria-hidden="true">AT</span>
+        <span class="teacher-dash-action-copy">
+          <strong>Attendance</strong>
+          <span>Daily class attendance tools will appear here soon.</span>
+        </span>
       </div>
-      <div class="module-card is-static">
-        <span class="module-icon">AC</span>
-        <h3>Academics</h3>
-        <p>Classes, results, and academic records stay organized here.</p>
-        <span class="module-meta">Coming soon</span>
+      <div class="teacher-dash-action is-static" aria-disabled="true">
+        <span class="teacher-dash-action-icon" aria-hidden="true">AC</span>
+        <span class="teacher-dash-action-copy">
+          <strong>Academics</strong>
+          <span>Classes, results, and academic records stay organized here.</span>
+        </span>
       </div>
     </section>
   </div>

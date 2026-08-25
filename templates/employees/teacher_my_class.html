@@ -3,30 +3,15 @@
 {% block header_eyebrow %}Teacher{% endblock %}
 {% block header_title %}My class{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_my_class_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 <div class="sa-hub-page">
-  <section class="teacher-dash-hero" aria-label="My class overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">Class teacher</p>
-      <h2>My class</h2>
-      <p>
-        Classes where {% if teacher_employee %}{{ teacher_employee.display_name }}{% else %}you{% endif %}
-        are allocated as class teacher.
-      </p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
-        <strong>{{ class_count }}</strong>
-        <span>Class{{ class_count|pluralize }}</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="teacher-dash-actions" aria-label="My class tools">
+  <section class="teacher-dash-actions is-nav-links" aria-label="My class tools">
     {% for tool in my_class_pages %}
     <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' tool.slug %}">
       <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>

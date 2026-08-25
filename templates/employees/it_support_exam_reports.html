@@ -3,9 +3,12 @@
 {% block header_eyebrow %}Curriculum reports{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/exam_management.html" %}
 <script>
 (function () {
   const nav = performance.getEntriesByType("navigation")[0];
@@ -17,28 +20,23 @@
 })();
 </script>
 <div class="exam-tool-page exam-report-builder-page{% if report and not report.error %} has-report{% endif %}">
-  <section class="exam-tool-hero no-print" aria-label="{{ page.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Curriculum reports</p>
-      <h2>{{ page.title }}</h2>
-      <p>Choose the academic year, exam, report type, and scope, then generate the report.</p>
-    </div>
-    {% if report and not report.error %}
-    <aside class="exam-tool-hero-aside" aria-label="Report summary">
-      <div class="exam-tool-stats">
-        <div class="exam-tool-stat">
-          <strong>{{ report.student_count }}</strong>
-          <span>Report card{{ report.student_count|pluralize }}</span>
-        </div>
-        <div class="exam-tool-stat">
-          <strong>{{ report.kind_label }}</strong>
-          <span>Report type</span>
-        </div>
+  {% if report and not report.error %}
+  <div class="teacher-page-bar no-print" aria-label="Report summary">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ report.student_count }}</strong>
+        <span>Report card{{ report.student_count|pluralize }}</span>
       </div>
-      <button type="button" class="primary-button exam-tool-cta" data-print-report-card>Print</button>
-    </aside>
-    {% endif %}
-  </section>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ report.kind_label }}</strong>
+        <span>Report type</span>
+      </div>
+    </div>
+    <div class="teacher-page-bar-actions">
+      <button type="button" class="primary-button" data-print-report-card>Print</button>
+    </div>
+  </div>
+  {% endif %}
 
   {% if report_error %}<div class="notice error">{{ report_error }}</div>{% endif %}
 

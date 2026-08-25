@@ -2,7 +2,48 @@
 {% block title %}Finance settings | Edu-Centric{% endblock %}
 {% block header_title %}Finance settings{% endblock %}
 
+{% block sidebar_modules %}
+{% include "employees/includes/system_settings_sidebar.html" %}
+{% endblock %}
+
 {% block workspace_content %}
+<section class="teacher-dash-actions is-nav-links" aria-label="Settings areas">
+  <a class="teacher-dash-action" href="{% url 'employees:school_profile_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SP</span>
+    <span class="teacher-dash-action-copy">
+      <strong>School profile</strong>
+      <span>School identity and campus details.</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:curriculum_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">CU</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Curriculum</strong>
+      <span>Academic structure and programme defaults.</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:finance_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">FN</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Finance</strong>
+      <span>Fees, billing rules, and financial configuration.</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
+    <span class="teacher-dash-action-copy">
+      <strong>HR</strong>
+      <span>Staff roles and people policies.</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:academic_calendar_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AC</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Academic calendar</strong>
+      <span>Years, terms, and key dates.</span>
+    </span>
+  </a>
+</section>
 <section class="settings-panel">
   <div class="settings-profile-card">
     <span class="module-icon" aria-hidden="true">FN</span>

@@ -3,11 +3,14 @@
 {% block header_eyebrow %}School profile{% endblock %}
 {% block header_title %}{{ section_title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/school_profile_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/school_profile.html" %}
 <form method="post" enctype="multipart/form-data" class="school-profile-form" novalidate>
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}

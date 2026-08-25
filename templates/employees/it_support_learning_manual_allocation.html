@@ -3,25 +3,15 @@
 {% block header_eyebrow %}Timetable management{% endblock %}
 {% block header_title %}Manual allocation{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/timetable_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/timetable_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Manual allocation overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Timetable management</p>
-      <h2>Manual allocation</h2>
-      <p>Change the subject and teacher for a session in that class only. Options are the subjects and teachers allocated to that academic level. Green means available in this session; red means busy.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <a class="ghost-button exam-tool-cta" href="{% url 'employees:it_support_timetable_page' 'timetable-generation' %}">
-        Back to generation
-      </a>
-    </div>
-  </section>
-
   {% include "employees/includes/learning_generated_timetable.html" with manual_allocation=True %}
 </div>
 

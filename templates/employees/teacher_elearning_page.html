@@ -8,15 +8,8 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="{{ page.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">E-learning</p>
-      <h2>{{ page.title }}</h2>
-      <p>{{ page.copy }}</p>
-    </div>
-  </section>
-
   <section class="exam-tool-empty">
     <span class="exam-tool-empty-icon" aria-hidden="true">{{ page.icon }}</span>
     <strong>Tools coming soon</strong>

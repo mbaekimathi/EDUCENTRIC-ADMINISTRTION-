@@ -3,37 +3,34 @@
 {% block header_eyebrow %}Curriculum management{% endblock %}
 {% block header_title %}{{ section.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/curriculum_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="{{ section.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Curriculum management</p>
-      <h2>{{ section.title }}</h2>
-      <p>{{ section.copy }}</p>
-    </div>
-  </section>
-
   {% if section.slug == 'exam-management' %}
-  <section class="module-grid" aria-label="Exam management tools">
-    <a class="module-card" href="{% url 'employees:exam_settings' %}">
-      <span class="module-icon">ES</span>
-      <h3>Exam settings</h3>
-      <p>Set subject marks, combined subjects, timetable sessions, and grading.</p>
-      <span class="module-meta">Open →</span>
+  <section class="teacher-dash-actions is-nav-links" aria-label="Exam management tools">
+    <a class="teacher-dash-action" href="{% url 'employees:exam_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">ES</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Exam settings</strong>
+        <span>Set subject marks, combined subjects, timetable sessions, and grading.</span>
+      </span>
     </a>
-    <a class="module-card" href="{% url 'employees:exam_timetable_settings' %}">
-      <span class="module-icon">TS</span>
-      <h3>Exam timetable settings</h3>
-      <p>Create exam profiles and generate exam sessions for each academic category.</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:exam_timetable_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">TS</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Exam timetable settings</strong>
+        <span>Create exam profiles and generate exam sessions for each academic category.</span>
+      </span>
     </a>
-    <a class="module-card" href="{% url 'employees:grading_system_settings' %}">
-      <span class="module-icon">GS</span>
-      <h3>Academic grading system</h3>
-      <p>Manage the default scale and customize grades for each academic level.</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:grading_system_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">GS</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Academic grading system</strong>
+        <span>Manage the default scale and customize grades for each academic level.</span>
+      </span>
     </a>
   </section>
   {% else %}

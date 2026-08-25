@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.employees.middleware.RequireWorkspaceRoleSelectionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -81,6 +82,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Prefer MySQL when DB_NAME is set (see .env.example). Empty DB_PASSWORD is valid for local root.
 _db_name = env("DB_NAME", default="").strip()
 if _db_name:
+    # cPanel/Passenger recycles workers; persistent DB sockets often become
+    # "MySQL server has gone away". Default CONN_MAX_AGE=0 (set DB_CONN_MAX_AGE to override).
     DATABASES = {
         "default": {
             # Uses config.mysql_backend so XAMPP MariaDB 10.4 can run locally.
@@ -90,10 +93,13 @@ if _db_name:
             "PASSWORD": env("DB_PASSWORD", default=""),
             "HOST": env("DB_HOST", default="127.0.0.1"),
             "PORT": env("DB_PORT", default="3306"),
-            "CONN_MAX_AGE": 60,
+            "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=0),
             "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
                 "charset": "utf8mb4",
+                "connect_timeout": 10,
+                "read_timeout": 60,
+                "write_timeout": 60,
                 "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
             },
         }
@@ -122,13 +128,15 @@ TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Prefer compressed files when collectstatic has run; fall back cleanly on cPanel.
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
+WHITENOISE_MANIFEST_STRICT = False
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 # cPanel has no Nginx media alias — enable via .env. On VPS, prefer Nginx and set False.

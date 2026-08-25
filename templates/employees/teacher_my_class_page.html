@@ -3,18 +3,13 @@
 {% block header_eyebrow %}My class{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_my_class_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_my_class.html" %}
 <div class="sa-hub-page">
-  <section class="teacher-dash-hero" aria-label="{{ page.title }} overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">Class teacher</p>
-      <h2>{{ page.title }}</h2>
-      <p>{{ page.copy }}</p>
-    </div>
-  </section>
-
   <section class="sa-hub-empty">
     <strong>Tools coming soon</strong>
     <p class="settings-empty">{{ page.title }} tools will appear here as this module is enabled.</p>

@@ -8,19 +8,41 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% if class_results %}
+{% include "employees/includes/nav/teacher_exam_classes.html" %}
+{% if selected_class or view_all_classes %}
 <div class="settings-category-list exam-analytics-page">
+  {% if view_all_classes %}
+  <div class="teacher-page-bar" aria-label="All classes analytics">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ class_results|length }}</strong>
+        <span>Class{{ class_results|length|pluralize }}</span>
+      </div>
+    </div>
+    <div class="teacher-page-bar-actions">
+      <a class="ghost-button" href="{% url 'employees:teacher_exam_analytics' exam.id %}">Change class</a>
+    </div>
+  </div>
+  {% endif %}
+
   {% for entry in class_results %}
   <section class="exam-record-sheet" aria-label="{{ entry.academic_class.display_label }} results">
     <header class="exam-record-bar">
       <div class="exam-record-bar-title">
         <h2 class="is-uppercase">{{ entry.academic_class.display_label }}</h2>
         <span class="student-count-chip is-quiet">
-          {{ entry.students|length }} student{{ entry.students|length|pluralize }} · {{ entry.academic_class.academic_level.name }}
+          {{ entry.students|length }} student{{ entry.students|length|pluralize }}
+          {% if entry.academic_class.academic_level %} · {{ entry.academic_class.academic_level.name }}{% endif %}
+          {% if not entry.is_allocated %} · Other class{% endif %}
         </span>
       </div>
       <div class="exam-record-bar-tools">
+        {% if entry.is_allocated %}
         <a class="exam-back-link" href="{% url 'employees:teacher_exam_record_class' exam.id entry.academic_class.id %}">Open class sheet</a>
+        {% endif %}
+        {% if selected_class %}
+        <a class="exam-back-link" href="{% url 'employees:teacher_exam_analytics' exam.id %}">Change class</a>
+        {% endif %}
       </div>
     </header>
 
@@ -73,12 +95,103 @@
     </div>
     {% endif %}
   </section>
+  {% empty %}
+  <section class="settings-panel">
+    <p class="settings-empty">No allocated classes are available for this exam.</p>
+  </section>
   {% endfor %}
 </div>
 {% else %}
-<section class="settings-panel">
-  <p class="settings-empty">No active classes are available for this exam.</p>
-</section>
+<div class="sa-hub-page exam-hub-page">
+  <div class="teacher-page-bar" aria-label="Exam analytics classes">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ exam_classes|length }}</strong>
+        <span>Allocated</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ other_classes|length }}</strong>
+        <span>Other</span>
+      </div>
+    </div>
+  </div>
+
+  {% if exam_classes %}
+  <section class="sa-level-block" aria-label="Allocated classes">
+    <header class="sa-level-head">
+      <div>
+        <h3 class="is-uppercase">Allocated classes</h3>
+        <p class="subtle">Classes assigned to you — choose one, or view all of them</p>
+      </div>
+    </header>
+    <div class="exam-hub-grid">
+      <a
+        class="exam-hub-card"
+        href="{% url 'employees:teacher_exam_analytics_all' exam.id %}"
+      >
+        <span class="exam-hub-card-icon" aria-hidden="true">ALL</span>
+        <span class="exam-hub-card-copy">
+          <strong class="is-uppercase">All classes</strong>
+          <span>{{ exam_classes|length }} allocated class{{ exam_classes|length|pluralize }}</span>
+        </span>
+        <span class="exam-hub-card-go">View all analytics →</span>
+      </a>
+      {% for academic_class in exam_classes %}
+      <a
+        class="exam-hub-card"
+        href="{% url 'employees:teacher_exam_analytics_class' exam.id academic_class.id %}"
+      >
+        <span class="exam-hub-card-icon" aria-hidden="true">CL</span>
+        <span class="exam-hub-card-copy">
+          <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+          <span>
+            {% if academic_class.academic_level %}{{ academic_class.academic_level.name }}{% else %}Class{% endif %}
+            {% if academic_class.code %} · {{ academic_class.code }}{% endif %}
+          </span>
+        </span>
+        <span class="exam-hub-card-go">View analytics →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if other_classes %}
+  <section class="sa-level-block" aria-label="Other classes">
+    <header class="sa-level-head">
+      <div>
+        <h3 class="is-uppercase">Other classes</h3>
+        <p class="subtle">Classes on this exam that are not allocated to you</p>
+      </div>
+    </header>
+    <div class="exam-hub-grid">
+      {% for academic_class in other_classes %}
+      <a
+        class="exam-hub-card"
+        href="{% url 'employees:teacher_exam_analytics_class' exam.id academic_class.id %}"
+      >
+        <span class="exam-hub-card-icon" aria-hidden="true">OT</span>
+        <span class="exam-hub-card-copy">
+          <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+          <span>
+            {% if academic_class.academic_level %}{{ academic_class.academic_level.name }}{% else %}Class{% endif %}
+            {% if academic_class.code %} · {{ academic_class.code }}{% endif %}
+          </span>
+        </span>
+        <span class="exam-hub-card-go">View analytics →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if not exam_classes and not other_classes %}
+  <section class="sa-hub-empty">
+    <strong>No classes on this exam</strong>
+    <p class="settings-empty">There are no active classes for the levels on this exam.</p>
+  </section>
+  {% endif %}
+</div>
 {% endif %}
 {% endblock %}
 

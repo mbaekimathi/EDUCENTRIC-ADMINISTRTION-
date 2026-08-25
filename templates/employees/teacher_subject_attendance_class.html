@@ -8,23 +8,18 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_subject_attendance.html" %}
 <div class="sa-hub-page">
   {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
-  <section class="teacher-dash-hero" aria-label="{{ selected_class.display_label }} overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">{{ selected_class.academic_level.name }} · {{ selected_class.code }}</p>
-      <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
-      <p>Choose a subject to open its lesson plan, attendance roll, or class outcome.</p>
-    </div>
-    <div class="teacher-dash-stats">
-      <div class="teacher-dash-stat">
+  <div class="teacher-page-bar" aria-label="Class actions">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
         <strong>{{ allocations|length }}</strong>
         <span>Subject{{ allocations|length|pluralize }}</span>
       </div>
-      <a class="ghost-button" href="{% url 'employees:teacher_subject_attendance' %}">Back to classes</a>
     </div>
-  </section>
+  </div>
 
   {% if allocations %}
   <div class="sa-hub-scroll">

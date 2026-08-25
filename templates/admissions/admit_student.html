@@ -17,6 +17,15 @@
 {% endblock %}
 
 {% block workspace_content %}
+<section class="teacher-dash-actions is-nav-links" aria-label="Admissions">
+  <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Admit student</strong>
+      <span>Register a new learner</span>
+    </span>
+  </a>
+</section>
 <section class="admit-panel workspace-panel">
   {% for message in messages %}<div class="notice success">{{ message }}</div>{% endfor %}
 

@@ -2,7 +2,27 @@
 {% block title %}HR settings | Edu-Centric{% endblock %}
 {% block header_title %}HR settings{% endblock %}
 
+{% block sidebar_modules %}
+{% include "employees/includes/human_resource_sidebar.html" %}
+{% endblock %}
+
 {% block workspace_content %}
+<section class="teacher-dash-actions is-nav-links" aria-label="Human resource tools">
+  <a class="teacher-dash-action" href="{% url 'employees:it_support_employee_management' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">EM</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Employee management</strong>
+      <span>List staff, edit details, suspend access, or remove employees.</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
+    <span class="teacher-dash-action-copy">
+      <strong>HR settings</strong>
+      <span>Staff roles, employment defaults, and people policies.</span>
+    </span>
+  </a>
+</section>
 <section class="settings-panel">
   <div class="settings-profile-card">
     <span class="module-icon" aria-hidden="true">HR</span>

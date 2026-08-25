@@ -3,39 +3,36 @@
 {% block header_eyebrow %}IT Support{% endblock %}
 {% block header_title %}{{ module.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/it_support.html" %}
 <div class="exam-tool-page">
-<section class="exam-tool-hero student-hero" aria-label="Student management overview">
-  <div class="exam-tool-hero-copy student-hero-copy">
-    <p class="exam-tool-kicker student-hero-kicker">Student records</p>
-    <h2>Class register</h2>
-    <p>Review enrolment by level and stream. Edit details, suspend access, or remove a student.</p>
+<div class="teacher-page-bar" aria-label="Student management overview">
+  <div class="teacher-page-bar-stats">
+    <div class="teacher-page-bar-stat">
+      <strong>{{ student_count }}</strong>
+      <span>Students</span>
+    </div>
+    <div class="teacher-page-bar-stat">
+      <strong>{{ level_count }}</strong>
+      <span>Level{{ level_count|pluralize }}</span>
+    </div>
+    <div class="teacher-page-bar-stat">
+      <strong>{{ class_count }}</strong>
+      <span>Class{{ class_count|pluralize }}</span>
+    </div>
   </div>
-  <div class="exam-tool-hero-aside">
-    <a class="primary-button exam-tool-cta" href="{% url 'admissions:admit_student' %}">Admit student</a>
-  </div>
-</section>
-
-{% if student_groups %}
-<div class="student-stats" aria-label="Enrolment summary">
-  <div class="student-stat">
-    <strong>{{ student_count }}</strong>
-    <span>Students</span>
-  </div>
-  <div class="student-stat">
-    <strong>{{ level_count }}</strong>
-    <span>Level{{ level_count|pluralize }}</span>
-  </div>
-  <div class="student-stat">
-    <strong>{{ class_count }}</strong>
-    <span>Class{{ class_count|pluralize }}</span>
+  <div class="teacher-page-bar-actions">
+    <a class="primary-button" href="{% url 'admissions:admit_student' %}">Admit student</a>
   </div>
 </div>
 
+{% if student_groups %}
 <div class="student-directory">
   {% for level in student_groups %}
   <section class="student-level-block">

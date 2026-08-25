@@ -10,28 +10,24 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/elearning_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="E-learning timetable generation overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">E-learning management</p>
-      <h2>Generate e-learning timetable</h2>
-      <p>Generate an e-learning timetable from subject allocations and the e-learning timetable settings for each academic level.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ viable_count }}</strong>
-          <span>Viable</span>
-        </div>
+  <div class="teacher-page-bar" aria-label="E-learning timetable generation overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ viable_count }}</strong>
+        <span>Viable</span>
       </div>
-      <a class="ghost-button exam-tool-cta" href="{% url 'employees:elearning_timetable_settings' %}">
+    </div>
+    <div class="teacher-page-bar-actions">
+      <a class="ghost-button" href="{% url 'employees:elearning_timetable_settings' %}">
         E-learning settings
       </a>
-      <button type="button" class="primary-button exam-tool-cta" data-open-modal="elearning-timetable-generation">
+      <button type="button" class="primary-button" data-open-modal="elearning-timetable-generation">
         Generate timetable
       </button>
     </div>
-  </section>
+  </div>
 
   {% include "employees/includes/elearning_generated_timetable.html" %}
 </div>

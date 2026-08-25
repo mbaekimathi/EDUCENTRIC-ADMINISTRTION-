@@ -1,0 +1,29 @@
+<p class="workspace-nav-label">My class</p>
+<a
+  class="workspace-nav-link {% if active_my_class_tool == 'register-class-attendance' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">RA</span>
+  Register class attendance
+</a>
+<a
+  class="workspace-nav-link {% if active_my_class_tool == 'students-class-attendance' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">CA</span>
+  Students class attendance
+</a>
+<a
+  class="workspace-nav-link {% if active_my_class_tool == 'students-discipline' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class_page' 'students-discipline' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">SD</span>
+  Students discipline
+</a>
+<a
+  class="workspace-nav-link {% if active_my_class_tool == 'student-books' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class_page' 'student-books' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">SB</span>
+  Student books
+</a>

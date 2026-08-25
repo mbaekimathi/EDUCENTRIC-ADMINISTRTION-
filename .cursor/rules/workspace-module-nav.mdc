@@ -1,0 +1,37 @@
+---
+description: Workspace module navigation — sidebar on desktop, sidebar + compact page chips on mobile
+globs: templates/**/*.html, static/css/app.css
+alwaysApply: false
+---
+
+# Workspace module navigation trend
+
+## Rule
+
+Module/tool links must follow this pattern everywhere in the workspace:
+
+1. **Large screens (≥1101px):** links appear in the **sidebar only**
+2. **Small / mobile screens:** links appear in **both** the sidebar and the page
+3. **Page links** use compact chips (`teacher-dash-actions is-nav-links`) — title only, minimal padding
+
+CSS already hides `.teacher-dash-actions.is-nav-links` at `min-width: 1101px`.
+
+## When adding or updating a page
+
+1. Include the correct sidebar in `{% block sidebar_modules %}`
+2. Include matching page chips near the top of `{% block workspace_content %}`:
+   - Prefer `{% include "employees/includes/nav/<module>.html" %}`
+   - Or a hand-written `<section class="teacher-dash-actions is-nav-links">…</section>` that mirrors the sidebar
+3. Do **not** leave `{% block sidebar_modules %}{% endblock %}` empty on workspace pages
+4. Do **not** put module/tool nav in large desktop cards on the page — use `is-nav-links` so desktop stays sidebar-only
+
+## Shared includes
+
+- Sidebars: `templates/employees/includes/*_sidebar.html`
+- Page chips: `templates/employees/includes/nav/*.html`
+
+Keep sidebar labels and page-chip labels in sync when adding a tool.
+
+## Not module nav
+
+Lists that are the page’s main content (e.g. academic level cards for grading) must **not** use `is-nav-links` — those stay visible on desktop.

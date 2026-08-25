@@ -3,11 +3,14 @@
 {% block header_eyebrow %}Exam settings{% endblock %}
 {% block header_title %}{{ level.name }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_settings_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/exam_settings.html" %}
 <p class="exam-back-row">
   <a class="exam-back-link" href="{% url 'employees:exam_settings' %}">← All levels</a>
 </p>
@@ -15,7 +18,7 @@
 <div class="settings-toolbar" data-exam-settings-toolbar>
   <div class="settings-toolbar-copy">
     <h2 class="is-uppercase">{{ level.name }}</h2>
-    <p class="subtle" data-order-hint>{{ level.code }} · {{ level.category }} · Set marks, rearrange subjects, or combine two or more.</p>
+    <p class="subtle" data-order-hint>{{ level.code }} · {{ level.category }} · Set marks, rearrange subjects, or combine two or more. Changing out-of values does not rewrite marks already saved.</p>
     <p class="subtle" data-order-active-hint hidden>Drag subjects to rearrange, then save the new display order.</p>
   </div>
   <div class="settings-toolbar-actions">

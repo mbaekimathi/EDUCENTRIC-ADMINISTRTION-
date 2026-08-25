@@ -3,9 +3,12 @@
 {% block header_eyebrow %}Student profile{% endblock %}
 {% block header_title %}{{ student.display_name }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/it_support.html" %}
 <section class="student-profile-hero">
   <div class="student-profile-identity">
     <span class="student-profile-avatar" aria-hidden="true">

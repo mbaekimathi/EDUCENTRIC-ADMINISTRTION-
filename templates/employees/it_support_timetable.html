@@ -3,43 +3,31 @@
 {% block header_eyebrow %}Learning management{% endblock %}
 {% block header_title %}Timetable management{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/timetable_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Timetable management overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Learning management</p>
-      <h2>{{ page.title }}</h2>
-      <p>{{ page.copy }}</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ timetable_pages|length|add:1 }}</strong>
-          <span>Tools</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="module-grid" aria-label="Timetable management tools">
+  <section class="teacher-dash-actions is-nav-links" aria-label="Timetable management tools">
     {% for tool in timetable_pages %}
     <a
-      class="module-card"
+      class="teacher-dash-action"
       href="{% url 'employees:it_support_timetable_page' tool.slug %}{% if tool.slug == 'timetable-generation' %}?generate=1{% endif %}"
     >
-      <span class="module-icon">{{ tool.icon }}</span>
-      <h3>{{ tool.title }}</h3>
-      <p>{{ tool.summary }}</p>
-      <span class="module-meta">Open →</span>
+      <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>
+      <span class="teacher-dash-action-copy">
+        <strong>{{ tool.title }}</strong>
+        <span>{{ tool.summary }}</span>
+      </span>
     </a>
     {% endfor %}
-    <a class="module-card" href="{% url 'employees:it_support_timetable_page' 'manual-allocation' %}">
-      <span class="module-icon">MA</span>
-      <h3>Manual allocation</h3>
-      <p>Change the subject and teacher for a generated session in that class only.</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:it_support_timetable_page' 'manual-allocation' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">MA</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Manual allocation</strong>
+        <span>Change the subject and teacher for a generated session in that class only.</span>
+      </span>
     </a>
   </section>
 </div>

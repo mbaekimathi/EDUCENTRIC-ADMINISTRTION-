@@ -3,35 +3,33 @@
 {% block header_eyebrow %}Exam management{% endblock %}
 {% block header_title %}All exams{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/exam_management.html" %}
 <div class="sa-hub-page exam-hub-page all-exams-page">
-  <section class="all-exams-hero" aria-label="All exams overview">
-    <div class="all-exams-hero-copy">
-      <p class="all-exams-kicker">Exam management</p>
-      <h2>All exams</h2>
-      <p>Browse registered exams by academic year. Open one to review levels, sittings, and marks.</p>
-    </div>
-    <div class="all-exams-hero-aside">
-      <div class="all-exams-stats" aria-label="Quick stats">
-        <div class="all-exams-stat">
-          <strong>{{ exam_count }}</strong>
-          <span>Exam{{ exam_count|pluralize }}</span>
-        </div>
-        <div class="all-exams-stat">
-          <strong>{{ exam_groups|length }}</strong>
-          <span>Year{{ exam_groups|length|pluralize }}</span>
-        </div>
+  <div class="teacher-page-bar" aria-label="All exams overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ exam_count }}</strong>
+        <span>Exam{{ exam_count|pluralize }}</span>
       </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ exam_groups|length }}</strong>
+        <span>Year{{ exam_groups|length|pluralize }}</span>
+      </div>
+    </div>
+    <div class="teacher-page-bar-actions">
       <a
-        class="primary-button all-exams-generate"
+        class="primary-button"
         href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
       >
         Generate exam timetable
       </a>
     </div>
-  </section>
+  </div>
 
   {% if exam_groups %}
   <div class="sa-hub-scroll all-exams-scroll">

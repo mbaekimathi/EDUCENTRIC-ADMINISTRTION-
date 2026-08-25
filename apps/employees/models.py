@@ -199,6 +199,61 @@ class Employee(AbstractUser):
     def is_approved(self):
         return self.approval_status == self.ApprovalStatus.APPROVED
 
+    def role_values(self):
+        """Return all assigned role codes; fall back to primary role if none assigned yet."""
+        if self.pk:
+            values = list(
+                self.assigned_roles.order_by("role").values_list("role", flat=True)
+            )
+            if values:
+                return values
+        return [self.role] if self.role else []
+
+    def role_labels(self):
+        labels = dict(self.Role.choices)
+        return [labels.get(role, role) for role in self.role_values()]
+
+    def has_role(self, role):
+        return role in self.role_values()
+
+    def set_roles(self, roles, primary=None):
+        """Replace assigned roles and keep Employee.role as the primary/default."""
+        valid = {value for value, _label in self.Role.choices}
+        cleaned = []
+        for role in roles or []:
+            role = (role or "").strip().upper()
+            if role in valid and role not in cleaned:
+                cleaned.append(role)
+        if not cleaned:
+            raise ValidationError({"roles": "Select at least one role."})
+        if primary:
+            primary = primary.strip().upper()
+        if primary not in cleaned:
+            primary = self.role if self.role in cleaned else cleaned[0]
+
+        if not self.pk:
+            self.role = primary
+            self.save()
+
+        existing = set(self.assigned_roles.values_list("role", flat=True))
+        desired = set(cleaned)
+        self.assigned_roles.filter(role__in=existing - desired).delete()
+        EmployeeRole.objects.bulk_create(
+            [
+                EmployeeRole(employee=self, role=role)
+                for role in desired - existing
+            ]
+        )
+        if self.role != primary:
+            type(self).objects.filter(pk=self.pk).update(role=primary)
+            self.role = primary
+
+    def _ensure_primary_role_assignment(self):
+        if not self.pk or not self.role:
+            return
+        if not self.assigned_roles.filter(role=self.role).exists():
+            EmployeeRole.objects.get_or_create(employee=self, role=self.role)
+
     def _previous_employment_number(self):
         if not self.pk:
             return None
@@ -249,6 +304,7 @@ class Employee(AbstractUser):
                             )
                     self._claim_employment_number()
                     super().save(*args, **kwargs)
+                    self._ensure_primary_role_assignment()
                 return
             except IntegrityError:
                 if not assigned_number:
@@ -258,4 +314,29 @@ class Employee(AbstractUser):
 
     def __str__(self):
         return f"{self.employee_code} — {self.display_name}"
+
+
+class EmployeeRole(models.Model):
+    """Extra workspace roles an employee may hold in addition to their primary role."""
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="assigned_roles",
+    )
+    role = models.CharField(max_length=32, choices=Employee.Role.choices)
+
+    class Meta:
+        ordering = ["role"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "role"],
+                name="unique_employee_role_assignment",
+            ),
+        ]
+        verbose_name = "employee role"
+        verbose_name_plural = "employee roles"
+
+    def __str__(self):
+        return f"{self.employee.employee_code}: {self.get_role_display()}"
 

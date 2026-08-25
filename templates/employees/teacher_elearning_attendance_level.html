@@ -8,23 +8,18 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_elearning_attendance.html" %}
 <div class="sa-hub-page">
   {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
-  <section class="teacher-dash-hero" aria-label="{{ selected_level.name }} overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">{{ selected_level.code }} · E-learning</p>
-      <h2 class="is-uppercase">{{ selected_level.name }}</h2>
-      <p>Choose a subject to open its lesson plan, attendance roll, or outcome for this academic level.</p>
-    </div>
-    <div class="teacher-dash-stats">
-      <div class="teacher-dash-stat">
+  <div class="teacher-page-bar" aria-label="Level actions">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
         <strong>{{ allocations|length }}</strong>
         <span>Subject{{ allocations|length|pluralize }}</span>
       </div>
-      <a class="ghost-button" href="{{ teacher_elearning_attendance_home_url }}">Back to levels</a>
     </div>
-  </section>
+  </div>
 
   {% if allocations %}
   <div class="sa-hub-scroll">

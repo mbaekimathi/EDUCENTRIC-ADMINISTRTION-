@@ -3,25 +3,15 @@
 {% block header_eyebrow %}Exam management{% endblock %}
 {% block header_title %}Manual allocation{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/exam_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Manual allocation overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Exam management</p>
-      <h2>Manual allocation</h2>
-      <p>Subjects stay as generated. Change the supervisor for a session. Available teachers are green; busy teachers are red with the class they are supervising.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <a class="ghost-button exam-tool-cta" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}">
-        Back to generation
-      </a>
-    </div>
-  </section>
-
   {% include "employees/includes/exam_generated_timetable.html" with manual_allocation=True %}
 </div>
 

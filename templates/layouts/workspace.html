@@ -33,7 +33,9 @@
     </div>
 
     <nav class="workspace-nav" aria-label="Page links">
-      {% block sidebar_modules %}{% endblock %}
+      {% block sidebar_modules %}
+      {% include "employees/includes/workspace_role_sidebar.html" %}
+      {% endblock %}
     </nav>
 
         <div class="workspace-sidebar-foot">
@@ -63,63 +65,92 @@
 
   <div class="workspace-main">
     <header class="workspace-header">
-      <div class="workspace-header-left">
-        <button
-          type="button"
-          class="workspace-menu-btn"
-          data-workspace-toggle
-          aria-controls="workspace-sidebar"
-          aria-expanded="false"
-          aria-label="Open navigation"
-        >
-          <span></span><span></span><span></span>
-        </button>
-        <div class="workspace-header-copy">
-          <p class="workspace-header-eyebrow">{% block header_eyebrow %}Workspace{% endblock %}</p>
-          <h1 class="workspace-header-title">{% block header_title %}Dashboard{% endblock %}</h1>
-        </div>
-      </div>
-      <div class="workspace-header-right">
-        <div class="workspace-profile" data-profile-menu>
+      <div class="workspace-header-bar">
+        <div class="workspace-header-left">
           <button
             type="button"
-            class="workspace-profile-trigger"
-            data-profile-trigger
-            aria-haspopup="menu"
+            class="workspace-menu-btn"
+            data-workspace-toggle
+            aria-controls="workspace-sidebar"
             aria-expanded="false"
-            aria-controls="workspace-profile-menu"
+            aria-label="Open navigation"
           >
-            <span class="workspace-avatar-wrap">
-              {% if request.user.profile_image %}
-                <img class="workspace-avatar" src="{{ request.user.profile_image.url }}" alt="{{ request.user.display_name }}">
-              {% else %}
-                <span class="workspace-avatar workspace-avatar-fallback" aria-hidden="true">{{ request.user.first_name|default:"E"|slice:":1"|upper }}</span>
-              {% endif %}
-            </span>
-            <span class="workspace-user-meta">
-              <strong>{{ request.user.display_name }}</strong>
-              <span>{{ workspace_role_label }} · {{ request.user.employee_code }}</span>
-              <span class="workspace-user-email">{{ request.user.email }}</span>
-            </span>
-            <span class="workspace-profile-caret" aria-hidden="true"></span>
+            <span></span><span></span><span></span>
           </button>
+          <button
+            type="button"
+            class="workspace-back-btn"
+            data-workspace-back
+            aria-label="Go back"
+            title="Go back"
+            hidden
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 6 9 12l6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="workspace-header-copy">
+            <p class="workspace-header-eyebrow">{% block header_eyebrow %}Workspace{% endblock %}</p>
+            <h1 class="workspace-header-title">{% block header_title %}Dashboard{% endblock %}</h1>
+          </div>
+        </div>
 
-          <div class="workspace-profile-menu" id="workspace-profile-menu" data-profile-panel role="menu" hidden>
-            {% if can_switch_workspace_role %}
-              <button
-                type="button"
-                class="workspace-profile-item workspace-switch-link"
-                data-role-switch-open
-                role="menuitem"
-              >
-                View as
-              </button>
+        <div class="workspace-header-right">
+          <div class="workspace-profile" data-profile-menu>
+            <button
+              type="button"
+              class="workspace-profile-trigger"
+              data-profile-trigger
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="workspace-profile-menu"
+              aria-label="Account menu for {{ request.user.display_name }}"
+            >
+              <span class="workspace-avatar-wrap">
+                {% if request.user.profile_image %}
+                  <img class="workspace-avatar" src="{{ request.user.profile_image.url }}" alt="">
+                {% else %}
+                  <span class="workspace-avatar workspace-avatar-fallback" aria-hidden="true">{{ request.user.first_name|default:"E"|slice:":1"|upper }}</span>
+                {% endif %}
+              </span>
+              <span class="workspace-user-meta">
+                <strong>{{ request.user.display_name }}</strong>
+                <span>{{ workspace_role_label }}</span>
+              </span>
+              <span class="workspace-profile-caret" aria-hidden="true"></span>
+            </button>
+
+            <div class="workspace-profile-menu" id="workspace-profile-menu" data-profile-panel role="menu" hidden>
+              <div class="workspace-profile-summary">
+                <p class="workspace-profile-summary-name">{{ request.user.display_name }}</p>
+                <p class="workspace-profile-summary-meta">{{ workspace_role_label }} · {{ request.user.employee_code }}</p>
+                {% if request.user.email %}
+                  <p class="workspace-profile-summary-email">{{ request.user.email }}</p>
+                {% endif %}
+              </div>
               <div class="workspace-profile-divider" aria-hidden="true"></div>
-            {% endif %}
-            <a class="workspace-profile-item workspace-profile-signout" role="menuitem" href="{% url 'employees:logout' %}">Sign out</a>
+              {% if can_switch_workspace_role %}
+                <button
+                  type="button"
+                  class="workspace-profile-item workspace-switch-link"
+                  data-role-switch-open
+                  role="menuitem"
+                >
+                  View as
+                </button>
+                <div class="workspace-profile-divider" aria-hidden="true"></div>
+              {% elif can_choose_own_workspace_role %}
+                <a class="workspace-profile-item workspace-switch-link" role="menuitem" href="{% url 'employees:select_login_role' %}">
+                  Switch role
+                </a>
+                <div class="workspace-profile-divider" aria-hidden="true"></div>
+              {% endif %}
+              <a class="workspace-profile-item workspace-profile-signout" role="menuitem" href="{% url 'employees:logout' %}">Sign out</a>
+            </div>
           </div>
         </div>
       </div>
+
       {% if is_role_preview %}
         <div class="workspace-preview-banner">
           <p>
@@ -137,9 +168,11 @@
     </main>
 
     <footer class="workspace-footer">
-      <span>Edu-Centric</span>
-      <span class="workspace-footer-sep" aria-hidden="true"></span>
-      <span>{{ workspace_role_label }} workspace</span>
+      <div class="workspace-footer-inner">
+        <span class="workspace-footer-brand">Edu-Centric</span>
+        <span class="workspace-footer-sep" aria-hidden="true"></span>
+        <span class="workspace-footer-role">{{ workspace_role_label }} workspace</span>
+      </div>
     </footer>
   </div>
 
@@ -235,6 +268,7 @@
   const root = document.querySelector("[data-workspace]");
   if (!root) return;
   const toggle = root.querySelector("[data-workspace-toggle]");
+  const backBtn = root.querySelector("[data-workspace-back]");
   const backdrop = root.querySelector("[data-workspace-backdrop]");
   const sidebar = document.getElementById("workspace-sidebar");
   const profile = root.querySelector("[data-profile-menu]");
@@ -244,6 +278,59 @@
   const studentModal = document.querySelector("[data-student-search-modal]");
   const employeesUrl = "{% url 'employees:workspace_role_employees' %}";
   const studentSearchUrl = "{% url 'employees:workspace_student_search' %}";
+  const dashboardUrl = "{% url 'employees:dashboard' %}";
+  const navStackKey = "educentric.workspaceNavStack";
+
+  function currentNavKey() {
+    return `${window.location.pathname}${window.location.search}`;
+  }
+
+  function readNavStack() {
+    try {
+      const raw = sessionStorage.getItem(navStackKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string" && item) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeNavStack(stack) {
+    sessionStorage.setItem(navStackKey, JSON.stringify(stack.slice(-50)));
+  }
+
+  function previousNavTarget(stack, current) {
+    let index = stack.length - 1;
+    while (index >= 0 && stack[index] === current) index -= 1;
+    return index >= 0 ? stack[index] : "";
+  }
+
+  function syncWorkspaceBack() {
+    if (!backBtn) return;
+    const current = currentNavKey();
+    const stack = readNavStack();
+    if (!stack.length || stack[stack.length - 1] !== current) {
+      stack.push(current);
+      writeNavStack(stack);
+    }
+    const previous = previousNavTarget(stack, current);
+    const canGoBack = Boolean(previous && previous !== current);
+    backBtn.hidden = !canGoBack;
+    backBtn.disabled = !canGoBack;
+  }
+
+  function goWorkspaceBack() {
+    if (!backBtn || backBtn.disabled) return;
+    const current = currentNavKey();
+    const stack = readNavStack();
+    while (stack.length && stack[stack.length - 1] === current) stack.pop();
+    const target = stack.length ? stack[stack.length - 1] : "";
+    writeNavStack(stack);
+    window.location.assign(target || dashboardUrl);
+  }
+
+  syncWorkspaceBack();
+  if (backBtn) backBtn.addEventListener("click", goWorkspaceBack);
 
   function setNavOpen(open) {
     root.classList.toggle("is-nav-open", open);

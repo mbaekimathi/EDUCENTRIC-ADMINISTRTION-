@@ -10,27 +10,20 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/teacher_my_class_attendance.html" %}
 <div class="sa-hub-page class-subject-attendance-overview">
-  <section class="teacher-dash-hero" aria-label="{{ selected_class.display_label }} overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">Class teacher · {{ selected_class.academic_level.name }}</p>
-      <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
-      <p>Students in your class, with subject attendance by day, period, term, or academic year.</p>
-    </div>
-    <div class="teacher-dash-stats">
-      <div class="teacher-dash-stat">
+  <div class="teacher-page-bar" aria-label="Class attendance overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
         <strong>{{ students|length }}</strong>
         <span>Student{{ students|length|pluralize }}</span>
       </div>
-      <div class="teacher-dash-stat">
+      <div class="teacher-page-bar-stat">
         <strong>{{ subjects|length }}</strong>
         <span>Subject{{ subjects|length|pluralize }}</span>
       </div>
-      <a class="ghost-button" href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}">
-        Back to class attendance
-      </a>
     </div>
-  </section>
+  </div>
 
   <section class="class-attendance-day-filter sa-scope-filter" aria-label="Filter subject attendance">
     <div class="class-attendance-day-copy">

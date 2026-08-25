@@ -8,26 +8,9 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="sa-hub-page">
   {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
-  <section class="teacher-dash-hero" aria-label="E-learning attendance overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">E-learning workflow</p>
-      <h2>E-learning attendance</h2>
-      <p>Select an academic level, open a subject, then record the lesson plan, attendance, and outcome.</p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
-        <strong>{{ subject_count }}</strong>
-        <span>Subject{{ subject_count|pluralize }}</span>
-      </div>
-      <div class="teacher-dash-stat">
-        <strong>{{ level_count }}</strong>
-        <span>Level{{ level_count|pluralize }}</span>
-      </div>
-    </div>
-  </section>
 
   {% if level_groups %}
   <div class="sa-hub-scroll">

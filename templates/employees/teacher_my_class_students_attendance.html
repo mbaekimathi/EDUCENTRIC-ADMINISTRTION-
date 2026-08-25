@@ -10,32 +10,28 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/teacher_my_class_attendance.html" %}
 <div class="sa-hub-page class-attendance-page">
-  <section class="teacher-dash-hero" aria-label="{{ page.title }} overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">Class teacher · {{ selected_class.display_label }}</p>
-      <h2>{{ page.title }}</h2>
-      <p>Pick one day from the calendar, then mark morning, afternoon, and evening attendance.</p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
+  <div class="teacher-page-bar" aria-label="Attendance summary">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
         <strong>{{ students|length }}</strong>
         <span>Student{{ students|length|pluralize }}</span>
       </div>
-      <div class="teacher-dash-stat">
+      <div class="teacher-page-bar-stat">
         <strong>{{ present_morning }}</strong>
         <span>Morning</span>
       </div>
-      <div class="teacher-dash-stat">
+      <div class="teacher-page-bar-stat">
         <strong>{{ present_afternoon }}</strong>
         <span>Afternoon</span>
       </div>
-      <div class="teacher-dash-stat">
+      <div class="teacher-page-bar-stat">
         <strong>{{ present_evening }}</strong>
         <span>Evening</span>
       </div>
     </div>
-  </section>
+  </div>
 
   <section class="class-attendance-day-filter" aria-label="Filter attendance by day">
     <div class="class-attendance-day-copy">
@@ -95,10 +91,9 @@
 
     {% if students %}
     <div class="settings-table-panel attendance-roll-table">
-      <table class="settings-table">
+      <table class="settings-table attendance-students-table">
         <thead>
           <tr>
-            <th>#</th>
             <th>Student</th>
             <th>Admission no.</th>
             <th class="attendance-check-col">Morning</th>
@@ -109,9 +104,12 @@
         <tbody>
           {% for student in students %}
           <tr>
-            <td data-label="#">{{ forloop.counter }}</td>
             <td data-label="Student">
-              <strong class="is-uppercase">{{ student.first_name }} {{ student.last_name }}</strong>
+              <strong class="is-uppercase exam-student-name">
+                <span class="sa-student-index" aria-hidden="true">{{ forloop.counter }}.</span>
+                <span class="exam-student-first">{{ student.first_name }}</span>
+                <span class="exam-student-last">{{ student.last_name }}</span>
+              </strong>
             </td>
             <td data-label="Admission no."><code>{{ student.admission_number }}</code></td>
             <td data-label="Morning" class="attendance-check-col">
@@ -254,6 +252,17 @@
         input.checked = false;
       });
     });
+  }
+
+  const scrollPanel = form.querySelector(".attendance-roll-table");
+  const nameTable = form.querySelector(".attendance-students-table");
+  function syncNameCollapse() {
+    if (!scrollPanel || !nameTable) return;
+    nameTable.classList.toggle("is-name-collapsed", scrollPanel.scrollLeft > 12);
+  }
+  if (scrollPanel && nameTable) {
+    scrollPanel.addEventListener("scroll", syncNameCollapse, { passive: true });
+    syncNameCollapse();
   }
 })();
 </script>

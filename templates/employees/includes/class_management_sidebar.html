@@ -1,0 +1,15 @@
+<p class="workspace-nav-label">Class</p>
+<a
+  class="workspace-nav-link {% if active_class_tool == 'student-attendance-progress' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_class_page' 'student-attendance-progress' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">SA</span>
+  Student attendance &amp; progress
+</a>
+<a
+  class="workspace-nav-link {% if active_class_tool == 'teacher-attendance-progress' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_class_page' 'teacher-attendance-progress' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">TA</span>
+  Teacher attendance &amp; progress
+</a>

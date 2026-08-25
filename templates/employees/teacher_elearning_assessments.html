@@ -8,26 +8,9 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="sa-hub-page exam-hub-page">
   {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
-  <section class="teacher-dash-hero" aria-label="E-learning assessments overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">E-learning assessment</p>
-      <h2>E-learning assessments</h2>
-      <p>Register an assessment, open a level, then enter marks using the same out-of totals as exam settings.</p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
-        <strong>{{ assessment_count }}</strong>
-        <span>Assessment{{ assessment_count|pluralize }}</span>
-      </div>
-      <div class="teacher-dash-stat">
-        <strong>{{ assessment_groups|length }}</strong>
-        <span>Year{{ assessment_groups|length|pluralize }}</span>
-      </div>
-    </div>
-  </section>
 
   <section class="exam-tool-panel" aria-label="Register e-learning assessment">
     <header class="exam-tool-panel-head">

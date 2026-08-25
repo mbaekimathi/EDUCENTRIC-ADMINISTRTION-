@@ -3,32 +3,28 @@
 {% block header_eyebrow %}Curriculum settings{% endblock %}
 {% block header_title %}Exam settings{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_settings_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Exam settings overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Curriculum settings</p>
-      <h2>Exam configuration</h2>
-      <p>Open a level to set subject marks, display order, and combined subjects. Manage exam timetable profiles and grading from the links below.</p>
-    </div>
-  </section>
-
-<section class="module-grid exam-tools-grid" aria-label="Exam tools">
-  <a class="module-card" href="{% url 'employees:exam_timetable_settings' %}">
-    <span class="module-icon">TS</span>
-    <h3>Exam timetable settings</h3>
-    <p>Create exam profiles for each academic category. Add breaks and activities; exam sessions are generated automatically.</p>
-    <span class="module-meta">Open →</span>
+<section class="teacher-dash-actions exam-tools-grid is-nav-links" aria-label="Exam tools">
+  <a class="teacher-dash-action" href="{% url 'employees:exam_timetable_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">TS</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Exam timetable settings</strong>
+      <span>Create exam profiles for each academic category. Add breaks and activities; exam sessions are generated automatically.</span>
+    </span>
   </a>
-  <a class="module-card" href="{% url 'employees:grading_system_settings' %}">
-    <span class="module-icon">GS</span>
-    <h3>Academic grading system</h3>
-    <p>Manage the default scale and customize grades for each academic level.</p>
-    <span class="module-meta">Open →</span>
+  <a class="teacher-dash-action" href="{% url 'employees:grading_system_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">GS</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Academic grading system</strong>
+      <span>Manage the default scale and customize grades for each academic level.</span>
+    </span>
   </a>
 </section>
 
@@ -45,13 +41,14 @@
       <h3 class="settings-category-title is-uppercase">{{ category.grouper }}</h3>
       <span class="settings-category-count">{{ category.list|length }} level{{ category.list|length|pluralize }}</span>
     </header>
-    <section class="module-grid">
+    <section class="teacher-dash-actions">
       {% for level in category.list %}
-      <a class="module-card" href="{% url 'employees:exam_level_settings' level.id %}">
-        <span class="module-icon">{{ level.code|slice:":2" }}</span>
-        <h3 class="is-uppercase">{{ level.name }}</h3>
-        <p>{{ level.code }} · {{ level.subject_count }} subject{{ level.subject_count|pluralize }}</p>
-        <span class="module-meta">Configure →</span>
+      <a class="teacher-dash-action" href="{% url 'employees:exam_level_settings' level.id %}">
+        <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|slice:":2" }}</span>
+        <span class="teacher-dash-action-copy">
+          <strong class="is-uppercase">{{ level.name }}</strong>
+          <span>{{ level.code }} · {{ level.subject_count }} subject{{ level.subject_count|pluralize }}</span>
+        </span>
       </a>
       {% endfor %}
     </section>

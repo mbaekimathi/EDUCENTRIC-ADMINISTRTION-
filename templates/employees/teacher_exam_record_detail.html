@@ -10,10 +10,11 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/teacher_exam_classes.html" %}
 {% if selected_class %}
 <section class="exam-record-sheet">
   {% if students %}
-  <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks>
+  <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
     <header class="exam-record-bar">
       <div class="exam-record-bar-title">
@@ -26,9 +27,14 @@
         <button type="button" class="ghost-button" data-exam-edit>Edit</button>
         <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
         <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
-        <a class="exam-back-link" href="{% url 'employees:teacher_exam_records' %}">Back to exam records</a>
+        <a class="exam-back-link" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">Change class</a>
       </div>
     </header>
+    {% if out_of_settings_changed %}
+    <div class="notice warning" data-out-of-changed-notice>
+      Out-of marks settings have changed since some scores were saved. Saved percentages stay as they were until you edit and save; saving will apply the current out-of values.
+    </div>
+    {% endif %}
 
     <div class="settings-table-panel exam-record-sheet-table">
       <table class="settings-table settings-table-responsive exam-record-students-table">
@@ -68,6 +74,8 @@
                 placeholder="—"
                 data-exam-mark
                 data-out-of="{{ cell.out_of }}"
+                data-current-out-of="{{ cell.current_out_of }}"
+                {% if cell.saved_out_of %}data-saved-out-of="{{ cell.saved_out_of }}"{% endif %}
                 data-subject-id="{{ cell.subject.id }}"
                 readonly
               >
@@ -103,15 +111,65 @@
     </div>
   </form>
   {% else %}
+  <header class="exam-record-bar">
+    <div class="exam-record-bar-title">
+      <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
+      <span class="student-count-chip is-quiet">0 students</span>
+    </div>
+    <div class="exam-record-bar-tools">
+      <a class="exam-back-link" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">Change class</a>
+    </div>
+  </header>
   <div class="exam-record-sheet-empty">
     <p class="settings-empty">No students are registered in {{ selected_class.display_label }}.</p>
   </div>
   {% endif %}
 </section>
 {% else %}
-<section class="settings-panel">
-  <p class="settings-empty">Select a class from the sidebar to view this exam.</p>
-</section>
+<div class="sa-hub-page exam-hub-page">
+  <div class="teacher-page-bar" aria-label="Exam classes">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ exam_classes|length }}</strong>
+        <span>Class{{ exam_classes|length|pluralize }}</span>
+      </div>
+    </div>
+  </div>
+
+  {% if exam_classes %}
+  <section class="sa-level-block" aria-label="Allocated classes">
+    <header class="sa-level-head">
+      <div>
+        <h3 class="is-uppercase">Allocated classes</h3>
+        <p class="subtle">Classes assigned to you for this exam</p>
+      </div>
+    </header>
+    <div class="exam-hub-grid">
+      {% for academic_class in exam_classes %}
+      <a
+        class="exam-hub-card"
+        href="{% url 'employees:teacher_exam_record_class' exam.id academic_class.id %}"
+      >
+        <span class="exam-hub-card-icon" aria-hidden="true">CL</span>
+        <span class="exam-hub-card-copy">
+          <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+          <span>
+            {% if academic_class.academic_level %}{{ academic_class.academic_level.name }}{% else %}Class{% endif %}
+            {% if academic_class.code %} · {{ academic_class.code }}{% endif %}
+          </span>
+        </span>
+        <span class="exam-hub-card-go">View exam →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No allocated classes</strong>
+    <p class="settings-empty">You have no allocated classes for this exam.</p>
+  </section>
+  {% endif %}
+</div>
 {% endif %}
 {% endblock %}
 

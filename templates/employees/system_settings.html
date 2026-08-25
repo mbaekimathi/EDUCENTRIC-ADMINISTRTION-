@@ -2,49 +2,48 @@
 {% block title %}System settings | Edu-Centric{% endblock %}
 {% block header_title %}System settings{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/system_settings_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="System settings overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Administration</p>
-      <h2>System settings</h2>
-      <p>Configure school profile, curriculum, finance, HR, and the academic calendar.</p>
-    </div>
+  <section class="teacher-dash-actions is-nav-links" aria-label="Settings areas">
+    <a class="teacher-dash-action" href="{% url 'employees:school_profile_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">SP</span>
+      <span class="teacher-dash-action-copy">
+        <strong>School profile settings</strong>
+        <span>School identity, contact details, and campus information.</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'employees:curriculum_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">CU</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Curriculum settings</strong>
+        <span>Academic structure, levels, subjects, and programme defaults.</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'employees:finance_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">FN</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Finance settings</strong>
+        <span>Fees, billing rules, and financial configuration.</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
+      <span class="teacher-dash-action-copy">
+        <strong>HR settings</strong>
+        <span>Staff roles, employment defaults, and people policies.</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'employees:academic_calendar_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">AC</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Academic calendar settings</strong>
+        <span>Register academic years, terms, and opening, midterm, and closing dates.</span>
+      </span>
+    </a>
   </section>
-
-<section class="module-grid" aria-label="Settings areas">
-  <a class="module-card" href="{% url 'employees:school_profile_settings' %}">
-    <span class="module-icon">SP</span>
-    <h3>School profile settings</h3>
-    <p>School identity, contact details, and campus information.</p>
-    <span class="module-meta">Open →</span>
-  </a>
-  <a class="module-card" href="{% url 'employees:curriculum_settings' %}">
-    <span class="module-icon">CU</span>
-    <h3>Curriculum settings</h3>
-    <p>Academic structure, levels, subjects, and programme defaults.</p>
-    <span class="module-meta">Open →</span>
-  </a>
-  <a class="module-card" href="{% url 'employees:finance_settings' %}">
-    <span class="module-icon">FN</span>
-    <h3>Finance settings</h3>
-    <p>Fees, billing rules, and financial configuration.</p>
-    <span class="module-meta">Open →</span>
-  </a>
-  <a class="module-card" href="{% url 'employees:hr_settings' %}">
-    <span class="module-icon">HR</span>
-    <h3>HR settings</h3>
-    <p>Staff roles, employment defaults, and people policies.</p>
-    <span class="module-meta">Open →</span>
-  </a>
-  <a class="module-card" href="{% url 'employees:academic_calendar_settings' %}">
-    <span class="module-icon">AC</span>
-    <h3>Academic calendar settings</h3>
-    <p>Register academic years, terms, and opening, midterm, and closing dates.</p>
-    <span class="module-meta">Open →</span>
-  </a>
-</section>
 </div>
 {% endblock %}

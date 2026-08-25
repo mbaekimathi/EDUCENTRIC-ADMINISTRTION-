@@ -3,40 +3,41 @@
 {% block header_eyebrow %}IT Support{% endblock %}
 {% block header_title %}{{ module.title }}{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% if module.slug == 'human-resource-management' %}
+{% include "employees/includes/human_resource_sidebar.html" %}
+{% else %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% endif %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="{{ module.title }} overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">IT Support</p>
-      <h2>{{ module.title }}</h2>
-      <p>{{ module.copy }}</p>
-    </div>
-  </section>
-
   {% if module.slug == 'financial-management' %}
-  <section class="module-grid" aria-label="Financial management tools">
-    <a class="module-card" href="{% url 'employees:finance_settings' %}">
-      <span class="module-icon">FN</span>
-      <h3>Finance settings</h3>
-      <p>Fees, billing rules, and financial configuration.</p>
-      <span class="module-meta">Open →</span>
+  <section class="teacher-dash-actions is-nav-links" aria-label="Financial management tools">
+    <a class="teacher-dash-action" href="{% url 'employees:finance_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">FN</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Finance settings</strong>
+        <span>Fees, billing rules, and financial configuration.</span>
+      </span>
     </a>
   </section>
   {% elif module.slug == 'human-resource-management' %}
-  <section class="module-grid" aria-label="Human resource tools">
-    <a class="module-card" href="{% url 'employees:it_support_employee_management' %}">
-      <span class="module-icon">EM</span>
-      <h3>Employee management</h3>
-      <p>List staff by role, edit details, suspend access, or remove employees.</p>
-      <span class="module-meta">Open →</span>
+  <section class="teacher-dash-actions is-nav-links" aria-label="Human resource tools">
+    <a class="teacher-dash-action" href="{% url 'employees:it_support_employee_management' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">EM</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Employee management</strong>
+        <span>List staff, edit details, suspend access, or remove employees.</span>
+      </span>
     </a>
-    <a class="module-card" href="{% url 'employees:hr_settings' %}">
-      <span class="module-icon">HR</span>
-      <h3>HR settings</h3>
-      <p>Staff roles, employment defaults, and people policies.</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
+      <span class="teacher-dash-action-copy">
+        <strong>HR settings</strong>
+        <span>Staff roles, employment defaults, and people policies.</span>
+      </span>
     </a>
   </section>
   {% else %}

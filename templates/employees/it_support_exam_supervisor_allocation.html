@@ -3,31 +3,27 @@
 {% block header_eyebrow %}Exam management{% endblock %}
 {% block header_title %}Allocate supervisors{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/exam_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/exam_management.html" %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Allocate supervisors overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Exam management</p>
-      <h2>Allocate supervisors</h2>
-      <p>Classes in an academic level sit as one exam group. Shuffle assigns one supervisor per subject for the whole level, skipping that subject’s class teachers when another teacher is available.</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ level_groups|length }}</strong>
-          <span>Categor{{ level_groups|length|pluralize:"y,ies" }}</span>
-        </div>
-        <div class="exam-tool-stat">
-          <strong>{{ teachers|length }}</strong>
-          <span>Teacher{{ teachers|length|pluralize }}</span>
-        </div>
+  <div class="teacher-page-bar" aria-label="Allocate supervisors overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ level_groups|length }}</strong>
+        <span>Categor{{ level_groups|length|pluralize:"y,ies" }}</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ teachers|length }}</strong>
+        <span>Teacher{{ teachers|length|pluralize }}</span>
       </div>
     </div>
-  </section>
+  </div>
 
   {% if not teachers %}
   <p class="notice">No approved teachers are available yet. Register and approve employees with the teacher role to allocate exam supervisors.</p>

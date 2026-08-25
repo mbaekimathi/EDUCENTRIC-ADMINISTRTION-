@@ -1,0 +1,23 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Exam settings">
+  <a class="teacher-dash-action" href="{% url 'employees:exam_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AL</span>
+    <span class="teacher-dash-action-copy">
+      <strong>All levels</strong>
+      <span>All levels</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:exam_timetable_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">ET</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Exam timetable settings</strong>
+      <span>Exam timetable settings</span>
+    </span>
+  </a>
+  <a class="teacher-dash-action" href="{% url 'employees:grading_system_settings' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">AG</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Academic grading system</strong>
+      <span>Academic grading system</span>
+    </span>
+  </a>
+</section>

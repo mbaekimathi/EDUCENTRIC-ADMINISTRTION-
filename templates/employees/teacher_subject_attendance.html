@@ -3,28 +3,13 @@
 {% block header_eyebrow %}Teacher{% endblock %}
 {% block header_title %}Subject attendance{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/teacher.html" %}
 <div class="sa-hub-page">
-  <section class="teacher-dash-hero" aria-label="Subject attendance overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">Teaching workflow</p>
-      <h2>Subject attendance</h2>
-      <p>Select a class, open a subject, then record the lesson plan, attendance, and class outcome.</p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
-        <strong>{{ class_count }}</strong>
-        <span>Class{{ class_count|pluralize }}</span>
-      </div>
-      <div class="teacher-dash-stat">
-        <strong>{{ level_groups|length }}</strong>
-        <span>Level{{ level_groups|length|pluralize }}</span>
-      </div>
-    </div>
-  </section>
-
   {% if level_groups %}
   <div class="sa-hub-scroll">
     {% for group in level_groups %}

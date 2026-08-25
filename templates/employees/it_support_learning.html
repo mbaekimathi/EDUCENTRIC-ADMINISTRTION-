@@ -3,33 +3,20 @@
 {% block header_eyebrow %}Curriculum management{% endblock %}
 {% block header_title %}Learning management{% endblock %}
 
-{% block sidebar_modules %}{% endblock %}
+{% block sidebar_modules %}
+{% include "employees/includes/learning_management_sidebar.html" %}
+{% endblock %}
 
 {% block workspace_content %}
 <div class="exam-tool-page">
-  <section class="exam-tool-hero" aria-label="Learning management overview">
-    <div class="exam-tool-hero-copy">
-      <p class="exam-tool-kicker">Curriculum management</p>
-      <h2>{{ section.title }}</h2>
-      <p>{{ section.copy }}</p>
-    </div>
-    <div class="exam-tool-hero-aside">
-      <div class="exam-tool-stats" aria-label="Quick stats">
-        <div class="exam-tool-stat">
-          <strong>{{ learning_pages|length }}</strong>
-          <span>Tools</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="module-grid" aria-label="Learning management tools">
+  <section class="teacher-dash-actions is-nav-links" aria-label="Learning management tools">
     {% for page in learning_pages %}
-    <a class="module-card" href="{% url 'employees:it_support_learning_page' page.slug %}">
-      <span class="module-icon">{{ page.icon }}</span>
-      <h3>{{ page.title }}</h3>
-      <p>{{ page.summary }}</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:it_support_learning_page' page.slug %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">{{ page.icon }}</span>
+      <span class="teacher-dash-action-copy">
+        <strong>{{ page.title }}</strong>
+        <span>{{ page.summary }}</span>
+      </span>
     </a>
     {% endfor %}
   </section>

@@ -7,6 +7,7 @@ app_name = "employees"
 urlpatterns = [
     path("", views.employee_login, name="login"),
     path("register/", views.employee_register, name="register"),
+    path("select-role/", views.select_login_role, name="select_login_role"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path(
         "workspace/it_support/curriculum-management/learning-management/class-management/<slug:tool>/",
@@ -132,6 +133,17 @@ urlpatterns = [
         "workspace/teacher/exam-records/<int:exam_id>/classes/<int:class_id>/",
         views.teacher_exam_record_detail,
         name="teacher_exam_record_class",
+    ),
+    path(
+        "workspace/teacher/exam-records/<int:exam_id>/analytics/classes/<int:class_id>/",
+        views.teacher_exam_analytics,
+        name="teacher_exam_analytics_class",
+    ),
+    path(
+        "workspace/teacher/exam-records/<int:exam_id>/analytics/all/",
+        views.teacher_exam_analytics,
+        {"view_all": True},
+        name="teacher_exam_analytics_all",
     ),
     path(
         "workspace/teacher/exam-records/<int:exam_id>/analytics/",

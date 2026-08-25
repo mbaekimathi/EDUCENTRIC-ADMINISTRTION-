@@ -10,10 +10,11 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
+{% include "employees/includes/nav/teacher_elearning_assessment.html" %}
 {% if selected_class %}
 <section class="exam-record-sheet">
   {% if subjects and students %}
-  <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks>
+  <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
     <header class="exam-record-bar">
       <div class="exam-record-bar-title">
@@ -28,9 +29,13 @@
         <button type="button" class="ghost-button" data-exam-edit>Edit</button>
         <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
         <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
-        <a class="exam-back-link" href="{{ teacher_elearning_assessment_home_url }}">Back to classes</a>
       </div>
     </header>
+    {% if out_of_settings_changed %}
+    <div class="notice warning" data-out-of-changed-notice>
+      Out-of marks settings have changed since some scores were saved. Saved percentages stay as they were until you edit and save; saving will apply the current out-of values.
+    </div>
+    {% endif %}
 
     <div class="settings-table-panel exam-record-sheet-table">
       <table class="settings-table settings-table-responsive exam-record-students-table">
@@ -70,6 +75,8 @@
                 placeholder="—"
                 data-exam-mark
                 data-out-of="{{ cell.out_of }}"
+                data-current-out-of="{{ cell.current_out_of }}"
+                {% if cell.saved_out_of %}data-saved-out-of="{{ cell.saved_out_of }}"{% endif %}
                 data-subject-id="{{ cell.subject.id }}"
                 readonly
               >
@@ -116,22 +123,14 @@
 </section>
 {% else %}
 <div class="sa-hub-page">
-  <section class="teacher-dash-hero" aria-label="{{ assessment_title }} classes">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">
-        {% if assessment.academic_term %}{{ assessment.academic_term.name }}{% endif %}
-        {% if assessment.academic_year %} · {{ assessment.academic_year.name }}{% endif %}
-      </p>
-      <h2 class="is-uppercase">{{ assessment_title }}</h2>
-      <p>Select a class to register e-learning assessment marks for your allocated subjects.</p>
-    </div>
-    <div class="teacher-dash-stats">
-      <div class="teacher-dash-stat">
+  <div class="teacher-page-bar" aria-label="Assessment classes">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
         <strong>{{ assessment_classes|length }}</strong>
         <span>Class{{ assessment_classes|length|pluralize }}</span>
       </div>
     </div>
-  </section>
+  </div>
 
   {% if class_groups %}
   <div class="sa-hub-scroll">

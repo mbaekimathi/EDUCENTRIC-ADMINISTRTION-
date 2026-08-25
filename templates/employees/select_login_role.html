@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Choose workspace role | Edu-Centric{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block content %}
+<main class="auth-shell">
+  {% include "partials/brand_panel.html" with eyebrow="Employee access" headline="Choose how you<br>want to work." copy="Your account has more than one role. Pick the workspace to open for this session." trust="Secure staff access" %}
+
+  <section class="auth-panel">
+    <div class="auth-card auth-card-elevated">
+      <div class="form-page-heading">
+        <span class="eyebrow">Staff</span>
+        <h2>Select a role</h2>
+        <p class="subtle">Signed in as {{ employee_name }}</p>
+      </div>
+
+      {% if error_message %}<div class="notice error">{{ error_message }}</div>{% endif %}
+
+      <form method="post" class="auth-form role-select-form" novalidate>
+        {% csrf_token %}
+        <div class="role-select-list" role="list">
+          {% for value, label in role_choices %}
+          <label class="role-select-option">
+            <input type="radio" name="role" value="{{ value }}" required {% if forloop.first %}checked{% endif %}>
+            <span class="role-select-option-body">
+              <strong class="is-uppercase">{{ label }}</strong>
+              <span class="subtle">Open the {{ label }} workspace</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        <button class="primary-button" type="submit">Continue <span aria-hidden="true">→</span></button>
+      </form>
+
+      <div class="auth-footer">
+        <a class="auth-footer-link" href="{% url 'employees:logout' %}">Sign out</a>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}

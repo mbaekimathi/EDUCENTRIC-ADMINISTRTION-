@@ -6,6 +6,23 @@
     const saveButton = form.querySelector("[data-exam-save]");
     const inputs = form.querySelectorAll(".exam-mark-input");
 
+    function syncOutOfAttributes(preferSaved) {
+      inputs.forEach(function (input) {
+        const saved = input.getAttribute("data-saved-out-of");
+        const current = input.getAttribute("data-current-out-of");
+        const value = preferSaved ? saved || current : current || saved;
+        if (!value) return;
+        input.setAttribute("data-out-of", value);
+        // Teacher / e-learning sheets use subject out-of as max; IT sheets stay at 100.
+        if (input.getAttribute("max") !== "100") {
+          input.setAttribute("max", value);
+        }
+      });
+      form.querySelectorAll("[data-exam-mark]").forEach(function (input) {
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+
     function setEditing(editing) {
       form.classList.toggle("is-editing", editing);
       inputs.forEach(function (input) {
@@ -31,9 +48,15 @@
 
     const scrollPanel = form.querySelector(".exam-record-sheet-table");
     const nameTable = form.querySelector(".exam-record-students-table");
+    let nameCollapsed = false;
     function syncNameCollapse() {
       if (!scrollPanel || !nameTable) return;
-      nameTable.classList.toggle("is-name-collapsed", scrollPanel.scrollLeft > 12);
+      const x = scrollPanel.scrollLeft;
+      // Hysteresis avoids flicker when collapsing shrinks scrollWidth.
+      if (!nameCollapsed && x > 28) nameCollapsed = true;
+      else if (nameCollapsed && x < 6) nameCollapsed = false;
+      nameTable.classList.toggle("is-name-collapsed", nameCollapsed);
+      scrollPanel.classList.toggle("is-scrolled-x", x > 2);
     }
     if (scrollPanel && nameTable) {
       scrollPanel.addEventListener("scroll", syncNameCollapse, { passive: true });
@@ -41,21 +64,30 @@
     }
 
     editButton?.addEventListener("click", function () {
+      syncOutOfAttributes(false);
       setEditing(true);
       focusMark(form.querySelector(".exam-mark-input"));
     });
 
     cancelButton?.addEventListener("click", function () {
       form.reset();
-      form.querySelectorAll("[data-exam-mark]").forEach(function (input) {
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-      });
+      syncOutOfAttributes(true);
       setEditing(false);
     });
 
     form.addEventListener("submit", function (event) {
       if (!form.classList.contains("is-editing")) {
         event.preventDefault();
+        return;
+      }
+      if (form.getAttribute("data-out-of-changed") === "1") {
+        const confirmed = window.confirm(
+          "Out-of marks settings have changed since some scores were saved. " +
+            "Saving will apply the current out-of values to these marks. Continue?"
+        );
+        if (!confirmed) {
+          event.preventDefault();
+        }
       }
     });
 

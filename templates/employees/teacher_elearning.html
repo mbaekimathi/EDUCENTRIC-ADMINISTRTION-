@@ -11,42 +11,23 @@
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 <div class="teacher-dashboard-page">
-  <section class="teacher-dash-hero" aria-label="E-learning overview">
-    <div class="teacher-dash-hero-copy">
-      <p class="teacher-dash-kicker">E-learning</p>
-      <h2>Your e-learning subjects</h2>
-      <p>Subjects allocated to you for e-learning delivery, with this week’s e-learning sessions.</p>
-    </div>
-    <div class="teacher-dash-stats" aria-label="Quick stats">
-      <div class="teacher-dash-stat">
-        <strong>{{ allocation_count }}</strong>
-        <span>Subject{{ allocation_count|pluralize }}</span>
-      </div>
-      <div class="teacher-dash-stat">
-        <strong>{% if elearning_timetable %}{{ elearning_timetable.lesson_count }}{% else %}0{% endif %}</strong>
-        <span>Session{% if elearning_timetable %}{{ elearning_timetable.lesson_count|pluralize }}{% else %}s{% endif %}</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="module-grid" aria-label="E-learning modules">
+  <section class="teacher-dash-actions is-nav-links" aria-label="E-learning modules">
     {% for tool in elearning_pages %}
-    <a class="module-card" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
-      <span class="module-icon">{{ tool.icon }}</span>
-      <h3>{{ tool.title }}</h3>
-      <p>{{ tool.summary }}</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>
+      <span class="teacher-dash-action-copy">
+        <strong>{{ tool.title }}</strong>
+        <span>{{ tool.summary }}</span>
+      </span>
     </a>
     {% endfor %}
-  </section>
-
-  <section class="module-grid" aria-label="E-learning reports">
     {% for tool in elearning_report_pages %}
-    <a class="module-card" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
-      <span class="module-icon">{{ tool.icon }}</span>
-      <h3>{{ tool.title }}</h3>
-      <p>{{ tool.summary }}</p>
-      <span class="module-meta">Open →</span>
+    <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>
+      <span class="teacher-dash-action-copy">
+        <strong>{{ tool.title }}</strong>
+        <span>{{ tool.summary }}</span>
+      </span>
     </a>
     {% endfor %}
   </section>
