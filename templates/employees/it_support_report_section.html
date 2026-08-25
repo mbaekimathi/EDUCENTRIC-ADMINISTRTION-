@@ -1,0 +1,24 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ section.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Reports{% endblock %}
+{% block header_title %}{{ section.title }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="{{ section.title }} overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Reports</p>
+      <h2>{{ section.title }}</h2>
+      <p>{{ section.copy }}</p>
+    </div>
+  </section>
+
+  <section class="exam-tool-empty">
+    <span class="exam-tool-empty-icon" aria-hidden="true">{{ section.icon }}</span>
+    <strong>Reports coming soon</strong>
+    <p>Reports for {{ section.title|lower }} will appear here as this area is enabled.</p>
+  </section>
+</div>
+{% endblock %}

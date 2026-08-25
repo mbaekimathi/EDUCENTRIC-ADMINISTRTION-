@@ -1,0 +1,156 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Allocate supervisors | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam management{% endblock %}
+{% block header_title %}Allocate supervisors{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Allocate supervisors overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Exam management</p>
+      <h2>Allocate supervisors</h2>
+      <p>Classes in an academic level sit as one exam group. Shuffle assigns one supervisor per subject for the whole level, skipping that subject’s class teachers when another teacher is available.</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ level_groups|length }}</strong>
+          <span>Categor{{ level_groups|length|pluralize:"y,ies" }}</span>
+        </div>
+        <div class="exam-tool-stat">
+          <strong>{{ teachers|length }}</strong>
+          <span>Teacher{{ teachers|length|pluralize }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if not teachers %}
+  <p class="notice">No approved teachers are available yet. Register and approve employees with the teacher role to allocate exam supervisors.</p>
+  {% endif %}
+
+  {% if level_groups %}
+  <div class="exam-tool-scroll">
+    {% for group in level_groups %}
+    <section class="exam-tool-panel" aria-label="{{ group.category }}">
+      <header class="exam-tool-panel-head">
+        <div>
+          <h3 class="is-uppercase">{{ group.category }}</h3>
+          <p>Academic levels in this category</p>
+        </div>
+        <span class="exam-tool-panel-count">{{ group.levels|length }} level{{ group.levels|length|pluralize }}</span>
+      </header>
+
+      {% for level in group.levels %}
+      <article class="exam-tool-block" aria-label="{{ level.name }}">
+        <div class="exam-tool-block-head">
+          <div>
+            <h2 class="is-uppercase">{{ level.name }}</h2>
+            <p>
+              {{ level.code }} · {{ level.allocation_rows|length }} subject{{ level.allocation_rows|length|pluralize }} ·
+              {% if level.allocation_classes %}
+                classes merged:
+                {% for academic_class in level.allocation_classes %}
+                  {{ academic_class.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                no classes
+              {% endif %}
+            </p>
+          </div>
+          {% if level.allocation_rows and level.allocation_classes %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="level_id" value="{{ level.id }}">
+            <button type="submit" class="primary-button" {% if not teachers %}disabled{% endif %}>
+              Shuffle supervisors
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+        {% if not level.allocation_rows %}
+        <p class="exam-tool-note">No subjects are linked to this academic level yet.</p>
+        {% elif not level.allocation_classes %}
+        <div class="settings-table-panel">
+          <table class="settings-table allocation-table">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Code</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in level.allocation_rows %}
+              <tr>
+                <td data-label="Subject"><strong class="is-uppercase">{{ row.subject.name }}</strong></td>
+                <td data-label="Code"><code class="is-uppercase">{{ row.subject.code }}</code></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="exam-tool-note">Register classes for this level to allocate supervisors to exam subjects.</p>
+        {% else %}
+        <div class="settings-table-panel">
+          <table class="settings-table allocation-table allocation-table-supervisors">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Class teachers</th>
+                <th>Supervisor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in level.allocation_rows %}
+              <tr>
+                <td data-label="Subject">
+                  <div class="settings-stack">
+                    <strong class="is-uppercase">{{ row.subject.name }}</strong>
+                    <code class="is-uppercase">{{ row.subject.code }}</code>
+                  </div>
+                </td>
+                <td data-label="Class teachers">
+                  {% if row.teachers %}
+                  <span class="allocation-teacher-name">
+                    {% for teacher in row.teachers %}
+                      {{ teacher.first_name }} {{ teacher.last_name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  </span>
+                  {% else %}
+                  <span class="subtle">Unassigned</span>
+                  {% endif %}
+                </td>
+                <td data-label="Supervisor">
+                  {% if row.supervisor %}
+                  <span class="allocation-teacher-name">{{ row.supervisor.first_name }} {{ row.supervisor.last_name }}</span>
+                  {% elif row.supervisor_conflict %}
+                  <span class="subtle">Shuffle to set one supervisor for this level</span>
+                  {% else %}
+                  <span class="subtle">Not allocated</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="exam-tool-empty">
+    <span class="exam-tool-empty-icon" aria-hidden="true">AL</span>
+    <strong>No academic levels yet</strong>
+    <p>Register active academic levels before allocating exam supervisors.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

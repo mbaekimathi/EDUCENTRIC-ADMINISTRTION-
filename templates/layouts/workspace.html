@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% block body_class %}workspace-body{% endblock %}
+{% block content %}
+<div class="workspace" data-workspace>
+  <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="Main navigation">
+    <div class="workspace-sidebar-top">
+      <div class="workspace-sidebar-brand">
+        <a class="brand" href="{% url 'employees:dashboard' %}">
+          <span class="brand-mark">E</span>
+          <span class="brand-text">Edu-Centric</span>
+        </a>
+      </div>
+
+      <a
+        class="workspace-nav-link workspace-nav-dashboard {% if active_nav == 'dashboard' %}is-active{% endif %}"
+        href="{% url 'employees:dashboard' %}"
+      >
+        <span class="workspace-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-8.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </span>
+        Dashboard
+      </a>
+      <button
+        type="button"
+        class="workspace-nav-link workspace-nav-action workspace-nav-student-search"
+        data-student-search-open
+      >
+        <span class="workspace-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zm8.5 1.5-4.2-4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        Search for student
+      </button>
+    </div>
+
+    <nav class="workspace-nav" aria-label="Page links">
+      {% block sidebar_modules %}{% endblock %}
+    </nav>
+
+        <div class="workspace-sidebar-foot">
+      {% if request.user.is_authenticated %}
+        <div class="workspace-role-chip">
+          <span class="workspace-role-dot" aria-hidden="true"></span>
+          {{ workspace_role_label }}
+        </div>
+      {% endif %}
+      <a
+        class="workspace-nav-link {% if active_nav == 'settings' %}is-active{% endif %}"
+        href="{% url 'employees:system_settings' %}"
+      >
+        <span class="workspace-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.4-3.5.9-1.6-1.7-3-1.9.4a7.2 7.2 0 0 0-1.5-.9l-.3-1.9H9.1l-.3 1.9c-.5.2-1 .5-1.5.9l-1.9-.4-1.7 3 .9 1.6a7 7 0 0 0 0 1.8l-.9 1.6 1.7 3 1.9-.4c.5.4 1 .7 1.5.9l.3 1.9h5.8l.3-1.9c.5-.2 1-.5 1.5-.9l1.9.4 1.7-3-.9-1.6a7 7 0 0 0 0-1.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </span>
+        System settings
+      </a>
+      <a class="workspace-nav-link workspace-nav-signout" href="{% url 'employees:logout' %}">
+        <span class="workspace-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M10 12h9m0 0-3-3m3 3-3 3M13 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Sign out
+      </a>
+    </div>
+  </aside>
+
+  <div class="workspace-main">
+    <header class="workspace-header">
+      <div class="workspace-header-left">
+        <button
+          type="button"
+          class="workspace-menu-btn"
+          data-workspace-toggle
+          aria-controls="workspace-sidebar"
+          aria-expanded="false"
+          aria-label="Open navigation"
+        >
+          <span></span><span></span><span></span>
+        </button>
+        <div class="workspace-header-copy">
+          <p class="workspace-header-eyebrow">{% block header_eyebrow %}Workspace{% endblock %}</p>
+          <h1 class="workspace-header-title">{% block header_title %}Dashboard{% endblock %}</h1>
+        </div>
+      </div>
+      <div class="workspace-header-right">
+        <div class="workspace-profile" data-profile-menu>
+          <button
+            type="button"
+            class="workspace-profile-trigger"
+            data-profile-trigger
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="workspace-profile-menu"
+          >
+            <span class="workspace-avatar-wrap">
+              {% if request.user.profile_image %}
+                <img class="workspace-avatar" src="{{ request.user.profile_image.url }}" alt="{{ request.user.display_name }}">
+              {% else %}
+                <span class="workspace-avatar workspace-avatar-fallback" aria-hidden="true">{{ request.user.first_name|default:"E"|slice:":1"|upper }}</span>
+              {% endif %}
+            </span>
+            <span class="workspace-user-meta">
+              <strong>{{ request.user.display_name }}</strong>
+              <span>{{ workspace_role_label }} · {{ request.user.employee_code }}</span>
+              <span class="workspace-user-email">{{ request.user.email }}</span>
+            </span>
+            <span class="workspace-profile-caret" aria-hidden="true"></span>
+          </button>
+
+          <div class="workspace-profile-menu" id="workspace-profile-menu" data-profile-panel role="menu" hidden>
+            {% if can_switch_workspace_role %}
+              <button
+                type="button"
+                class="workspace-profile-item workspace-switch-link"
+                data-role-switch-open
+                role="menuitem"
+              >
+                View as
+              </button>
+              <div class="workspace-profile-divider" aria-hidden="true"></div>
+            {% endif %}
+            <a class="workspace-profile-item workspace-profile-signout" role="menuitem" href="{% url 'employees:logout' %}">Sign out</a>
+          </div>
+        </div>
+      </div>
+      {% if is_role_preview %}
+        <div class="workspace-preview-banner">
+          <p>
+            Viewing session as
+            <strong>{{ workspace_view_employee.display_name }}</strong>
+            in the {{ workspace_role_label }} workspace.
+          </p>
+          <button type="button" class="workspace-preview-change" data-role-switch-open>Change</button>
+        </div>
+      {% endif %}
+    </header>
+
+    <main class="workspace-content">
+      {% block workspace_content %}{% endblock %}
+    </main>
+
+    <footer class="workspace-footer">
+      <span>Edu-Centric</span>
+      <span class="workspace-footer-sep" aria-hidden="true"></span>
+      <span>{{ workspace_role_label }} workspace</span>
+    </footer>
+  </div>
+
+  <div class="workspace-backdrop" data-workspace-backdrop hidden></div>
+</div>
+
+<div class="app-modal student-search-modal" id="student-search-modal" data-student-search-modal hidden>
+  <div class="app-modal-backdrop" data-student-search-close></div>
+  <div class="app-modal-dialog student-search-dialog" role="dialog" aria-modal="true" aria-labelledby="student-search-title">
+    <div class="app-modal-header">
+      <div>
+        <p class="student-search-kicker">Find a learner</p>
+        <h2 id="student-search-title">Search for student</h2>
+      </div>
+      <button type="button" class="app-modal-close" data-student-search-close aria-label="Close">×</button>
+    </div>
+    <div class="app-modal-form student-search-form">
+      <label class="student-search-field">
+        <span class="visually-hidden">Student name, admission number, or assessment number</span>
+        <input
+          type="search"
+          placeholder="Name, admission number, or assessment number"
+          data-student-search-input
+          autocomplete="off"
+        >
+      </label>
+      <div class="student-search-results" data-student-search-results role="listbox" aria-label="Student suggestions"></div>
+      <p class="student-search-hint" data-student-search-hint>Start typing to see matching students.</p>
+      <p class="student-search-empty" data-student-search-empty hidden>No students match that search.</p>
+    </div>
+  </div>
+</div>
+
+{% if can_switch_workspace_role %}
+<div class="app-modal role-switch-modal" id="role-switch-modal" data-role-switch-modal hidden>
+  <div class="app-modal-backdrop" data-role-switch-close></div>
+  <div class="app-modal-dialog role-switch-dialog" role="dialog" aria-modal="true" aria-labelledby="role-switch-title">
+    <div class="app-modal-header">
+      <div>
+        <p class="role-switch-kicker" data-role-switch-kicker>Step 1 of 2</p>
+        <h2 id="role-switch-title">View as</h2>
+      </div>
+      <button type="button" class="app-modal-close" data-role-switch-close aria-label="Close">×</button>
+    </div>
+    <form method="post" action="{% url 'employees:switch_workspace_role' %}" class="app-modal-form role-switch-form" data-role-switch-form>
+      {% csrf_token %}
+      <input type="hidden" name="role" value="" data-role-switch-role>
+      <input type="hidden" name="employee_id" value="" data-role-switch-employee>
+      <p class="role-switch-copy" data-role-switch-copy>Choose the role you want to enter, then pick the employee whose session you will view.</p>
+
+      <label class="role-switch-search" data-role-switch-search-wrap hidden>
+        <span class="visually-hidden">Search employees</span>
+        <input type="search" placeholder="Search by name or employee code" data-role-switch-search autocomplete="off">
+      </label>
+
+      <div class="role-switch-step is-active" data-role-switch-step="role">
+        <div class="role-switch-list" role="listbox" aria-label="Roles">
+          {% for value, label in workspace_role_choices %}
+            <button
+              type="button"
+              class="role-switch-option{% if value == workspace_role %} is-current{% endif %}"
+              data-role-option
+              data-role-value="{{ value }}"
+              data-role-label="{{ label }}"
+            >
+              <span class="role-switch-option-name">{{ label }}</span>
+              {% if value == workspace_role %}<span class="role-switch-option-meta">Current view</span>{% endif %}
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="role-switch-step" data-role-switch-step="employee" hidden>
+        <div class="role-switch-list" data-employee-list role="listbox" aria-label="Employees"></div>
+        <p class="role-switch-empty" data-employee-empty hidden>No approved employees are available for this role.</p>
+      </div>
+
+      <div class="app-modal-actions role-switch-actions">
+        <button type="button" class="ghost-button" data-role-switch-back hidden>Back</button>
+        <button type="button" class="ghost-button" data-role-switch-close>Cancel</button>
+        <button type="button" class="primary-button" data-role-switch-next disabled>Continue</button>
+        <button type="submit" class="primary-button" data-role-switch-submit hidden disabled>Enter session</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+(function () {
+  const root = document.querySelector("[data-workspace]");
+  if (!root) return;
+  const toggle = root.querySelector("[data-workspace-toggle]");
+  const backdrop = root.querySelector("[data-workspace-backdrop]");
+  const sidebar = document.getElementById("workspace-sidebar");
+  const profile = root.querySelector("[data-profile-menu]");
+  const profileTrigger = root.querySelector("[data-profile-trigger]");
+  const profilePanel = root.querySelector("[data-profile-panel]");
+  const roleModal = document.querySelector("[data-role-switch-modal]");
+  const studentModal = document.querySelector("[data-student-search-modal]");
+  const employeesUrl = "{% url 'employees:workspace_role_employees' %}";
+  const studentSearchUrl = "{% url 'employees:workspace_student_search' %}";
+
+  function setNavOpen(open) {
+    root.classList.toggle("is-nav-open", open);
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+    }
+    if (backdrop) backdrop.hidden = !open;
+  }
+
+  function setProfileOpen(open) {
+    if (!profile || !profileTrigger || !profilePanel) return;
+    profile.classList.toggle("is-open", open);
+    profilePanel.hidden = !open;
+    profileTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function setRoleModalOpen(open) {
+    if (!roleModal) return;
+    roleModal.hidden = !open;
+    roleModal.classList.toggle("is-open", open);
+    document.body.classList.toggle("modal-open", open || Boolean(studentModal && studentModal.classList.contains("is-open")));
+    if (open) goToRoleStep();
+  }
+
+  function setStudentModalOpen(open) {
+    if (!studentModal) return;
+    studentModal.hidden = !open;
+    studentModal.classList.toggle("is-open", open);
+    document.body.classList.toggle("modal-open", open || Boolean(roleModal && roleModal.classList.contains("is-open")));
+    if (open) {
+      const input = studentModal.querySelector("[data-student-search-input]");
+      resetStudentSearch();
+      window.setTimeout(() => input?.focus(), 30);
+    }
+  }
+
+  toggle?.addEventListener("click", () => {
+    setProfileOpen(false);
+    setNavOpen(!root.classList.contains("is-nav-open"));
+  });
+  backdrop?.addEventListener("click", () => setNavOpen(false));
+  sidebar?.querySelectorAll("a, [data-student-search-open]").forEach((link) => {
+    link.addEventListener("click", () => setNavOpen(false));
+  });
+
+  profileTrigger?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setNavOpen(false);
+    setProfileOpen(profilePanel.hidden);
+  });
+  document.addEventListener("click", (event) => {
+    if (profile && !profile.contains(event.target)) setProfileOpen(false);
+  });
+  document.querySelectorAll("[data-role-switch-open]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setProfileOpen(false);
+      setNavOpen(false);
+      setStudentModalOpen(false);
+      setRoleModalOpen(true);
+    });
+  });
+  document.querySelectorAll("[data-student-search-open]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setProfileOpen(false);
+      setNavOpen(false);
+      setRoleModalOpen(false);
+      setStudentModalOpen(true);
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setNavOpen(false);
+      setProfileOpen(false);
+      setRoleModalOpen(false);
+      setStudentModalOpen(false);
+    }
+  });
+
+  const studentInput = studentModal?.querySelector("[data-student-search-input]");
+  const studentResults = studentModal?.querySelector("[data-student-search-results]");
+  const studentHint = studentModal?.querySelector("[data-student-search-hint]");
+  const studentEmpty = studentModal?.querySelector("[data-student-search-empty]");
+  let studentSearchTimer = null;
+  let studentSearchToken = 0;
+
+  function resetStudentSearch() {
+    if (studentInput) studentInput.value = "";
+    if (studentResults) studentResults.replaceChildren();
+    if (studentHint) studentHint.hidden = false;
+    if (studentEmpty) studentEmpty.hidden = true;
+  }
+
+  function renderStudentResults(items) {
+    if (!studentResults) return;
+    studentResults.replaceChildren();
+    if (!items.length) {
+      if (studentHint) studentHint.hidden = true;
+      if (studentEmpty) studentEmpty.hidden = false;
+      return;
+    }
+    if (studentHint) studentHint.hidden = true;
+    if (studentEmpty) studentEmpty.hidden = true;
+    items.forEach((student) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "student-search-option";
+      button.setAttribute("role", "option");
+      const initial = (student.name || "S").trim().charAt(0).toUpperCase();
+      const avatar = document.createElement("span");
+      avatar.className = "student-search-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = initial;
+      const copyWrap = document.createElement("span");
+      copyWrap.className = "student-search-option-copy";
+      const name = document.createElement("span");
+      name.className = "student-search-option-name";
+      name.textContent = student.name;
+      const meta = document.createElement("span");
+      meta.className = "student-search-option-meta";
+      const parts = [student.class_group, student.assessment_number];
+      if (student.admission_number) parts.push(`Adm ${student.admission_number}`);
+      meta.textContent = parts.filter(Boolean).join(" · ");
+      copyWrap.append(name, meta);
+      button.append(avatar, copyWrap);
+      button.addEventListener("click", () => {
+        window.location.href = student.profile_url;
+      });
+      studentResults.appendChild(button);
+    });
+  }
+
+  async function runStudentSearch(query) {
+    const token = ++studentSearchToken;
+    const needle = (query || "").trim();
+    if (!needle) {
+      resetStudentSearch();
+      return;
+    }
+    if (studentHint) {
+      studentHint.hidden = false;
+      studentHint.textContent = "Searching…";
+    }
+    if (studentEmpty) studentEmpty.hidden = true;
+    try {
+      const response = await fetch(`${studentSearchUrl}?q=${encodeURIComponent(needle)}`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await response.json();
+      if (token !== studentSearchToken) return;
+      if (studentHint) studentHint.textContent = "Start typing to see matching students.";
+      renderStudentResults(data.students || []);
+    } catch (error) {
+      if (token !== studentSearchToken) return;
+      if (studentHint) studentHint.textContent = "Start typing to see matching students.";
+      renderStudentResults([]);
+    }
+  }
+
+  studentModal?.querySelectorAll("[data-student-search-close]").forEach((button) => {
+    button.addEventListener("click", () => setStudentModalOpen(false));
+  });
+  studentInput?.addEventListener("input", () => {
+    window.clearTimeout(studentSearchTimer);
+    studentSearchTimer = window.setTimeout(() => runStudentSearch(studentInput.value), 180);
+  });
+
+  if (!roleModal) return;
+
+  const form = roleModal.querySelector("[data-role-switch-form]");
+  const roleInput = roleModal.querySelector("[data-role-switch-role]");
+  const employeeInput = roleModal.querySelector("[data-role-switch-employee]");
+  const kicker = roleModal.querySelector("[data-role-switch-kicker]");
+  const copy = roleModal.querySelector("[data-role-switch-copy]");
+  const roleStep = roleModal.querySelector('[data-role-switch-step="role"]');
+  const employeeStep = roleModal.querySelector('[data-role-switch-step="employee"]');
+  const employeeList = roleModal.querySelector("[data-employee-list]");
+  const employeeEmpty = roleModal.querySelector("[data-employee-empty]");
+  const searchWrap = roleModal.querySelector("[data-role-switch-search-wrap]");
+  const searchInput = roleModal.querySelector("[data-role-switch-search]");
+  const nextButton = roleModal.querySelector("[data-role-switch-next]");
+  const backButton = roleModal.querySelector("[data-role-switch-back]");
+  const submitButton = roleModal.querySelector("[data-role-switch-submit]");
+  const roleOptions = Array.from(roleModal.querySelectorAll("[data-role-option]"));
+  let selectedRoleLabel = "";
+
+  roleModal.querySelectorAll("[data-role-switch-close]").forEach((button) => {
+    button.addEventListener("click", () => setRoleModalOpen(false));
+  });
+
+  function selectedRole() {
+    return roleInput.value;
+  }
+
+  function setSelectedRole(value, label) {
+    roleInput.value = value;
+    selectedRoleLabel = label;
+    roleOptions.forEach((option) => {
+      option.classList.toggle("is-selected", option.dataset.roleValue === value);
+    });
+    nextButton.disabled = !value;
+  }
+
+  function setSelectedEmployee(id) {
+    employeeInput.value = id || "";
+    employeeList.querySelectorAll("[data-employee-option]").forEach((option) => {
+      option.classList.toggle("is-selected", option.dataset.employeeId === String(id));
+    });
+    submitButton.disabled = !id;
+  }
+
+  function goToRoleStep() {
+    roleStep.hidden = false;
+    roleStep.classList.add("is-active");
+    employeeStep.hidden = true;
+    employeeStep.classList.remove("is-active");
+    searchWrap.hidden = true;
+    backButton.hidden = true;
+    nextButton.hidden = false;
+    submitButton.hidden = true;
+    kicker.textContent = "Step 1 of 2";
+    copy.textContent = "Choose the role you want to enter, then pick the employee whose session you will view.";
+    setSelectedEmployee("");
+    if (searchInput) searchInput.value = "";
+    const current = roleOptions.find((option) => option.classList.contains("is-current"));
+    if (current) setSelectedRole(current.dataset.roleValue, current.dataset.roleLabel);
+  }
+
+  function goToEmployeeStep() {
+    roleStep.hidden = true;
+    roleStep.classList.remove("is-active");
+    employeeStep.hidden = false;
+    employeeStep.classList.add("is-active");
+    searchWrap.hidden = false;
+    backButton.hidden = false;
+    nextButton.hidden = true;
+    submitButton.hidden = false;
+    kicker.textContent = "Step 2 of 2";
+    copy.textContent = `Select an employee to view the ${selectedRoleLabel || "selected"} session.`;
+  }
+
+  function renderEmployees(items) {
+    employeeList.replaceChildren();
+    if (!items.length) {
+      employeeEmpty.hidden = false;
+      submitButton.disabled = true;
+      return;
+    }
+    employeeEmpty.hidden = true;
+    items.forEach((employee) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "role-switch-option role-switch-employee";
+      button.dataset.employeeOption = "true";
+      button.dataset.employeeId = String(employee.id);
+      button.dataset.search = `${employee.name} ${employee.code} ${employee.email}`.toLowerCase();
+      const initial = (employee.name || "E").trim().charAt(0).toUpperCase();
+      const avatar = document.createElement("span");
+      avatar.className = "role-switch-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = initial;
+      const copyWrap = document.createElement("span");
+      copyWrap.className = "role-switch-employee-copy";
+      const name = document.createElement("span");
+      name.className = "role-switch-option-name";
+      name.textContent = employee.name;
+      const meta = document.createElement("span");
+      meta.className = "role-switch-option-meta";
+      meta.textContent = employee.is_self ? `${employee.code} · You` : employee.code;
+      copyWrap.append(name, meta);
+      button.append(avatar, copyWrap);
+      button.addEventListener("click", () => setSelectedEmployee(employee.id));
+      employeeList.appendChild(button);
+    });
+  }
+
+  function filterEmployees(query) {
+    const needle = (query || "").trim().toLowerCase();
+    const buttons = employeeList.querySelectorAll("[data-employee-option]");
+    let visible = 0;
+    buttons.forEach((button) => {
+      const match = !needle || (button.dataset.search || "").includes(needle);
+      button.hidden = !match;
+      if (match) visible += 1;
+    });
+    employeeEmpty.hidden = visible > 0;
+  }
+
+  roleOptions.forEach((option) => {
+    option.addEventListener("click", () => {
+      setSelectedRole(option.dataset.roleValue, option.dataset.roleLabel);
+    });
+  });
+
+  nextButton.addEventListener("click", async () => {
+    if (!selectedRole()) return;
+    nextButton.disabled = true;
+    nextButton.textContent = "Loading…";
+    try {
+      const response = await fetch(`${employeesUrl}?role=${encodeURIComponent(selectedRole())}`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await response.json();
+      renderEmployees(data.employees || []);
+      goToEmployeeStep();
+    } catch (error) {
+      renderEmployees([]);
+      goToEmployeeStep();
+    } finally {
+      nextButton.textContent = "Continue";
+      nextButton.disabled = !selectedRole();
+    }
+  });
+
+  backButton.addEventListener("click", () => goToRoleStep());
+  searchInput?.addEventListener("input", () => filterEmployees(searchInput.value));
+  form.addEventListener("submit", (event) => {
+    if (!selectedRole() || !employeeInput.value) event.preventDefault();
+  });
+})();
+</script>
+{% block workspace_scripts %}{% endblock %}
+{% endblock %}

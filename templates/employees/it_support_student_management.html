@@ -1,0 +1,410 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ module.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_title %}{{ module.title }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+<section class="exam-tool-hero student-hero" aria-label="Student management overview">
+  <div class="exam-tool-hero-copy student-hero-copy">
+    <p class="exam-tool-kicker student-hero-kicker">Student records</p>
+    <h2>Class register</h2>
+    <p>Review enrolment by level and stream. Edit details, suspend access, or remove a student.</p>
+  </div>
+  <div class="exam-tool-hero-aside">
+    <a class="primary-button exam-tool-cta" href="{% url 'admissions:admit_student' %}">Admit student</a>
+  </div>
+</section>
+
+{% if student_groups %}
+<div class="student-stats" aria-label="Enrolment summary">
+  <div class="student-stat">
+    <strong>{{ student_count }}</strong>
+    <span>Students</span>
+  </div>
+  <div class="student-stat">
+    <strong>{{ level_count }}</strong>
+    <span>Level{{ level_count|pluralize }}</span>
+  </div>
+  <div class="student-stat">
+    <strong>{{ class_count }}</strong>
+    <span>Class{{ class_count|pluralize }}</span>
+  </div>
+</div>
+
+<div class="student-directory">
+  {% for level in student_groups %}
+  <section class="student-level-block">
+    <header class="student-level-header">
+      <div>
+        <h2>{{ level.label }}</h2>
+        <p>{% if level.streams|length > 1 %}{{ level.streams|length }} streams{% else %}One class group{% endif %}</p>
+      </div>
+      <span class="student-count-chip">{{ level.student_count }} student{{ level.student_count|pluralize }}</span>
+    </header>
+    <div class="student-stream-grid">
+      {% for group in level.streams %}
+      <article class="student-class-card" aria-label="{{ group.label }}">
+        <header class="student-class-card-header">
+          <div class="student-class-title">
+            <span class="student-class-badge">{{ group.label }}</span>
+            <h3>{{ level.label }}</h3>
+          </div>
+          <span class="student-count-chip is-quiet">{{ group.students|length }} enrolled</span>
+        </header>
+        <div class="student-class-table-wrap">
+          <table class="student-class-table">
+            <colgroup>
+              <col class="col-name">
+              <col class="col-admission">
+              <col class="col-assessment">
+              <col class="col-gender">
+              <col class="col-parent">
+              <col class="col-access">
+              <col class="col-actions">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Admission</th>
+                <th>Assessment</th>
+                <th>Gender</th>
+                <th>Parent</th>
+                <th>Access</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for student in group.students %}
+              <tr>
+                <td data-label="Student">
+                  <div class="student-name-cell">
+                    {% if student.profile_image %}
+                    <img class="student-avatar student-avatar-photo" src="{{ student.profile_image.url }}" alt="">
+                    {% else %}
+                    <span class="student-avatar" aria-hidden="true">{{ student.first_name|slice:":1" }}{{ student.last_name|slice:":1" }}</span>
+                    {% endif %}
+                    <strong class="is-uppercase">{{ student.display_name }}</strong>
+                  </div>
+                </td>
+                <td data-label="Admission" class="student-code">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</td>
+                <td data-label="Assessment" class="student-code">{{ student.assessment_number }}</td>
+                <td data-label="Gender">{{ student.get_gender_display }}</td>
+                <td data-label="Parent">
+                  <div class="student-parent-cell">
+                    <strong class="is-uppercase">{{ student.parent_guardian.full_name }}</strong>
+                    <small>{{ student.parent_guardian.phone_number }}</small>
+                  </div>
+                </td>
+                <td data-label="Access">
+                  <span class="status-pill is-uppercase {% if student.is_suspended %}is-inactive{% elif student.is_active %}is-active{% else %}is-inactive{% endif %}">
+                    {% if student.is_suspended %}Suspended{% elif student.is_active %}Active{% else %}Inactive{% endif %}
+                  </span>
+                </td>
+                <td data-label="Actions">
+                  <div class="record-actions">
+                    <a
+                      class="record-action record-action-icon"
+                      href="{% url 'employees:workspace_student_profile' student.id %}"
+                      aria-label="View {{ student.display_name }} profile"
+                      title="View profile"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                    </a>
+                    <button
+                      type="button"
+                      class="record-action"
+                      data-edit-student
+                      data-first-name="{{ student.first_name }}"
+                      data-last-name="{{ student.last_name }}"
+                      data-date-of-birth="{{ student.date_of_birth|date:'Y-m-d' }}"
+                      data-gender="{{ student.gender }}"
+                      data-academic-level="{{ student.academic_level }}"
+                      data-admission-number="{{ student.admission_number|default:'' }}"
+                      data-class-group="{{ student.class_group }}"
+                      data-assessment-number="{{ student.assessment_number }}"
+                      data-previous-school="{{ student.previous_school }}"
+                      data-sponsorship-category="{{ student.sponsorship_category }}"
+                      data-sponsor-details="{{ student.sponsor_details }}"
+                      data-parent-guardian-name="{{ student.parent_guardian.full_name }}"
+                      data-relationship-to-student="{{ student.parent_guardian.relationship_to_student }}"
+                      data-parent-phone="{{ student.parent_guardian.phone_number }}"
+                      data-parent-email="{{ student.parent_guardian.email }}"
+                      data-home-address="{{ student.home_address }}"
+                      data-medical-notes="{{ student.medical_notes }}"
+                      data-special-needs="{{ student.special_needs }}"
+                      data-emergency-contact="{{ student.emergency_contact }}"
+                      data-profile-image-url="{% if student.profile_image %}{{ student.profile_image.url }}{% endif %}"
+                      data-update-url="{% url 'employees:update_workspace_student' student.id %}"
+                    >Edit</button>
+                    <form method="post" action="{% url 'employees:toggle_workspace_student_status' student.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="record-action">
+                        {% if student.is_suspended %}Unsuspend{% else %}Suspend{% endif %}
+                      </button>
+                    </form>
+                    <form method="post" action="{% url 'employees:delete_workspace_student' student.id %}" onsubmit="return confirm('Delete {{ student.display_name|escapejs }}? This cannot be undone.');">
+                      {% csrf_token %}
+                      <button type="submit" class="record-action is-danger">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">No students are registered yet.</p>
+{% endif %}
+</div>
+
+<div class="app-modal" id="edit-student-modal" data-edit-student-modal hidden>
+  <div class="app-modal-backdrop" data-edit-student-close></div>
+  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="edit-student-title">
+    <div class="app-modal-header">
+      <h2 id="edit-student-title">Edit student</h2>
+      <button type="button" class="app-modal-close" data-edit-student-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" enctype="multipart/form-data" data-edit-student-form>
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field span-two student-photo-field">
+          <label for="edit-student-photo">Profile photo</label>
+          <div class="student-photo-edit">
+            <img class="student-photo-preview" data-edit-student-photo-preview hidden alt="">
+            <span class="student-photo-placeholder" data-edit-student-photo-placeholder aria-hidden="true">Photo</span>
+            <div class="student-photo-controls">
+              <input id="edit-student-photo" type="file" name="profile_image" accept="image/*">
+              <label class="student-photo-clear" data-edit-student-clear-wrap hidden>
+                <input type="checkbox" name="clear_profile_image" value="1" data-edit-student-clear-photo>
+                Remove current photo
+              </label>
+              <small class="hint">Optional. Leave empty to keep the current photo.</small>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="edit-student-first-name">First name <span class="required">*</span></label>
+          <input id="edit-student-first-name" class="uppercase-input" name="first_name" required>
+        </div>
+        <div class="field">
+          <label for="edit-student-last-name">Last name <span class="required">*</span></label>
+          <input id="edit-student-last-name" class="uppercase-input" name="last_name" required>
+        </div>
+        <div class="field">
+          <label for="edit-student-dob">Date of birth <span class="required">*</span></label>
+          <input id="edit-student-dob" type="date" name="date_of_birth" required>
+        </div>
+        <div class="field">
+          <label for="edit-student-gender">Gender <span class="required">*</span></label>
+          <select id="edit-student-gender" class="uppercase-input" name="gender" required>
+            {% for value, label in gender_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="edit-student-level">Class / level <span class="required">*</span></label>
+          <select id="edit-student-level" class="uppercase-input" name="academic_level" required>
+            {% for value, label in academic_level_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="edit-student-class-group">Class stream</label>
+          <input id="edit-student-class-group" class="uppercase-input" name="class_group" maxlength="50">
+        </div>
+        <div class="field">
+          <label for="edit-student-admission">Admission number</label>
+          <input id="edit-student-admission" class="uppercase-input" name="admission_number" maxlength="40">
+        </div>
+        <div class="field">
+          <label for="edit-student-assessment">Assessment number <span class="required">*</span></label>
+          <input id="edit-student-assessment" class="uppercase-input" name="assessment_number" required maxlength="50">
+        </div>
+        <div class="field">
+          <label for="edit-student-sponsorship">Sponsorship <span class="required">*</span></label>
+          <select id="edit-student-sponsorship" class="uppercase-input" name="sponsorship_category" required>
+            {% for value, label in sponsorship_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field span-two" data-sponsor-details-field>
+          <label for="edit-student-sponsor">Sponsor details</label>
+          <textarea id="edit-student-sponsor" name="sponsor_details" rows="2"></textarea>
+        </div>
+        <div class="field span-two">
+          <label for="edit-student-previous-school">Previous school</label>
+          <input id="edit-student-previous-school" class="uppercase-input" name="previous_school" maxlength="200">
+        </div>
+        <div class="field">
+          <label for="edit-student-parent-name">Parent / guardian name <span class="required">*</span></label>
+          <input id="edit-student-parent-name" class="uppercase-input" name="parent_guardian_name" required>
+        </div>
+        <div class="field">
+          <label for="edit-student-relationship">Relationship <span class="required">*</span></label>
+          <input id="edit-student-relationship" class="uppercase-input" name="relationship_to_student" required>
+        </div>
+        <div class="field">
+          <label for="edit-student-parent-phone">Phone <span class="required">*</span></label>
+          <input id="edit-student-parent-phone" name="parent_phone" required>
+        </div>
+        <div class="field">
+          <label for="edit-student-parent-email">Email</label>
+          <input id="edit-student-parent-email" type="email" name="parent_email">
+        </div>
+        <div class="field span-two">
+          <label for="edit-student-address">Home address</label>
+          <textarea id="edit-student-address" name="home_address" rows="2"></textarea>
+        </div>
+        <div class="field span-two">
+          <label for="edit-student-medical">Medical notes</label>
+          <textarea id="edit-student-medical" name="medical_notes" rows="2"></textarea>
+        </div>
+        <div class="field span-two">
+          <label for="edit-student-needs">Special needs</label>
+          <textarea id="edit-student-needs" name="special_needs" rows="2"></textarea>
+        </div>
+        <div class="field span-two">
+          <label for="edit-student-emergency">Emergency contact</label>
+          <input id="edit-student-emergency" name="emergency_contact" maxlength="200">
+        </div>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-edit-student-close>Cancel</button>
+        <button type="submit" class="primary-button">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector("[data-edit-student-modal]");
+  const form = document.querySelector("[data-edit-student-form]");
+  const sponsorField = document.querySelector("[data-sponsor-details-field]");
+  const fields = {
+    firstName: document.querySelector("#edit-student-first-name"),
+    lastName: document.querySelector("#edit-student-last-name"),
+    dateOfBirth: document.querySelector("#edit-student-dob"),
+    gender: document.querySelector("#edit-student-gender"),
+    academicLevel: document.querySelector("#edit-student-level"),
+    admissionNumber: document.querySelector("#edit-student-admission"),
+    classGroup: document.querySelector("#edit-student-class-group"),
+    assessmentNumber: document.querySelector("#edit-student-assessment"),
+    previousSchool: document.querySelector("#edit-student-previous-school"),
+    sponsorshipCategory: document.querySelector("#edit-student-sponsorship"),
+    sponsorDetails: document.querySelector("#edit-student-sponsor"),
+    parentGuardianName: document.querySelector("#edit-student-parent-name"),
+    relationshipToStudent: document.querySelector("#edit-student-relationship"),
+    parentPhone: document.querySelector("#edit-student-parent-phone"),
+    parentEmail: document.querySelector("#edit-student-parent-email"),
+    homeAddress: document.querySelector("#edit-student-address"),
+    medicalNotes: document.querySelector("#edit-student-medical"),
+    specialNeeds: document.querySelector("#edit-student-needs"),
+    emergencyContact: document.querySelector("#edit-student-emergency"),
+    profileImage: document.querySelector("#edit-student-photo"),
+    clearProfileImage: document.querySelector("[data-edit-student-clear-photo]"),
+  };
+  const photoPreview = document.querySelector("[data-edit-student-photo-preview]");
+  const photoPlaceholder = document.querySelector("[data-edit-student-photo-placeholder]");
+  const clearWrap = document.querySelector("[data-edit-student-clear-wrap]");
+
+  function setPhotoPreview(url) {
+    const hasPhoto = Boolean(url);
+    if (photoPreview) {
+      photoPreview.hidden = !hasPhoto;
+      photoPreview.src = url || "";
+    }
+    if (photoPlaceholder) photoPlaceholder.hidden = hasPhoto;
+    if (clearWrap) clearWrap.hidden = !hasPhoto;
+    if (fields.clearProfileImage) fields.clearProfileImage.checked = false;
+  }
+
+  function toggleSponsorDetails() {
+    const value = fields.sponsorshipCategory?.value;
+    const required = value === "GOVERNMENT" || value === "BOTH";
+    if (sponsorField) sponsorField.hidden = !required;
+    if (fields.sponsorDetails) fields.sponsorDetails.required = required;
+  }
+
+  function setOpen(open) {
+    if (!modal) return;
+    modal.hidden = !open;
+    modal.classList.toggle("is-open", open);
+    document.body.classList.toggle("modal-open", open);
+    if (open) fields.firstName?.focus();
+  }
+
+  document.querySelectorAll("[data-edit-student]").forEach((button) => {
+    button.addEventListener("click", () => {
+      form.action = button.dataset.updateUrl;
+      fields.firstName.value = button.dataset.firstName || "";
+      fields.lastName.value = button.dataset.lastName || "";
+      fields.dateOfBirth.value = button.dataset.dateOfBirth || "";
+      fields.gender.value = button.dataset.gender || "";
+      fields.academicLevel.value = button.dataset.academicLevel || "";
+      fields.admissionNumber.value = button.dataset.admissionNumber || "";
+      fields.classGroup.value = button.dataset.classGroup || "";
+      fields.assessmentNumber.value = button.dataset.assessmentNumber || "";
+      fields.previousSchool.value = button.dataset.previousSchool || "";
+      fields.sponsorshipCategory.value = button.dataset.sponsorshipCategory || "";
+      fields.sponsorDetails.value = button.dataset.sponsorDetails || "";
+      fields.parentGuardianName.value = button.dataset.parentGuardianName || "";
+      fields.relationshipToStudent.value = button.dataset.relationshipToStudent || "";
+      fields.parentPhone.value = button.dataset.parentPhone || "";
+      fields.parentEmail.value = button.dataset.parentEmail || "";
+      fields.homeAddress.value = button.dataset.homeAddress || "";
+      fields.medicalNotes.value = button.dataset.medicalNotes || "";
+      fields.specialNeeds.value = button.dataset.specialNeeds || "";
+      fields.emergencyContact.value = button.dataset.emergencyContact || "";
+      if (fields.profileImage) fields.profileImage.value = "";
+      setPhotoPreview(button.dataset.profileImageUrl || "");
+      toggleSponsorDetails();
+      setOpen(true);
+    });
+  });
+
+  fields.sponsorshipCategory?.addEventListener("change", toggleSponsorDetails);
+  fields.profileImage?.addEventListener("change", () => {
+    const file = fields.profileImage.files && fields.profileImage.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
+    if (fields.clearProfileImage) fields.clearProfileImage.checked = false;
+  });
+  fields.clearProfileImage?.addEventListener("change", () => {
+    if (!fields.clearProfileImage.checked) return;
+    if (fields.profileImage) fields.profileImage.value = "";
+    if (photoPreview) {
+      photoPreview.hidden = true;
+      photoPreview.src = "";
+    }
+    if (photoPlaceholder) photoPlaceholder.hidden = false;
+  });
+
+  modal?.querySelectorAll("[data-edit-student-close]").forEach((button) => {
+    button.addEventListener("click", () => setOpen(false));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+})();
+</script>
+{% endblock %}

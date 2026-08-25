@@ -1,0 +1,94 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}My class | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Teacher{% endblock %}
+{% block header_title %}My class{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="sa-hub-page">
+  <section class="teacher-dash-hero" aria-label="My class overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">Class teacher</p>
+      <h2>My class</h2>
+      <p>
+        Classes where {% if teacher_employee %}{{ teacher_employee.display_name }}{% else %}you{% endif %}
+        are allocated as class teacher.
+      </p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ class_count }}</strong>
+        <span>Class{{ class_count|pluralize }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="teacher-dash-actions" aria-label="My class tools">
+    {% for tool in my_class_pages %}
+    <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' tool.slug %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">{{ tool.icon }}</span>
+      <span class="teacher-dash-action-copy">
+        <strong>{{ tool.title }}</strong>
+        <span>{{ tool.summary }}</span>
+      </span>
+    </a>
+    {% endfor %}
+  </section>
+
+  {% if class_groups %}
+  <div class="sa-hub-scroll">
+    {% for group in class_groups %}
+    <section class="sa-level-block" aria-label="{{ group.academic_class.display_label }}">
+      <header class="sa-level-head">
+        <div>
+          <h3 class="is-uppercase">{{ group.academic_class.display_label }}</h3>
+          <p class="subtle">
+            {{ group.academic_class.academic_level.name }} · {{ group.academic_class.code }} ·
+            {{ group.student_count }} student{{ group.student_count|pluralize }}
+          </p>
+        </div>
+        <span class="teacher-tt-badge">Class teacher</span>
+      </header>
+
+      {% if group.students %}
+      <div class="settings-table-panel">
+        <table class="settings-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Student</th>
+              <th>Admission no.</th>
+              <th>Class</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in group.students %}
+            <tr>
+              <td data-label="#">{{ forloop.counter }}</td>
+              <td data-label="Student">
+                <strong class="is-uppercase">{{ student.first_name }} {{ student.last_name }}</strong>
+              </td>
+              <td data-label="Admission no."><code>{{ student.admission_number }}</code></td>
+              <td data-label="Class">{{ student.class_group|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="settings-empty">No students are linked to this class yet.</p>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No class allocated</strong>
+    <p class="settings-empty">Ask IT Support to allocate you as a class teacher, then return here.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

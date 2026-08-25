@@ -1,0 +1,447 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ subject.code }} · {{ selected_class.display_label }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}{{ selected_class.display_label }}{% endblock %}
+{% block header_title %}{{ subject.name }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_subject_attendance_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="subject-profile-page" data-subject-profile>
+  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+  <section class="exam-record-bar subject-profile-bar">
+    <div class="exam-record-bar-title">
+      <h2 class="is-uppercase">{{ subject.name }}</h2>
+      <span class="student-count-chip is-quiet">{{ subject.code }} · {{ selected_class.display_label }}</span>
+    </div>
+    <div class="exam-record-bar-tools">
+      <nav class="subject-profile-jump" aria-label="Subject sections">
+        <button type="button" class="is-active" data-profile-tab="lesson-plan">Lesson plan</button>
+        <button type="button" data-profile-tab="attendance">Attendance</button>
+        <button type="button" data-profile-tab="outcome">Outcome</button>
+      </nav>
+      <a class="exam-back-link" href="{% url 'employees:teacher_subject_attendance_class' selected_class.id %}">Back to subjects</a>
+    </div>
+  </section>
+
+  <div class="subject-profile-panels">
+    <section
+      id="lesson-plan"
+      class="subject-profile-panel is-active"
+      data-profile-panel="lesson-plan"
+      aria-label="Lesson plan"
+    >
+      <header class="analytics-card-header subject-panel-header">
+        <div>
+          <h3 class="is-uppercase">Lesson plan</h3>
+          <p class="subtle">Complete the CBC lesson plan for {{ selected_class.display_label }} · {{ subject.code }}.</p>
+        </div>
+      </header>
+      <form method="post" class="subject-profile-form lesson-plan-form">
+        {% csrf_token %}
+        <input type="hidden" name="form_action" value="lesson_plan">
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">1</span>
+            <span>
+              <strong>Curriculum focus</strong>
+              <span class="subtle">Strand and substrand for this lesson</span>
+            </span>
+          </header>
+          <div class="lesson-plan-fields lesson-plan-fields-2">
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Strand</span>
+              <input type="text" name="strand" maxlength="255" value="{% if lesson_plan %}{{ lesson_plan.strand }}{% endif %}" placeholder="Strand…">
+            </label>
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Substrand</span>
+              <input type="text" name="substrand" maxlength="255" value="{% if lesson_plan %}{{ lesson_plan.substrand }}{% endif %}" placeholder="Substrand…">
+            </label>
+          </div>
+        </section>
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">2</span>
+            <span>
+              <strong>Outcomes & inquiry</strong>
+              <span class="subtle">What learners will achieve and explore</span>
+            </span>
+          </header>
+          <div class="lesson-plan-fields">
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Lesson learning outcomes</span>
+              <textarea name="lesson_learning_outcomes" rows="3" placeholder="Lesson learning outcomes…">{% if lesson_plan %}{{ lesson_plan.lesson_learning_outcomes }}{% endif %}</textarea>
+            </label>
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Key inquiry questions</span>
+              <textarea name="key_inquiry_questions" rows="3" placeholder="Key inquiry questions…">{% if lesson_plan %}{{ lesson_plan.key_inquiry_questions }}{% endif %}</textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">3</span>
+            <span>
+              <strong>Competencies, values & PCIs</strong>
+              <span class="subtle">Cross-cutting skills and values</span>
+            </span>
+          </header>
+          <div class="lesson-plan-fields">
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Core competencies</span>
+              <textarea name="core_competencies" rows="3" placeholder="Core competencies…">{% if lesson_plan %}{{ lesson_plan.core_competencies }}{% endif %}</textarea>
+            </label>
+            <div class="lesson-plan-fields-2">
+              <label class="lesson-plan-field">
+                <span class="lesson-plan-label">Values</span>
+                <textarea name="values" rows="3" placeholder="Values…">{% if lesson_plan %}{{ lesson_plan.values }}{% endif %}</textarea>
+              </label>
+              <label class="lesson-plan-field">
+                <span class="lesson-plan-label">PCIs</span>
+                <textarea name="pcis" rows="3" placeholder="PCIs…">{% if lesson_plan %}{{ lesson_plan.pcis }}{% endif %}</textarea>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">4</span>
+            <span>
+              <strong>Resources & organization</strong>
+              <span class="subtle">Materials and how learning is arranged</span>
+            </span>
+          </header>
+          <div class="lesson-plan-fields">
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Learning resources</span>
+              <textarea name="learning_resources" rows="3" placeholder="Learning resources…">{% if lesson_plan %}{{ lesson_plan.learning_resources }}{% endif %}</textarea>
+            </label>
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Organization of learning</span>
+              <textarea name="organization_of_learning" rows="3" placeholder="Organization of learning…">{% if lesson_plan %}{{ lesson_plan.organization_of_learning }}{% endif %}</textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">5</span>
+            <span>
+              <strong>Lesson flow</strong>
+              <span class="subtle">Introduction and development of the lesson</span>
+            </span>
+          </header>
+          <div class="lesson-plan-fields">
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Introduction</span>
+              <textarea name="introduction" rows="3" placeholder="Introduction…">{% if lesson_plan %}{{ lesson_plan.introduction }}{% endif %}</textarea>
+            </label>
+            <label class="lesson-plan-field lesson-plan-field-wide">
+              <span class="lesson-plan-label">Lesson development</span>
+              <textarea name="lesson_development" rows="6" placeholder="Lesson development…">{% if lesson_plan %}{{ lesson_plan.lesson_development }}{% endif %}</textarea>
+            </label>
+          </div>
+        </section>
+
+        <div class="subject-profile-actions lesson-plan-actions">
+          <button type="submit" class="primary-button">Save lesson plan</button>
+          {% if lesson_plan %}
+          <span class="subtle">Updated {{ lesson_plan.updated_at|date:"j M Y, H:i" }}</span>
+          {% else %}
+          <span class="subtle">Not saved yet</span>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+
+    <section
+      id="attendance"
+      class="subject-profile-panel"
+      data-profile-panel="attendance"
+      aria-label="Class attendance"
+      hidden
+    >
+      <header class="analytics-card-header subject-panel-header">
+        <div>
+          <h3 class="is-uppercase">Attendance</h3>
+          <p class="subtle">Mark attendance for {{ selected_class.display_label }} in {{ subject.code }}.</p>
+        </div>
+        {% if students %}
+        <span class="student-count-chip is-quiet">{{ students|length }} student{{ students|length|pluralize }}</span>
+        {% endif %}
+      </header>
+      <form method="post" class="subject-profile-form attendance-form" data-attendance-form>
+        {% csrf_token %}
+        <input type="hidden" name="form_action" value="attendance">
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">1</span>
+            <span>
+              <strong>Session details</strong>
+              <span class="subtle">Choose the lesson date and optional notes</span>
+            </span>
+          </header>
+          <div class="lesson-plan-fields lesson-plan-fields-2">
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Lesson date</span>
+              <input type="date" name="lesson_date" value="{{ lesson_date|date:'Y-m-d' }}" required data-attendance-date>
+            </label>
+            <label class="lesson-plan-field">
+              <span class="lesson-plan-label">Notes</span>
+              <input type="text" name="attendance_notes" value="{% if attendance_session %}{{ attendance_session.notes }}{% endif %}" placeholder="Optional session notes…">
+            </label>
+          </div>
+        </section>
+
+        {% if students %}
+        <section class="lesson-plan-section attendance-roll-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">2</span>
+            <span>
+              <strong>Class roll</strong>
+              <span class="subtle">Set each learner’s status for this lesson</span>
+            </span>
+          </header>
+
+          <div class="attendance-summary" data-attendance-summary aria-live="polite">
+            <div class="attendance-summary-item is-present">
+              <strong data-count="PRESENT">0</strong>
+              <span>Present</span>
+            </div>
+            <div class="attendance-summary-item is-absent">
+              <strong data-count="ABSENT">0</strong>
+              <span>Absent</span>
+            </div>
+            <div class="attendance-summary-item is-late">
+              <strong data-count="LATE">0</strong>
+              <span>Late</span>
+            </div>
+            <div class="attendance-summary-item is-excused">
+              <strong data-count="EXCUSED">0</strong>
+              <span>Excused</span>
+            </div>
+          </div>
+
+          <div class="attendance-quick-actions">
+            <button type="button" class="ghost-button" data-mark-all="PRESENT">All present</button>
+            <button type="button" class="ghost-button" data-mark-all="ABSENT">All absent</button>
+            <button type="button" class="ghost-button" data-mark-all="LATE">All late</button>
+            <button type="button" class="ghost-button" data-mark-all="EXCUSED">All excused</button>
+          </div>
+
+          <div class="settings-table-panel attendance-roll-table">
+            <table class="settings-table settings-table-responsive">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Student</th>
+                  <th>Admission</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for student in students %}
+                <tr>
+                  <td data-label="#">{{ forloop.counter }}</td>
+                  <td data-label="Student">
+                    <strong class="is-uppercase">{{ student.display_name }}</strong>
+                  </td>
+                  <td data-label="Admission">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</td>
+                  <td data-label="Status">
+                    <label class="sr-only" for="status_{{ student.id }}">Attendance for {{ student.display_name }}</label>
+                    <select
+                      id="status_{{ student.id }}"
+                      name="status_{{ student.id }}"
+                      class="attendance-status-select status-{{ student.attendance_status|lower }}"
+                      data-attendance-status
+                    >
+                      {% for value, label in attendance_statuses %}
+                      <option value="{{ value }}" {% if student.attendance_status == value %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="subject-profile-actions lesson-plan-actions">
+          <button type="submit" class="primary-button">Save attendance</button>
+          {% if attendance_session %}
+          <span class="subtle">Last saved {{ attendance_session.updated_at|date:"j M Y, H:i" }}</span>
+          {% else %}
+          <span class="subtle">Not saved for {{ lesson_date|date:"j M Y" }} yet</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="lesson-plan-section">
+          <p class="settings-empty">No students are registered in {{ selected_class.display_label }}.</p>
+        </div>
+        {% endif %}
+      </form>
+    </section>
+
+    <section
+      id="outcome"
+      class="subject-profile-panel"
+      data-profile-panel="outcome"
+      aria-label="Class subject outcome"
+      hidden
+    >
+      <header class="analytics-card-header subject-panel-header">
+        <div>
+          <h3 class="is-uppercase">Class subject outcome</h3>
+          <p class="subtle">Summarise how {{ selected_class.display_label }} performed in {{ subject.code }}.</p>
+        </div>
+      </header>
+      <form method="post" class="subject-profile-form outcome-form">
+        {% csrf_token %}
+        <input type="hidden" name="form_action" value="outcome">
+        <input type="hidden" name="lesson_date" value="{{ lesson_date|date:'Y-m-d' }}">
+
+        <section class="lesson-plan-section">
+          <header class="lesson-plan-section-header">
+            <span class="lesson-plan-step">1</span>
+            <span>
+              <strong>Class reflection</strong>
+              <span class="subtle">Capture progress, strengths, and next steps</span>
+            </span>
+          </header>
+          <div class="outcome-guide" aria-hidden="true">
+            <span>Progress</span>
+            <span>Strengths</span>
+            <span>Gaps</span>
+            <span>Next steps</span>
+          </div>
+          <label class="lesson-plan-field lesson-plan-field-wide">
+            <span class="lesson-plan-label">Outcome</span>
+            <textarea name="outcome" rows="8" placeholder="Describe overall class progress, strengths, areas to improve, and next steps…">{% if subject_outcome %}{{ subject_outcome.outcome }}{% endif %}</textarea>
+          </label>
+        </section>
+
+        <div class="subject-profile-actions lesson-plan-actions">
+          <button type="submit" class="primary-button">Save outcome</button>
+          {% if subject_outcome %}
+          <span class="subtle">Updated {{ subject_outcome.updated_at|date:"j M Y, H:i" }}</span>
+          {% else %}
+          <span class="subtle">Not saved yet</span>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const root = document.querySelector("[data-subject-profile]");
+  if (!root) return;
+
+  const tabs = Array.from(root.querySelectorAll("[data-profile-tab]"));
+  const panels = Array.from(root.querySelectorAll("[data-profile-panel]"));
+  const valid = new Set(panels.map((panel) => panel.getAttribute("data-profile-panel")));
+
+  function activate(name, updateHash) {
+    const target = valid.has(name) ? name : "lesson-plan";
+    tabs.forEach((tab) => {
+      const active = tab.getAttribute("data-profile-tab") === target;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    panels.forEach((panel) => {
+      const active = panel.getAttribute("data-profile-panel") === target;
+      panel.classList.toggle("is-active", active);
+      panel.hidden = !active;
+      if (active) panel.scrollTop = 0;
+    });
+    if (updateHash) {
+      const url = new URL(window.location.href);
+      url.hash = target;
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activate(tab.getAttribute("data-profile-tab"), true);
+    });
+  });
+
+  const initial = (window.location.hash || "#lesson-plan").replace(/^#/, "");
+  activate(initial, false);
+  if (history.scrollRestoration) history.scrollRestoration = "manual";
+  window.scrollTo(0, 0);
+  const content = document.querySelector(".workspace-content");
+  if (content) content.scrollTop = 0;
+
+  window.addEventListener("hashchange", () => {
+    activate((window.location.hash || "#lesson-plan").replace(/^#/, ""), false);
+    window.scrollTo(0, 0);
+    if (content) content.scrollTop = 0;
+  });
+
+  const form = root.querySelector("[data-attendance-form]");
+  if (!form) return;
+
+  const dateInput = form.querySelector("[data-attendance-date]");
+  if (dateInput) {
+    dateInput.addEventListener("change", () => {
+      const value = dateInput.value;
+      if (!value) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set("date", value);
+      url.hash = "attendance";
+      window.location.href = url.pathname + url.search + url.hash;
+    });
+  }
+
+  function syncStatusClass(select) {
+    select.className = `attendance-status-select status-${String(select.value || "present").toLowerCase()}`;
+  }
+
+  function updateSummary() {
+    const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 };
+    form.querySelectorAll("[data-attendance-status]").forEach((select) => {
+      const value = String(select.value || "PRESENT").toUpperCase();
+      if (counts[value] != null) counts[value] += 1;
+    });
+    Object.keys(counts).forEach((key) => {
+      const target = form.querySelector(`[data-count="${key}"]`);
+      if (target) target.textContent = String(counts[key]);
+    });
+  }
+
+  form.querySelectorAll("[data-mark-all]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const status = button.getAttribute("data-mark-all");
+      form.querySelectorAll("[data-attendance-status]").forEach((select) => {
+        select.value = status;
+        syncStatusClass(select);
+      });
+      updateSummary();
+    });
+  });
+
+  form.querySelectorAll("[data-attendance-status]").forEach((select) => {
+    syncStatusClass(select);
+    select.addEventListener("change", () => {
+      syncStatusClass(select);
+      updateSummary();
+    });
+  });
+
+  updateSummary();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ exam_title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}All exams{% endblock %}
+{% block header_title %}{{ exam_title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/exam_record_levels_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+{% if selected_level %}
+<section class="exam-record-sheet exam-detail-sheet">
+  {% if students %}
+  <form method="post" class="exam-record-marks-form" data-exam-marks>
+    {% csrf_token %}
+    {% if selected_class %}<input type="hidden" name="class_id" value="{{ selected_class.id }}">{% endif %}
+    <header class="exam-record-bar exam-detail-bar">
+      <div class="exam-detail-bar-main">
+        <nav class="exam-detail-crumb" aria-label="Breadcrumb">
+          <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All exams</a>
+          <span aria-hidden="true">/</span>
+          <a href="{% url 'employees:exam_record_detail' exam.id %}">{{ exam_title }}</a>
+          <span aria-hidden="true">/</span>
+          <span class="is-uppercase">{{ selected_level.name }}</span>
+        </nav>
+        <div class="exam-record-bar-title">
+          <div>
+            <p class="exam-detail-kicker">Marks sheet · out of 100%</p>
+            <h2 class="is-uppercase">{{ selected_level.name }}</h2>
+          </div>
+          <div class="exam-detail-bar-chips">
+            <span class="student-count-chip is-quiet">
+              {{ students|length }} student{{ students|length|pluralize }}
+            </span>
+            <span class="student-count-chip is-quiet">
+              {{ subjects|length }} subject{{ subjects|length|pluralize }}
+            </span>
+            {% if selected_class %}
+            <span class="student-count-chip">{{ selected_class.name }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="exam-record-bar-tools">
+        {% if level_classes %}
+        <div class="exam-class-filter">
+          <label for="exam-class-filter">Class</label>
+          <select id="exam-class-filter" name="class_filter" onchange="window.location.href=this.value">
+            <option value="{% url 'employees:exam_record_level' exam.id selected_level.id %}">All classes</option>
+            {% for academic_class in level_classes %}
+            <option
+              value="{% url 'employees:exam_record_level' exam.id selected_level.id %}?class_id={{ academic_class.id }}"
+              {% if selected_class and selected_class.id == academic_class.id %}selected{% endif %}
+            >
+              {{ academic_class.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="exam-detail-actions">
+          <button type="button" class="ghost-button" data-exam-edit>Edit marks</button>
+          <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
+          <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="settings-table-panel exam-record-sheet-table">
+      <table class="settings-table settings-table-responsive exam-record-students-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Admission</th>
+            {% for subject in subjects %}
+            <th title="{{ subject.name }}">
+              <span class="exam-subject-code">{{ subject.code }}</span>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td data-label="Student">
+              <strong class="is-uppercase exam-student-name">
+                <span class="exam-student-first">{{ student.first_name }}</span>
+                <span class="exam-student-last">{{ student.last_name }}</span>
+              </strong>
+            </td>
+            <td data-label="Admission">
+              <span class="exam-admission">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</span>
+            </td>
+            {% for cell in student.mark_cells %}
+            <td data-label="{{ cell.subject.code }}">
+              <label class="sr-only" for="{{ cell.field_name }}">{{ cell.subject.name }} converted marks for {{ student.display_name }}, out of 100%</label>
+              <input
+                id="{{ cell.field_name }}"
+                class="exam-mark-input"
+                type="number"
+                name="{{ cell.field_name }}"
+                value="{% if cell.percent != None %}{{ cell.percent }}{% endif %}"
+                min="0"
+                max="100"
+                step="1"
+                inputmode="numeric"
+                placeholder="—"
+                readonly
+              >
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {% else %}
+  <header class="exam-record-bar exam-detail-bar">
+    <div class="exam-detail-bar-main">
+      <nav class="exam-detail-crumb" aria-label="Breadcrumb">
+        <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All exams</a>
+        <span aria-hidden="true">/</span>
+        <a href="{% url 'employees:exam_record_detail' exam.id %}">{{ exam_title }}</a>
+        <span aria-hidden="true">/</span>
+        <span class="is-uppercase">{{ selected_level.name }}</span>
+      </nav>
+      <div class="exam-record-bar-title">
+        <div>
+          <p class="exam-detail-kicker">Marks sheet</p>
+          <h2 class="is-uppercase">{{ selected_level.name }}</h2>
+        </div>
+        <span class="student-count-chip is-quiet">0 students{% if selected_class %} · {{ selected_class.name }}{% endif %}</span>
+      </div>
+    </div>
+    <div class="exam-record-bar-tools">
+      {% if level_classes %}
+      <form method="get" class="exam-class-filter">
+        <label for="exam-class-filter">Class</label>
+        <select id="exam-class-filter" name="class_id" onchange="this.form.submit()">
+          <option value="">All classes</option>
+          {% for academic_class in level_classes %}
+          <option value="{{ academic_class.id }}" {% if selected_class and selected_class.id == academic_class.id %}selected{% endif %}>
+            {{ academic_class.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="sr-only">Filter</button>
+      </form>
+      {% endif %}
+      <a class="ghost-button exam-detail-back" href="{% url 'employees:exam_record_detail' exam.id %}">Back to levels</a>
+    </div>
+  </header>
+  <div class="exam-record-sheet-empty exam-detail-empty">
+    <span class="exam-detail-empty-icon" aria-hidden="true">ST</span>
+    <strong>No students found</strong>
+    <p class="settings-empty">
+      {% if selected_class %}
+        No students are registered in {{ selected_class.name }} for this academic level.
+      {% else %}
+        No students are registered in {{ selected_level.name }}.
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+</section>
+{% else %}
+<div class="exam-detail-page">
+  <section class="exam-detail-hero" aria-label="Exam overview">
+    <div class="exam-detail-hero-copy">
+      <p class="exam-detail-kicker">Registered exam</p>
+      <h2 class="is-uppercase">{{ exam_title }}</h2>
+      <p>
+        {% if exam.academic_year %}{{ exam.academic_year.name }}{% else %}No year{% endif %}
+        ·
+        {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}No term{% endif %}
+        ·
+        {% if exam.start_date and exam.end_date %}
+          {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
+        {% else %}
+          Dates not set
+        {% endif %}
+      </p>
+    </div>
+    <div class="exam-detail-hero-aside">
+      <div class="exam-detail-stats" aria-label="Quick stats">
+        <div class="exam-detail-stat">
+          <strong>{{ academic_levels|length }}</strong>
+          <span>Level{{ academic_levels|length|pluralize }}</span>
+        </div>
+        <div class="exam-detail-stat">
+          <strong>{{ exam.sitting_count }}</strong>
+          <span>Sitting{{ exam.sitting_count|pluralize }}</span>
+        </div>
+      </div>
+      <a class="ghost-button exam-detail-back" href="{% url 'employees:it_support_exam_page' 'exam-records' %}">
+        Back to all exams
+      </a>
+    </div>
+  </section>
+
+  <section class="exam-detail-levels" aria-label="Academic levels">
+    <header class="exam-detail-levels-head">
+      <div>
+        <h3>Academic levels</h3>
+        <p>Open a level to review student marks for this exam.</p>
+      </div>
+      <span class="exam-detail-levels-count">{{ academic_levels|length }} level{{ academic_levels|length|pluralize }}</span>
+    </header>
+    {% if academic_levels %}
+    <ul class="exam-detail-level-list">
+      {% for level in academic_levels %}
+      <li>
+        <a class="exam-detail-level-row" href="{% url 'employees:exam_record_level' exam.id level.id %}">
+          <span class="exam-detail-level-main">
+            <strong class="is-uppercase">{{ level.name }}</strong>
+            <span>{{ level.code }}{% if level.category %} · {{ level.category }}{% endif %}</span>
+          </span>
+          <span class="exam-detail-level-go">Open marks</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="exam-detail-empty">
+      <strong>No levels on this exam</strong>
+      <p>Generate the timetable again with academic levels selected.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block workspace_scripts %}
+{% include "employees/includes/exam_record_edit_mode.html" %}
+{% endblock %}

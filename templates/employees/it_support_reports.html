@@ -1,0 +1,37 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Reports | Edu-Centric{% endblock %}
+{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_title %}Reports{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Reports overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">IT Support</p>
+      <h2>{{ module.title }}</h2>
+      <p>{{ module.copy }}</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ report_sections|length }}</strong>
+          <span>Areas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module-grid" aria-label="Report areas">
+    {% for section in report_sections %}
+    <a class="module-card" href="{% url 'employees:it_support_report_section' section.slug %}">
+      <span class="module-icon">{{ section.icon }}</span>
+      <h3>{{ section.title }}</h3>
+      <p>{{ section.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

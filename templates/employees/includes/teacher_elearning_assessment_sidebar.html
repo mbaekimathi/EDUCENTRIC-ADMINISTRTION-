@@ -1,0 +1,36 @@
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:teacher_elearning_page' 'assessments' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  All assessments
+</a>
+
+<a
+  class="workspace-nav-link {% if not selected_class %}is-active{% endif %}"
+  href="{{ teacher_elearning_assessment_home_url }}"
+  {% if not selected_class %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h10M4 19h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Select class
+</a>
+
+<p class="workspace-nav-label">Classes</p>
+{% for academic_class in assessment_classes %}
+<a
+  class="workspace-nav-link {% if selected_class and selected_class.id == academic_class.id %}is-active{% endif %}"
+  href="{% url 'employees:teacher_elearning_assessment_class' assessment.id academic_class.id %}"
+  {% if selected_class and selected_class.id == academic_class.id %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 19V9l7-4 7 4v10H5zm3-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
+  </span>
+  {{ academic_class.display_label }}
+</a>
+{% empty %}
+<p class="subtle workspace-nav-empty">No classes for your e-learning levels.</p>
+{% endfor %}

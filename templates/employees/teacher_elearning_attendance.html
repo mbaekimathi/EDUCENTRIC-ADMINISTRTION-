@@ -1,0 +1,63 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}E-learning attendance | Edu-Centric{% endblock %}
+{% block header_eyebrow %}E-learning{% endblock %}
+{% block header_title %}E-learning attendance{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_elearning_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="sa-hub-page">
+  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+  <section class="teacher-dash-hero" aria-label="E-learning attendance overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">E-learning workflow</p>
+      <h2>E-learning attendance</h2>
+      <p>Select an academic level, open a subject, then record the lesson plan, attendance, and outcome.</p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ subject_count }}</strong>
+        <span>Subject{{ subject_count|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ level_count }}</strong>
+        <span>Level{{ level_count|pluralize }}</span>
+      </div>
+    </div>
+  </section>
+
+  {% if level_groups %}
+  <div class="sa-hub-scroll">
+    {% for group in level_groups %}
+    <section class="sa-level-block" aria-label="{{ group.level.name }}">
+      <header class="sa-level-head">
+        <div>
+          <h3 class="is-uppercase">{{ group.level.name }}</h3>
+          <p class="subtle">{{ group.level.code }} · choose a subject to open attendance</p>
+        </div>
+        <span class="teacher-tt-badge">{{ group.subject_count }} subject{{ group.subject_count|pluralize }}</span>
+      </header>
+      <div class="sa-class-grid">
+        <a class="sa-class-card" href="{% url 'employees:teacher_elearning_attendance_level' group.level.id %}">
+          <span class="sa-class-mark" aria-hidden="true">{{ group.level.code|slice:":2" }}</span>
+          <span class="sa-class-copy">
+            <strong class="is-uppercase">{{ group.level.name }}</strong>
+            <span>{{ group.level.code }} · {{ group.subject_count }} subject{{ group.subject_count|pluralize }}</span>
+          </span>
+          <span class="sa-class-go">Open subjects →</span>
+        </a>
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No e-learning subjects allocated</strong>
+    <p class="settings-empty">Ask IT Support to assign your e-learning subjects, then return here to open them.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

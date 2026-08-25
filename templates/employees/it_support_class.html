@@ -1,0 +1,37 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Class management | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Learning management{% endblock %}
+{% block header_title %}Class management{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Class management overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Learning management</p>
+      <h2>{{ page.title }}</h2>
+      <p>{{ page.copy }}</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ class_pages|length }}</strong>
+          <span>Tools</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module-grid" aria-label="Class management tools">
+    {% for tool in class_pages %}
+    <a class="module-card" href="{% url 'employees:it_support_class_page' tool.slug %}">
+      <span class="module-icon">{{ tool.icon }}</span>
+      <h3>{{ tool.title }}</h3>
+      <p>{{ tool.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

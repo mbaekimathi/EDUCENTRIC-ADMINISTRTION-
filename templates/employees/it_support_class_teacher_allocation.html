@@ -1,0 +1,111 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Class management | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Learning management{% endblock %}
+{% block header_title %}Class management{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Class teacher allocation overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Learning management</p>
+      <h2>Allocate class teachers</h2>
+      <p>Assign one approved teacher as class teacher for each academic class.</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ level_groups|length }}</strong>
+          <span>Categor{{ level_groups|length|pluralize:"y,ies" }}</span>
+        </div>
+        <div class="exam-tool-stat">
+          <strong>{{ teachers|length }}</strong>
+          <span>Teacher{{ teachers|length|pluralize }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if not teachers %}
+  <p class="notice">No approved teachers are available yet. Register and approve employees with the teacher role to allocate class teachers.</p>
+  {% endif %}
+
+  {% if level_groups %}
+  <div class="exam-tool-scroll">
+    {% for group in level_groups %}
+    <section class="exam-tool-panel" aria-label="{{ group.category }}">
+      <header class="exam-tool-panel-head">
+        <div>
+          <h3 class="is-uppercase">{{ group.category }}</h3>
+          <p>Academic levels in this category</p>
+        </div>
+        <span class="exam-tool-panel-count">{{ group.levels|length }} level{{ group.levels|length|pluralize }}</span>
+      </header>
+
+      {% for level in group.levels %}
+      <article class="exam-tool-block" aria-label="{{ level.name }}">
+        <div class="exam-tool-block-head">
+          <div>
+            <h2 class="is-uppercase">{{ level.name }}</h2>
+            <p>{{ level.code }} · {{ level.allocation_classes|length }} class{{ level.allocation_classes|length|pluralize }}</p>
+          </div>
+        </div>
+
+        {% if not level.allocation_classes %}
+        <p class="exam-tool-note">Register classes for this level to allocate class teachers.</p>
+        {% else %}
+        <form method="post" class="allocation-form">
+          {% csrf_token %}
+          <input type="hidden" name="level_id" value="{{ level.id }}">
+          <div class="settings-table-panel">
+            <table class="settings-table allocation-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Code</th>
+                  <th>Class teacher</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cell in level.allocation_classes %}
+                <tr>
+                  <td data-label="Class"><strong class="is-uppercase">{{ cell.academic_class.name }}</strong></td>
+                  <td data-label="Code"><code class="is-uppercase">{{ cell.academic_class.code }}</code></td>
+                  <td data-label="Class teacher">
+                    <label class="sr-only" for="{{ cell.field_name }}">Class teacher for {{ cell.academic_class.name }}</label>
+                    <select id="{{ cell.field_name }}" name="{{ cell.field_name }}" {% if not teachers %}disabled{% endif %}>
+                      <option value="">Unassigned</option>
+                      {% for teacher in teachers %}
+                      <option value="{{ teacher.id }}" {% if cell.teacher_id == teacher.id %}selected{% endif %}>
+                        {{ teacher.first_name }} {{ teacher.last_name }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="allocation-actions">
+            <button type="submit" class="primary-button" {% if not teachers %}disabled{% endif %}>Save allocations</button>
+          </div>
+        </form>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="exam-tool-empty">
+    <span class="exam-tool-empty-icon" aria-hidden="true">CM</span>
+    <strong>No academic levels yet</strong>
+    <p>Register active academic levels before allocating class teachers.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

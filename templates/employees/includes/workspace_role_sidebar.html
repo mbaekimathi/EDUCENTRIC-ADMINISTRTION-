@@ -1,0 +1,16 @@
+{% if workspace_role == "IT_SUPPORT" %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% elif workspace_role == "TEACHER" %}
+{% include "employees/includes/teacher_sidebar.html" %}
+{% else %}
+<p class="workspace-nav-label">Modules</p>
+<a
+  class="workspace-nav-link"
+  href="{% url 'admissions:admit_student' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Admit student
+</a>
+{% endif %}

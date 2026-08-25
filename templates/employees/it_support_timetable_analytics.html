@@ -1,0 +1,173 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Timetable analytics | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Timetable management{% endblock %}
+{% block header_title %}Timetable analytics{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Timetable analytics overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Timetable management</p>
+      <h2>Timetable analytics</h2>
+      <p>Review learning period readiness, teacher coverage, and subject allocation across academic levels.</p>
+    </div>
+  </section>
+
+  <div class="analytics-page">
+  <section class="analytics-overview" aria-label="Analytics overview">
+    <a class="analytics-stat" href="#learning-period-allocations">
+      <span class="subtle">Learning period allocations</span>
+      <strong>{{ period_totals.class_period_slots }}</strong>
+      <span class="subtle">{{ period_totals.weekly_periods }} weekly periods · {{ period_totals.ready_profiles }} of {{ period_totals.profiles }} profile{{ period_totals.profiles|pluralize }} ready</span>
+    </a>
+    <a class="analytics-stat" href="#teacher-allocations">
+      <span class="subtle">Employee (teacher) allocations</span>
+      <strong>{{ teacher_totals.coverage }}%</strong>
+      <span class="analytics-meter{% if teacher_totals.coverage == 100 %} is-ok{% elif teacher_totals.coverage == 0 %} is-bad{% endif %}" aria-hidden="true"><span style="width: {{ teacher_totals.coverage }}%"></span></span>
+      <span class="subtle">{{ teacher_totals.assigned_teachers }} of {{ teacher_totals.teachers }} teacher{{ teacher_totals.teachers|pluralize }} assigned · {{ teacher_totals.allocations }} allocation{{ teacher_totals.allocations|pluralize }}</span>
+    </a>
+    <a class="analytics-stat" href="#subject-allocations">
+      <span class="subtle">Subject allocations</span>
+      <strong>{{ subject_totals.coverage }}%</strong>
+      <span class="analytics-meter{% if subject_totals.coverage == 100 %} is-ok{% elif subject_totals.unassigned %} is-warn{% endif %}" aria-hidden="true"><span style="width: {{ subject_totals.coverage }}%"></span></span>
+      <span class="subtle">{{ subject_totals.assigned }} / {{ subject_totals.expected }} class subjects · {{ subject_totals.unassigned }} unassigned</span>
+    </a>
+  </section>
+
+  <section class="analytics-section" id="learning-period-allocations">
+    <header class="settings-category-header">
+      <h3 class="settings-category-title">Learning period allocations</h3>
+      <span class="settings-category-count">{{ period_totals.class_period_slots }} class period{{ period_totals.class_period_slots|pluralize }}</span>
+    </header>
+    {% if period_profiles %}
+    <div class="analytics-profiles">
+      {% for item in period_profiles %}
+      <article class="analytics-card">
+        <header class="analytics-card-header">
+          <div>
+            <span class="schedule-profile-category is-uppercase">{{ item.profile.category }}</span>
+            <h3 class="is-uppercase">{{ item.profile.name }}</h3>
+            <p class="subtle">
+              {% for level in item.profile.academic_levels.all %}
+                {{ level.name }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </p>
+          </div>
+          <span class="status-pill {% if item.ready %}is-active{% else %}is-inactive{% endif %}">{% if item.ready %}Ready{% else %}Not ready{% endif %}</span>
+        </header>
+        <div class="analytics-metrics">
+          <div>
+            <span class="subtle">Periods / day</span>
+            <strong>{{ item.periods_per_day }}</strong>
+          </div>
+          <div>
+            <span class="subtle">Study days</span>
+            <strong>{{ item.study_days|length }}</strong>
+          </div>
+          <div>
+            <span class="subtle">Weekly periods</span>
+            <strong>{{ item.weekly_periods }}</strong>
+          </div>
+          <div>
+            <span class="subtle">Class slots</span>
+            <strong>{{ item.class_period_slots }}</strong>
+          </div>
+        </div>
+        {% if item.lessons %}
+        <ul class="analytics-pills">
+          {% for lesson in item.lessons %}
+          <li>{{ lesson.label }} {{ lesson.start_label }}–{{ lesson.end_label }}</li>
+          {% endfor %}
+        </ul>
+        {% elif not item.ready %}
+        <p class="settings-empty">This schedule profile is not ready to generate learning periods yet.</p>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="settings-empty">No learning timetable profiles are registered yet.</p>
+    {% endif %}
+  </section>
+
+  <div class="analytics-split">
+    <section class="analytics-section" id="teacher-allocations">
+      <header class="settings-category-header">
+        <h3 class="settings-category-title">Employee (teacher) allocations</h3>
+        <span class="settings-category-count">{{ teacher_totals.allocations }} allocation{{ teacher_totals.allocations|pluralize }}</span>
+      </header>
+      {% if teachers %}
+      <div class="analytics-list">
+        {% for teacher in teachers %}
+        <article class="analytics-row">
+          <div class="analytics-row-top">
+            <div class="settings-stack">
+              <strong>{{ teacher.first_name }} {{ teacher.last_name }}</strong>
+              <span class="subtle">{{ teacher.allocation_count }} allocation{{ teacher.allocation_count|pluralize }} · {{ teacher.allocated_class_count }} class{{ teacher.allocated_class_count|pluralize }} · {{ teacher.allocated_subject_count }} subject{{ teacher.allocated_subject_count|pluralize }}</span>
+            </div>
+            <span class="status-pill {% if teacher.allocation_count %}is-active{% else %}is-inactive{% endif %}">{% if teacher.allocation_count %}Assigned{% else %}Unassigned{% endif %}</span>
+          </div>
+          <span class="analytics-meter{% if teacher.allocation_count %} is-ok{% else %} is-bad{% endif %}" aria-hidden="true"><span style="width: {{ teacher.load_pct }}%"></span></span>
+          {% with assignments=teacher.subject_allocations.all %}
+          {% if assignments %}
+          <ul class="analytics-pills">
+            {% for assignment in assignments %}
+            <li>{{ assignment.academic_class.name }} · {{ assignment.learning_area.name }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% endwith %}
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="settings-empty">No approved teachers are available yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="analytics-section" id="subject-allocations">
+      <header class="settings-category-header">
+        <h3 class="settings-category-title">Subject allocations</h3>
+        <span class="settings-category-count">{{ subject_totals.assigned }} of {{ subject_totals.expected }} class subject{{ subject_totals.expected|pluralize }} assigned</span>
+      </header>
+      {% if subjects %}
+      <div class="analytics-list">
+        {% for row in subjects %}
+        <article class="analytics-row">
+          <div class="analytics-row-top">
+            <div class="settings-stack">
+              <strong class="is-uppercase">{{ row.subject.name }}</strong>
+              <span class="subtle"><code class="is-uppercase">{{ row.subject.code }}</code> · {{ row.assigned }} / {{ row.expected }} assigned · {{ row.teacher_count }} teacher{{ row.teacher_count|pluralize }}</span>
+            </div>
+            {% if row.status == "complete" %}
+            <span class="status-pill is-active">Complete</span>
+            {% elif row.status == "gaps" %}
+            <span class="status-pill is-warn">{{ row.unassigned }} gap{{ row.unassigned|pluralize }}</span>
+            {% elif row.status == "empty" %}
+            <span class="status-pill is-inactive">Unassigned</span>
+            {% else %}
+            <span class="status-pill">No classes</span>
+            {% endif %}
+          </div>
+          <span class="analytics-meter{% if row.status == 'complete' %} is-ok{% elif row.status == 'gaps' %} is-warn{% elif row.status == 'empty' %} is-bad{% endif %}" aria-hidden="true"><span style="width: {{ row.coverage }}%"></span></span>
+          {% if row.allocations %}
+          <ul class="analytics-pills">
+            {% for assignment in row.allocations %}
+            <li>{{ assignment.academic_class.name }} · {{ assignment.teacher.first_name }} {{ assignment.teacher.last_name }}</li>
+            {% endfor %}
+          </ul>
+          {% elif row.unassigned %}
+          <p class="subtle">No class allocations</p>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="settings-empty">No active subjects are registered yet.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

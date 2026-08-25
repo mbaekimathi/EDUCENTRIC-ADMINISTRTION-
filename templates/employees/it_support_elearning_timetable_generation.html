@@ -1,0 +1,117 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Generate e-learning timetable | Edu-Centric{% endblock %}
+{% block header_eyebrow %}E-learning management{% endblock %}
+{% block header_title %}Generate e-learning timetable{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/elearning_management_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="E-learning timetable generation overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">E-learning management</p>
+      <h2>Generate e-learning timetable</h2>
+      <p>Generate an e-learning timetable from subject allocations and the e-learning timetable settings for each academic level.</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ viable_count }}</strong>
+          <span>Viable</span>
+        </div>
+      </div>
+      <a class="ghost-button exam-tool-cta" href="{% url 'employees:elearning_timetable_settings' %}">
+        E-learning settings
+      </a>
+      <button type="button" class="primary-button exam-tool-cta" data-open-modal="elearning-timetable-generation">
+        Generate timetable
+      </button>
+    </div>
+  </section>
+
+  {% include "employees/includes/elearning_generated_timetable.html" %}
+</div>
+
+<div
+  class="app-modal{% if open_generate_modal %} is-open{% endif %}"
+  id="elearning-timetable-generation-modal"
+  data-modal="elearning-timetable-generation"
+  {% if not open_generate_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="elearning-timetable-generation-title">
+    <div class="app-modal-header">
+      <h2 id="elearning-timetable-generation-title">Generate e-learning timetable</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" novalidate>
+      {% csrf_token %}
+      <p class="subtle">Select academic levels with a green background. Those levels have every active subject allocated to an active teacher, and they use the matching e-learning timetable settings for days, sessions, and breaks.</p>
+
+      {% if level_groups %}
+      <div class="generation-level-list">
+        {% for group in level_groups %}
+        <section class="generation-level-group" aria-label="{{ group.category }}">
+          <h3 class="settings-category-title is-uppercase">{{ group.category }}</h3>
+          {% for level in group.levels %}
+          <label class="generation-level {% if level.is_viable %}is-viable{% else %}is-blocked{% endif %}">
+            <input
+              type="checkbox"
+              name="level_id"
+              value="{{ level.id }}"
+              {% if not level.is_viable %}disabled{% endif %}
+            >
+            <span>
+              <strong class="is-uppercase">{{ level.name }}</strong>
+              <span class="subtle">{{ level.code }} · {{ level.generation_subjects|length }} subject{{ level.generation_subjects|length|pluralize }}{% if level.schedule_profile %} · {{ level.schedule_slots|length }} slot{{ level.schedule_slots|length|pluralize }}{% endif %}</span>
+              <span class="generation-level-reason">{{ level.viability_reason }}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </section>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="settings-empty">No active academic levels are registered yet.</p>
+      {% endif %}
+
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button" {% if not viable_count %}disabled{% endif %}>Generate</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector('[data-modal="elearning-timetable-generation"]');
+  if (!modal) return;
+  const openers = document.querySelectorAll('[data-open-modal="elearning-timetable-generation"]');
+  const closers = modal.querySelectorAll("[data-modal-close]");
+
+  function setOpen(open) {
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+  }
+
+  openers.forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Curriculum settings | Edu-Centric{% endblock %}
+{% block header_title %}Curriculum settings{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/curriculum_settings_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Curriculum settings overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">System settings</p>
+      <h2>Curriculum structure</h2>
+      <p>Configure academic levels and learning areas used across admissions and reporting.</p>
+    </div>
+  </section>
+
+<section class="module-grid" aria-label="Curriculum settings">
+  <a class="module-card" href="{% url 'employees:academic_levels_settings' %}">
+    <span class="module-icon">AL</span>
+    <h3>Academic levels</h3>
+    <p>Register and manage levels such as Grade 1, Form 1, or Year groups.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:learning_areas_settings' %}">
+    <span class="module-icon">LA</span>
+    <h3>Learning areas</h3>
+    <p>Define subjects and learning areas linked to one or more academic levels.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:learning_timetable_settings' %}">
+    <span class="module-icon">LT</span>
+    <h3>Learning timetable settings</h3>
+    <p>Configure sessions and structure used for regular learning timetables.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:elearning_timetable_settings' %}">
+    <span class="module-icon">ET</span>
+    <h3>E-learning timetable settings</h3>
+    <p>Configure sessions and structure used for e-learning timetables.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:exam_settings' %}">
+    <span class="module-icon">ES</span>
+    <h3>Exam settings</h3>
+    <p>Set subject marks, combined subjects, timetable sessions, and grading.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+</section>
+</div>
+{% endblock %}

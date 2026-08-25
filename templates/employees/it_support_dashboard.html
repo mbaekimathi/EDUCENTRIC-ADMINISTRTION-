@@ -1,0 +1,39 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}IT Support workspace | Edu-Centric{% endblock %}
+{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="IT Support overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">IT Support</p>
+      <h2>School operations</h2>
+      <p>Open a module from the sidebar or the list below to continue school operations.</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ it_support_modules|length }}</strong>
+          <span>Module{{ it_support_modules|length|pluralize }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module-grid" aria-label="IT Support modules">
+    {% for module in it_support_modules %}
+    <a class="module-card" href="{% url 'employees:it_support_module' module.slug %}">
+      <span class="module-icon">{{ module.icon }}</span>
+      <h3>{{ module.title }}</h3>
+      <p>{{ module.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

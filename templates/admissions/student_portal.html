@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Student portal | Edu-Centric{% endblock %}
+{% block content %}
+<main class="app-shell">
+  {% url 'admissions:student_portal' as portal_url %}
+  {% url 'admissions:portal_logout' as logout_url %}
+  {% include "partials/app_header.html" with brand_href=portal_url user_label=student.display_name action_href=logout_url action_label="Sign out" only %}
+
+  <div class="page-wrap">
+    <section class="hero-panel">
+      <div class="hero-panel-top">
+        <div class="hero-identity">
+          <div class="avatar" aria-hidden="true">{{ student.first_name|default:"S"|slice:":1"|upper }}</div>
+          <div class="hero-copy">
+            <span class="eyebrow">Student portal</span>
+            <h1>Welcome, {{ student.first_name }}.</h1>
+            <p>Your academic workspace is ready. Classes, attendance, results, and learning materials appear here.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="module-grid" aria-label="Student modules">
+      <div class="module-card is-static">
+        <span class="module-icon">CL</span>
+        <h3>My classes</h3>
+        <p>Timetable and classroom updates will show in this module.</p>
+        <span class="module-meta">Coming soon</span>
+      </div>
+      <div class="module-card is-static">
+        <span class="module-icon">AT</span>
+        <h3>Attendance</h3>
+        <p>Track your daily attendance and absence history.</p>
+        <span class="module-meta">Coming soon</span>
+      </div>
+      <div class="module-card is-static">
+        <span class="module-icon">RS</span>
+        <h3>Results</h3>
+        <p>Assessment scores and report cards will live here.</p>
+        <span class="module-meta">Coming soon</span>
+      </div>
+    </section>
+
+    <section class="hero-panel portal-materials-panel" aria-label="E-learning materials">
+      <div class="form-page-heading">
+        <span class="eyebrow">E-learning</span>
+        <h2>Learning materials</h2>
+        <p class="subtle">Portal-ready files from your teachers — download quickly in PDF, MP4, PPTX, MP3, or SCORM zip.</p>
+      </div>
+      {% if learning_materials %}
+      <div class="portal-materials-list">
+        {% for item in learning_materials %}
+        <article class="portal-material-card">
+          <div class="portal-material-cover" aria-hidden="true">
+            {% if item.cover_image %}
+            <img src="{{ item.cover_image.url }}" alt="">
+            {% else %}
+            <span>{{ item.file_extension|default:"LM"|cut:"."|upper }}</span>
+            {% endif %}
+          </div>
+          <div class="portal-material-body">
+            <p class="portal-material-meta">
+              {{ item.allocation.learning_area.code }} · {{ item.category }} · {{ item.get_content_format_display }}
+            </p>
+            <h3>{{ item.name }}</h3>
+            {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+            <p class="subtle">{{ item.human_file_size }}{% if item.file_extension %} · {{ item.file_extension|upper }}{% endif %}</p>
+            <div class="portal-material-actions">
+              <a class="ghost-button" href="{% url 'admissions:student_portal_material_view' item.id %}" target="_blank" rel="noopener">View</a>
+              <a class="primary-button" href="{% url 'admissions:student_portal_material_download' item.id %}">Download</a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="subtle">No published e-learning materials for your level yet.</p>
+      {% endif %}
+    </section>
+  </div>
+</main>
+{% endblock %}

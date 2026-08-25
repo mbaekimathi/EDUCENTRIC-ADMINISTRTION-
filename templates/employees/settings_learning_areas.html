@@ -1,0 +1,288 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Learning areas | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Curriculum settings{% endblock %}
+{% block header_title %}Learning areas{% endblock %}
+
+{% block sidebar_modules %}
+<p class="workspace-nav-label">Learning areas</p>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="register-learning-area"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Register learning area
+</button>
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="settings-toolbar">
+  <div class="settings-toolbar-copy">
+    <h2>Registered learning areas</h2>
+    <p class="subtle">Create subjects and areas linked to one or more academic levels.</p>
+  </div>
+  <div class="settings-toolbar-actions">
+    <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-learning-area">
+      Register learning area
+    </button>
+  </div>
+</div>
+
+{% if area_groups %}
+<div class="settings-category-list">
+  {% for group in area_groups %}
+  <section class="settings-category" aria-label="{{ group.category }}">
+    <header class="settings-category-header">
+      <h3 class="settings-category-title is-uppercase">{{ group.category }}</h3>
+      <span class="settings-category-count">{{ group.areas|length }} area{{ group.areas|length|pluralize }}</span>
+    </header>
+    <div class="settings-table-panel">
+      <table class="settings-table settings-table-responsive">
+        <thead>
+          <tr>
+            <th>Academic levels</th>
+            <th>Learning area</th>
+            <th>Code</th>
+            <th>Display order</th>
+            <th>Status</th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for area in group.areas %}
+          <tr>
+            <td class="is-uppercase" data-label="Academic levels">
+              {% for level in area.academic_levels.all %}
+                <code class="is-uppercase">{{ level.code }}</code>{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                —
+              {% endfor %}
+            </td>
+            <td data-label="Learning area">
+              <div class="settings-stack">
+                <strong class="is-uppercase">{{ area.name }}</strong>
+                <span class="subtle">{{ area.description|default:"No description" }}</span>
+              </div>
+            </td>
+            <td data-label="Code"><code class="is-uppercase">{{ area.code }}</code></td>
+            <td data-label="Display order">{{ area.display_order }}</td>
+            <td data-label="Status">
+              <span class="status-pill is-uppercase {% if area.status == 'ACTIVE' %}is-active{% else %}is-inactive{% endif %}">
+                {{ area.get_status_display }}
+              </span>
+            </td>
+            <td data-label="Actions">
+              <div class="record-actions">
+                <button
+                  type="button"
+                  class="record-action"
+                  data-edit-area
+                  data-name="{{ area.name }}"
+                  data-code="{{ area.code }}"
+                  data-description="{{ area.description }}"
+                  data-status="{{ area.status }}"
+                  data-level-ids="{% for level in area.academic_levels.all %}{{ level.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                  data-update-url="{% url 'employees:update_learning_area' area.id %}"
+                >Edit</button>
+                <form method="post" action="{% url 'employees:toggle_learning_area_status' area.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="record-action">
+                    {% if area.status == 'ACTIVE' %}Suspend{% else %}Unsuspend{% endif %}
+                  </button>
+                </form>
+                <form method="post" action="{% url 'employees:delete_learning_area' area.id %}" onsubmit="return confirm('Delete {{ area.name|escapejs }}? This cannot be undone.');">
+                  {% csrf_token %}
+                  <button type="submit" class="record-action is-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">No learning areas yet. Use <strong>Register learning area</strong> to add one.</p>
+{% endif %}
+
+<div
+  class="app-modal{% if open_register_modal %} is-open{% endif %}"
+  id="register-learning-area-modal"
+  data-modal="register-learning-area"
+  {% if not open_register_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="register-learning-area-title"
+  >
+    <div class="app-modal-header">
+      <h2 id="register-learning-area-title">Register learning area</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+      <div class="field">
+        <label for="{{ form.academic_levels.id_for_label }}">Academic levels <span class="required">*</span></label>
+        <div class="checkbox-grid is-uppercase">{{ form.academic_levels }}</div>
+        {% if form.academic_levels.help_text %}<small class="field-hint">{{ form.academic_levels.help_text }}</small>{% endif %}
+        {% for error in form.academic_levels.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.name.id_for_label }}">Learning area name <span class="required">*</span></label>
+        {{ form.name }}
+        {% for error in form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.code.id_for_label }}">Code <span class="required">*</span></label>
+        {{ form.code }}
+        {% for error in form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.description.id_for_label }}">Description</label>
+        {{ form.description }}
+        {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.status.id_for_label }}">Status <span class="required">*</span></label>
+        {{ form.status }}
+        {% for error in form.status.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">Save learning area</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="app-modal" id="edit-learning-area-modal" data-edit-area-modal hidden>
+  <div class="app-modal-backdrop" data-edit-area-close></div>
+  <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-learning-area-title">
+    <div class="app-modal-header">
+      <h2 id="edit-learning-area-title">Edit learning area</h2>
+      <button type="button" class="app-modal-close" data-edit-area-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" data-edit-area-form>
+      {% csrf_token %}
+      <div class="field">
+        <span class="field-label">Academic levels <span class="required">*</span></span>
+        <div class="checkbox-grid is-uppercase" data-edit-area-levels>
+          {% for level in academic_levels %}
+            <label>
+              <input type="checkbox" name="academic_levels" value="{{ level.id }}">
+              <span>{{ level.name }} ({{ level.code }})</span>
+            </label>
+          {% empty %}
+            <p class="field-hint">Register an academic level first.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        <label for="edit-area-name">Learning area name <span class="required">*</span></label>
+        <input id="edit-area-name" class="uppercase-input" name="name" required>
+      </div>
+      <div class="field">
+        <label for="edit-area-code">Code <span class="required">*</span></label>
+        <input id="edit-area-code" class="uppercase-input" name="code" required>
+      </div>
+      <div class="field">
+        <label for="edit-area-description">Description</label>
+        <textarea id="edit-area-description" name="description" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label for="edit-area-status">Status <span class="required">*</span></label>
+        <select id="edit-area-status" class="uppercase-input" name="status" required>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-edit-area-close>Cancel</button>
+        <button type="submit" class="primary-button">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector('[data-modal="register-learning-area"]');
+  const openers = document.querySelectorAll('[data-open-modal="register-learning-area"]');
+  const closers = modal?.querySelectorAll("[data-modal-close]") || [];
+  const firstField = modal?.querySelector("input, select, textarea");
+
+  function setOpen(open) {
+    if (!modal) return;
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) firstField?.focus();
+  }
+
+  openers.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((el) => el.addEventListener("click", () => setOpen(false)));
+
+  const editModal = document.querySelector("[data-edit-area-modal]");
+  const editForm = document.querySelector("[data-edit-area-form]");
+  const editLevelChecks = editModal?.querySelectorAll('input[name="academic_levels"]') || [];
+  const editFields = {
+    name: document.querySelector("#edit-area-name"),
+    code: document.querySelector("#edit-area-code"),
+    description: document.querySelector("#edit-area-description"),
+    status: document.querySelector("#edit-area-status"),
+  };
+
+  function setEditOpen(open) {
+    if (!editModal) return;
+    editModal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) editFields.name?.focus();
+  }
+
+  document.querySelectorAll("[data-edit-area]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editForm.action = button.dataset.updateUrl;
+      Object.entries(editFields).forEach(([key, field]) => {
+        field.value = button.dataset[key] || "";
+      });
+      const selected = new Set((button.dataset.levelIds || "").split(",").filter(Boolean));
+      editLevelChecks.forEach((input) => {
+        input.checked = selected.has(input.value);
+      });
+      setEditOpen(true);
+    });
+  });
+  editModal?.querySelectorAll("[data-edit-area-close]").forEach((button) => {
+    button.addEventListener("click", () => setEditOpen(false));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (modal?.classList.contains("is-open")) setOpen(false);
+    if (editModal && !editModal.hidden) setEditOpen(false);
+  });
+
+  if (modal?.classList.contains("is-open")) setOpen(true);
+})();
+</script>
+{% endblock %}

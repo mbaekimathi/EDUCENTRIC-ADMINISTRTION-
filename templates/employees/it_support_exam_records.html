@@ -1,0 +1,312 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}All exams | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam management{% endblock %}
+{% block header_title %}All exams{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="sa-hub-page exam-hub-page all-exams-page">
+  <section class="all-exams-hero" aria-label="All exams overview">
+    <div class="all-exams-hero-copy">
+      <p class="all-exams-kicker">Exam management</p>
+      <h2>All exams</h2>
+      <p>Browse registered exams by academic year. Open one to review levels, sittings, and marks.</p>
+    </div>
+    <div class="all-exams-hero-aside">
+      <div class="all-exams-stats" aria-label="Quick stats">
+        <div class="all-exams-stat">
+          <strong>{{ exam_count }}</strong>
+          <span>Exam{{ exam_count|pluralize }}</span>
+        </div>
+        <div class="all-exams-stat">
+          <strong>{{ exam_groups|length }}</strong>
+          <span>Year{{ exam_groups|length|pluralize }}</span>
+        </div>
+      </div>
+      <a
+        class="primary-button all-exams-generate"
+        href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
+      >
+        Generate exam timetable
+      </a>
+    </div>
+  </section>
+
+  {% if exam_groups %}
+  <div class="sa-hub-scroll all-exams-scroll">
+    <p class="sr-only">Registered exams</p>
+    {% for group in exam_groups %}
+    <section class="all-exams-year" aria-label="{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}">
+      <header class="all-exams-year-head">
+        <div>
+          <h3 class="is-uppercase">{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}</h3>
+          <p>
+            {% if group.year %}
+              {{ group.year.start_date|date:"j M Y" }} – {{ group.year.end_date|date:"j M Y" }}
+            {% else %}
+              Exams without an academic year
+            {% endif %}
+          </p>
+        </div>
+        <span class="all-exams-year-count">{{ group.exams|length }} exam{{ group.exams|length|pluralize }}</span>
+      </header>
+
+      <div class="all-exams-list-shell">
+        <div class="all-exams-list-head" aria-hidden="true">
+          <span>Exam</span>
+          <span>Term</span>
+          <span>Dates</span>
+          <span>Sittings</span>
+          <span>Actions</span>
+        </div>
+        <ul class="all-exams-list">
+          {% for exam in group.exams %}
+          <li>
+            <div class="all-exams-row">
+              <a class="all-exams-col-exam" href="{% url 'employees:exam_record_detail' exam.id %}">
+                <strong class="is-uppercase">{{ exam.display_name }}</strong>
+                {% with levels=exam.academic_levels.all %}
+                {% if levels %}
+                <span class="all-exams-levels" aria-label="Academic levels">
+                  {% for level in levels %}
+                  <span class="all-exams-level-chip">{{ level.name }}</span>
+                  {% endfor %}
+                </span>
+                {% endif %}
+                {% endwith %}
+                <span class="all-exams-registered">Registered {{ exam.created_at|date:"j M Y" }}</span>
+              </a>
+              <span class="all-exams-col-term" data-label="Term">
+                {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}—{% endif %}
+              </span>
+              <span class="all-exams-col-dates" data-label="Dates">
+                {% if exam.start_date and exam.end_date %}
+                  {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+              <span class="all-exams-col-sittings" data-label="Sittings">
+                <span class="all-exams-sitting-pill">{{ exam.sitting_count }}</span>
+              </span>
+              <div class="all-exams-row-actions record-actions" data-label="Actions">
+                <a class="record-action" href="{% url 'employees:exam_record_detail' exam.id %}">Open</a>
+                <button
+                  type="button"
+                  class="record-action"
+                  data-edit-exam
+                  data-name="{{ exam.name }}"
+                  data-year-id="{{ exam.academic_year_id|default:'' }}"
+                  data-term-id="{{ exam.academic_term_id|default:'' }}"
+                  data-start-date="{% if exam.start_date %}{{ exam.start_date|date:'Y-m-d' }}{% endif %}"
+                  data-end-date="{% if exam.end_date %}{{ exam.end_date|date:'Y-m-d' }}{% endif %}"
+                  data-level-ids="{% for level in exam.academic_levels.all %}{{ level.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                  data-update-url="{% url 'employees:update_exam_record' exam.id %}"
+                >Edit</button>
+                <form
+                  method="post"
+                  action="{% url 'employees:delete_exam_record' exam.id %}"
+                  onsubmit="return confirm('Delete {{ exam.display_name|escapejs }}? This removes its timetable sittings and recorded marks and cannot be undone.');"
+                >
+                  {% csrf_token %}
+                  <button type="submit" class="record-action is-danger">Delete</button>
+                </form>
+              </div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="all-exams-empty">
+    <span class="all-exams-empty-icon" aria-hidden="true">EX</span>
+    <strong>No exams registered yet</strong>
+    <p>Generate an exam timetable to create the first registered exam.</p>
+    <a
+      class="primary-button"
+      href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
+    >
+      Generate exam timetable
+    </a>
+  </section>
+  {% endif %}
+</div>
+
+<div class="app-modal" id="edit-exam-modal" data-edit-exam-modal hidden>
+  <div class="app-modal-backdrop" data-edit-exam-close></div>
+  <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-exam-title">
+    <div class="app-modal-header">
+      <h2 id="edit-exam-title">Edit exam</h2>
+      <button type="button" class="app-modal-close" data-edit-exam-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" data-edit-exam-form>
+      {% csrf_token %}
+      <div class="field">
+        <label for="edit-exam-name">Exam name <span class="required">*</span></label>
+        <input
+          id="edit-exam-name"
+          class="uppercase-input"
+          name="exam_name"
+          maxlength="120"
+          required
+          autocomplete="off"
+        >
+      </div>
+      <div class="field">
+        <label for="edit-exam-year">Academic year <span class="required">*</span></label>
+        <select id="edit-exam-year" class="uppercase-input" name="academic_year_id" data-edit-exam-year required>
+          {% for year in academic_years %}
+          <option value="{{ year.id }}">
+            {{ year.name }}{% if year.is_current %} (CURRENT){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="edit-exam-term">Academic term <span class="required">*</span></label>
+        <select id="edit-exam-term" class="uppercase-input" name="academic_term_id" data-edit-exam-term required>
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="edit-exam-start">Start date <span class="required">*</span></label>
+          <input id="edit-exam-start" type="date" name="start_date" data-edit-exam-start required>
+        </div>
+        <div class="field">
+          <label for="edit-exam-end">End date <span class="required">*</span></label>
+          <input id="edit-exam-end" type="date" name="end_date" data-edit-exam-end required>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Academic levels <span class="required">*</span></span>
+        <div class="checkbox-grid is-uppercase" data-edit-exam-levels>
+          {% for level in academic_levels %}
+          <label>
+            <input type="checkbox" name="academic_levels" value="{{ level.id }}">
+            <span>{{ level.name }} ({{ level.code }})</span>
+          </label>
+          {% empty %}
+          <p class="field-hint">Register an academic level first.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-edit-exam-close>Cancel</button>
+        <button type="submit" class="primary-button">Save changes</button>
+      </div>
+    </form>
+    <script type="application/json" data-edit-exam-terms-by-year>{{ terms_by_year_json|safe }}</script>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector("[data-edit-exam-modal]");
+  const form = document.querySelector("[data-edit-exam-form]");
+  if (!modal || !form) return;
+
+  const yearSelect = form.querySelector("[data-edit-exam-year]");
+  const termSelect = form.querySelector("[data-edit-exam-term]");
+  const startInput = form.querySelector("[data-edit-exam-start]");
+  const endInput = form.querySelector("[data-edit-exam-end]");
+  const levelChecks = form.querySelectorAll('input[name="academic_levels"]');
+  const nameInput = form.querySelector('[name="exam_name"]');
+  let termsByYear = {};
+  try {
+    const termsNode = modal.querySelector("[data-edit-exam-terms-by-year]");
+    termsByYear = termsNode ? JSON.parse(termsNode.textContent || "{}") : {};
+  } catch (error) {
+    termsByYear = {};
+  }
+
+  function setOpen(open) {
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) nameInput?.focus();
+  }
+
+  function fillTerms(yearId, selectedTermId) {
+    const terms = termsByYear[String(yearId)] || [];
+    termSelect.innerHTML = "";
+    if (!terms.length) {
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "No terms registered";
+      termSelect.appendChild(empty);
+      return;
+    }
+    terms.forEach((term) => {
+      const option = document.createElement("option");
+      option.value = term.id;
+      option.textContent = term.label || term.name;
+      option.dataset.start = term.start || "";
+      option.dataset.end = term.end || "";
+      if (String(term.id) === String(selectedTermId || "")) {
+        option.selected = true;
+      }
+      termSelect.appendChild(option);
+    });
+    if (!termSelect.value && terms[0]) {
+      termSelect.value = String(terms[0].id);
+    }
+    constrainDates();
+  }
+
+  function constrainDates() {
+    const option = termSelect.selectedOptions[0];
+    const min = option?.dataset.start || "";
+    const max = option?.dataset.end || "";
+    if (startInput) {
+      startInput.min = min;
+      startInput.max = max;
+    }
+    if (endInput) {
+      endInput.min = min;
+      endInput.max = max;
+    }
+  }
+
+  yearSelect?.addEventListener("change", () => {
+    fillTerms(yearSelect.value, "");
+  });
+  termSelect?.addEventListener("change", constrainDates);
+
+  document.querySelectorAll("[data-edit-exam]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      form.action = button.getAttribute("data-update-url") || "";
+      nameInput.value = button.getAttribute("data-name") || "";
+      const yearId = button.getAttribute("data-year-id") || "";
+      const termId = button.getAttribute("data-term-id") || "";
+      if (yearId && yearSelect.querySelector(`option[value="${yearId}"]`)) {
+        yearSelect.value = yearId;
+      }
+      fillTerms(yearSelect.value, termId);
+      startInput.value = button.getAttribute("data-start-date") || "";
+      endInput.value = button.getAttribute("data-end-date") || "";
+      const selectedLevels = new Set(
+        (button.getAttribute("data-level-ids") || "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      );
+      levelChecks.forEach((input) => {
+        input.checked = selectedLevels.has(String(input.value));
+      });
+      setOpen(true);
+    });
+  });
+
+  modal.querySelectorAll("[data-edit-exam-close]").forEach((el) => {
+    el.addEventListener("click", () => setOpen(false));
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+<a
+  class="workspace-nav-link {% if active_teacher_exam_nav == 'analytics' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_exam_analytics' exam.id %}"
+  {% if active_teacher_exam_nav == 'analytics' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Exam analytics
+</a>
+
+<p class="workspace-nav-label">Classes</p>
+{% for academic_class in exam_classes %}
+<a
+  class="workspace-nav-link {% if selected_class and selected_class.id == academic_class.id %}is-active{% endif %}"
+  href="{% url 'employees:teacher_exam_record_class' exam.id academic_class.id %}"
+  {% if selected_class and selected_class.id == academic_class.id %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 19V9l7-4 7 4v10H5zm3-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
+  </span>
+  {{ academic_class.display_label }}
+</a>
+{% empty %}
+<p class="subtle workspace-nav-empty">No allocated classes for this exam.</p>
+{% endfor %}

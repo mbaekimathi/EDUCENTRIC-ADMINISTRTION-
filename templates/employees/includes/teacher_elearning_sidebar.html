@@ -1,0 +1,35 @@
+<p class="workspace-nav-label">E-learning</p>
+<a
+  class="workspace-nav-link {% if not active_elearning_tool %}is-active{% endif %}"
+  href="{% url 'employees:teacher_elearning' %}"
+  {% if not active_elearning_tool %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h10M4 19h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Overview
+</a>
+{% for tool in elearning_pages %}
+<a
+  class="workspace-nav-link {% if active_elearning_tool == tool.slug %}is-active{% endif %}"
+  href="{% url 'employees:teacher_elearning_page' tool.slug %}"
+  {% if active_elearning_tool == tool.slug %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">{{ tool.icon }}</span>
+  {{ tool.title }}
+</a>
+{% endfor %}
+
+<p class="workspace-nav-label">Reports</p>
+{% for tool in elearning_report_pages %}
+<a
+  class="workspace-nav-link {% if active_elearning_tool == tool.slug %}is-active{% endif %}"
+  href="{% url 'employees:teacher_elearning_page' tool.slug %}"
+  {% if active_elearning_tool == tool.slug %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">{{ tool.icon }}</span>
+  {{ tool.title }}
+</a>
+{% empty %}
+<p class="subtle workspace-nav-empty">No reports available.</p>
+{% endfor %}

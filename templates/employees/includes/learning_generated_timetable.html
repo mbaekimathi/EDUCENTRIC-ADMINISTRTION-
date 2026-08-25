@@ -1,0 +1,73 @@
+{% if timetable_groups %}
+<section class="generated-timetable-list exam-tool-scroll" aria-label="Generated class timetables">
+  {% for group in timetable_groups %}
+  <section class="exam-tool-panel" aria-label="{{ group.level.name }} timetables">
+    <header class="exam-tool-panel-head">
+      <div>
+        <h3 class="is-uppercase">{{ group.level.name }}</h3>
+        <p>Generated class sittings for this academic level</p>
+      </div>
+      <span class="exam-tool-panel-count">{{ group.classes|length }} class{{ group.classes|length|pluralize }}</span>
+    </header>
+    {% for grid in group.classes %}
+    <article class="exam-tool-block generated-timetable-card" aria-label="{{ grid.academic_class.name }}">
+      <header class="exam-tool-block-head">
+        <div>
+          <h3 class="is-uppercase">{{ grid.academic_class.name }}</h3>
+          <p>{{ grid.academic_class.code }} · {{ grid.lesson_count }} lesson{{ grid.lesson_count|pluralize }} placed</p>
+        </div>
+      </header>
+      <div class="schedule-timetable-wrap">
+        <table class="schedule-timetable generated-timetable">
+          <thead>
+            <tr>
+              <th>Day</th>
+              {% for period in grid.periods %}
+              <th>
+                <span>{{ period.name }}</span>
+                <span>{{ period.start_label }}–{{ period.end_label }}</span>
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in grid.rows %}
+            <tr>
+              <th scope="row">{{ row.day_label }}</th>
+              {% for cell in row.cells %}
+              {% if cell.lesson %}
+              <td{% if cell.is_collision %} class="is-collision" title="Teacher collision"{% endif %}>
+                <span class="tt-subject">{{ cell.lesson.learning_area.code }}</span>
+                <span class="tt-teacher">{{ cell.lesson.teacher.employment_number }}</span>
+                {% if manual_allocation %}
+                <button
+                  type="button"
+                  class="record-action"
+                  data-change-teacher
+                  data-lesson-id="{{ cell.lesson.id }}"
+                >
+                  Change allocation
+                </button>
+                {% endif %}
+              </td>
+              {% else %}
+              <td class="is-blank">Blank</td>
+              {% endif %}
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</section>
+{% else %}
+<section class="exam-tool-empty">
+  <span class="exam-tool-empty-icon" aria-hidden="true">TT</span>
+  <strong>No generated class timetables yet</strong>
+  <p>Generate a timetable to see class lessons here.</p>
+</section>
+{% endif %}

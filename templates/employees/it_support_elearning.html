@@ -1,0 +1,39 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}E-learning management | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Curriculum management{% endblock %}
+{% block header_title %}E-learning management{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/elearning_management_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="E-learning management overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Curriculum management</p>
+      <h2>{{ section.title }}</h2>
+      <p>{{ section.copy }}</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ elearning_pages|length }}</strong>
+          <span>Tools</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module-grid" aria-label="E-learning management tools">
+    {% for page in elearning_pages %}
+    <a class="module-card" href="{% url 'employees:it_support_elearning_page' page.slug %}">
+      <span class="module-icon">{{ page.icon }}</span>
+      <h3>{{ page.title }}</h3>
+      <p>{{ page.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

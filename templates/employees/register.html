@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Register employee | Edu-Centric{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block content %}
+<main class="auth-shell">
+  {% include "partials/brand_panel.html" with eyebrow="Employee onboarding" headline="Create your<br>employee account." copy="Submit your details. An administrator will approve access." trust="Admin approval required" %}
+
+  <section class="auth-panel">
+    <div class="auth-card auth-card-wide auth-card-elevated">
+      <div class="form-page-heading">
+        <span class="eyebrow">Register</span>
+        <h2>Sign up</h2>
+      </div>
+
+      <form method="post" class="registration-form" id="registration-form" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+        {{ form.phone_number }}
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="{{ form.title.id_for_label }}">Title <span class="req" aria-hidden="true">*</span></label>
+            {{ form.title }}
+            <small class="field-hint">Required — choose Mr., Mrs., Miss, Ms., Dr., or Prof.</small>
+            {% for error in form.title.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.employee_code.id_for_label }}">Employee code</label>
+            {{ form.employee_code }}
+            {% for error in form.employee_code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.first_name.id_for_label }}">First name</label>
+            {{ form.first_name }}
+            {% for error in form.first_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.last_name.id_for_label }}">Last name</label>
+            {{ form.last_name }}
+            {% for error in form.last_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field span-two">
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+            {% for error in form.email.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field span-two">
+            <label for="phone-national">Phone</label>
+            <div class="phone-input phone-input-unified" data-phone-widget>
+              <div class="phone-country" data-country-picker>
+                <select
+                  name="country_code"
+                  id="{{ form.country_code.id_for_label }}"
+                  class="visually-hidden"
+                  data-phone-country
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  {% for value, label in form.country_code.field.choices %}
+                    <option value="{{ value }}" {% if form.country_code.value == value or not form.country_code.value and value == "KE" %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <button type="button" class="phone-country-trigger" data-country-trigger aria-haspopup="listbox" aria-expanded="false" aria-label="Select country">
+                  <img
+                    class="phone-flag"
+                    data-phone-flag
+                    src="https://flagcdn.com/w40/ke.png"
+                    srcset="https://flagcdn.com/w80/ke.png 2x"
+                    width="28"
+                    height="20"
+                    alt=""
+                  >
+                  <span class="phone-country-caret" aria-hidden="true"></span>
+                </button>
+                <ul class="phone-country-menu" data-country-menu role="listbox" hidden>
+                  {% for country in phone_countries_json %}
+                    <li role="option" data-iso="{{ country.iso }}" {% if country.iso == "KE" %}aria-selected="true"{% endif %}>
+                      <img src="{{ country.flag_src }}" srcset="{{ country.flag_srcset }}" width="28" height="20" alt="">
+                      <span class="phone-option-name">{{ country.name }}</span>
+                      <span class="phone-option-dial">+{{ country.dial }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <span class="phone-dial" data-phone-dial>+254</span>
+              <input
+                type="tel"
+                id="phone-national"
+                name="phone_national"
+                class="phone-national"
+                inputmode="tel"
+                autocomplete="tel-national"
+                placeholder="7XX XXX XXX"
+                value="{{ request.POST.phone_national|default:'' }}"
+                data-phone-national
+              >
+            </div>
+            {% for error in form.phone_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.password1.id_for_label }}">Password</label>
+            <div class="password-input">
+              {{ form.password1 }}
+              <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9.3 3.1-11 7 1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.1 2.3 1.7 3.7l3.1 3.1C3 8.2 1.5 10 1 12c1.7 3.9 6 7 11 7 1.7 0 3.3-.3 4.8-.9l3.1 3.1 1.4-1.4L3.1 2.3zM12 17c-3.9 0-7.2-2.2-8.8-5 .7-1.3 1.8-2.5 3.1-3.4l1.7 1.7A5 5 0 0 0 12 17zm0-10c3.9 0 7.2 2.2 8.8 5-.5.9-1.1 1.7-1.9 2.4l1.5 1.5c1.2-1 2.2-2.3 2.6-3.9-1.7-3.9-6-7-11-7-1.1 0-2.1.1-3.1.4l1.6 1.6c.5-.1 1-.1 1.5-.1z"/></svg>
+              </button>
+            </div>
+            {% for error in form.password1.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.password2.id_for_label }}">Confirm</label>
+            <div class="password-input">
+              {{ form.password2 }}
+              <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9.3 3.1-11 7 1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.1 2.3 1.7 3.7l3.1 3.1C3 8.2 1.5 10 1 12c1.7 3.9 6 7 11 7 1.7 0 3.3-.3 4.8-.9l3.1 3.1 1.4-1.4L3.1 2.3zM12 17c-3.9 0-7.2-2.2-8.8-5 .7-1.3 1.8-2.5 3.1-3.4l1.7 1.7A5 5 0 0 0 12 17zm0-10c3.9 0 7.2 2.2 8.8 5-.5.9-1.1 1.7-1.9 2.4l1.5 1.5c1.2-1 2.2-2.3 2.6-3.9-1.7-3.9-6-7-11-7-1.1 0-2.1.1-3.1.4l1.6 1.6c.5-.1 1-.1 1.5-.1z"/></svg>
+              </button>
+            </div>
+            {% for error in form.password2.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+        </div>
+
+        <button class="primary-button" type="submit">Create account <span aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="helper">Already registered? <a href="{% url 'employees:login' %}">Sign in</a></p>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block page_scripts %}
+{{ phone_countries_json|json_script:"phone-countries-data" }}
+<script>
+(function () {
+  const countries = JSON.parse(document.getElementById("phone-countries-data").textContent);
+  const byIso = Object.fromEntries(countries.map((item) => [item.iso, item]));
+  const widget = document.querySelector("[data-phone-widget]");
+  if (!widget) return;
+
+  const countrySelect = widget.querySelector("[data-phone-country]");
+  const nationalInput = widget.querySelector("[data-phone-national]");
+  const dialLabel = widget.querySelector("[data-phone-dial]");
+  const flagImage = widget.querySelector("[data-phone-flag]");
+  const picker = widget.querySelector("[data-country-picker]");
+  const trigger = widget.querySelector("[data-country-trigger]");
+  const menu = widget.querySelector("[data-country-menu]");
+  const hiddenPhone = document.getElementById("id_phone_number");
+
+  function digitsOnly(value) {
+    return String(value || "").replace(/\D/g, "");
+  }
+
+  function currentCountry() {
+    return byIso[countrySelect.value] || byIso.KE;
+  }
+
+  function formatNational(digits, country) {
+    const clean = digits.slice(0, country.nsn);
+    if (clean.length <= 3) return clean;
+    if (clean.length <= 6) return `${clean.slice(0, 3)} ${clean.slice(3)}`;
+    return `${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6)}`;
+  }
+
+  function setMenuOpen(open) {
+    menu.hidden = !open;
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    picker.classList.toggle("is-open", open);
+  }
+
+  function selectCountry(iso) {
+    countrySelect.value = (byIso[iso] || byIso.KE).iso;
+    setMenuOpen(false);
+    syncPhone();
+  }
+
+  function syncPhone() {
+    const country = currentCountry();
+    let digits = digitsOnly(nationalInput.value);
+    if (digits.startsWith(country.dial)) digits = digits.slice(country.dial.length);
+    while (digits.startsWith("0")) digits = digits.slice(1);
+    digits = digits.slice(0, country.nsn);
+
+    nationalInput.value = formatNational(digits, country);
+    nationalInput.placeholder = country.placeholder;
+    dialLabel.textContent = `+${country.dial}`;
+    flagImage.src = country.flag_src;
+    flagImage.srcset = country.flag_srcset;
+    flagImage.alt = `${country.name} flag`;
+    menu.querySelectorAll("[data-iso]").forEach((item) => {
+      item.setAttribute("aria-selected", item.dataset.iso === country.iso ? "true" : "false");
+    });
+    if (hiddenPhone) {
+      hiddenPhone.value = digits.length === country.nsn ? `+${country.dial}${digits}` : "";
+    }
+  }
+
+  trigger.addEventListener("click", () => setMenuOpen(menu.hidden));
+  menu.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-iso]");
+    if (option) selectCountry(option.dataset.iso);
+  });
+  document.addEventListener("click", (event) => {
+    if (!picker.contains(event.target)) setMenuOpen(false);
+  });
+  nationalInput.addEventListener("input", syncPhone);
+  document.getElementById("registration-form").addEventListener("submit", syncPhone);
+  setMenuOpen(false);
+  syncPhone();
+})();
+</script>
+{% endblock %}

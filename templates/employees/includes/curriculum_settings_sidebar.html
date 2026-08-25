@@ -1,0 +1,48 @@
+<p class="workspace-nav-label">Curriculum</p>
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:academic_levels_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </span>
+  Academic levels
+</a>
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:learning_areas_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4V5zm16 0h-7a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h8V5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  Learning areas
+</a>
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:learning_timetable_settings' %}"
+  {% if learning_timetable_active %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM8 13h3M13 13h3M8 17h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Learning timetable settings
+</a>
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:elearning_timetable_settings' %}"
+  {% if elearning_timetable_active %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16v4H4V5zm0 7h7v7H4v-7zm10 0h6v7h-6v-7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  E-learning timetable settings
+</a>
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:exam_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M8 4h8v4H8V4zm-3 6h14v12H5V10zm4 3h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Exam settings
+</a>

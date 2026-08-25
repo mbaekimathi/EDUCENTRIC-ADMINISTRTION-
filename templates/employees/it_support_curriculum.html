@@ -1,0 +1,37 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Curriculum management | Edu-Centric{% endblock %}
+{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_title %}Curriculum management{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Curriculum management overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">IT Support</p>
+      <h2>{{ module.title }}</h2>
+      <p>{{ module.copy }}</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ curriculum_sections|length }}</strong>
+          <span>Areas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module-grid" aria-label="Curriculum management tools">
+    {% for section in curriculum_sections %}
+    <a class="module-card" href="{% url 'employees:it_support_curriculum_section' section.slug %}">
+      <span class="module-icon">{{ section.icon }}</span>
+      <h3>{{ section.title }}</h3>
+      <p>{{ section.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

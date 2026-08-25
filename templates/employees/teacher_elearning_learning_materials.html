@@ -1,0 +1,233 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}E-learning{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_elearning_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page learning-materials-page" data-learning-materials-page>
+  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+  <section class="exam-tool-hero learning-materials-hero" aria-label="Learning materials overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">E-learning</p>
+      <h2>{{ page.title }}</h2>
+      <p>Share portal-ready notes, slides, video, audio, and quizzes with students and parents.</p>
+    </div>
+    <div class="learning-materials-hero-actions">
+      {% if allocations %}
+      <button type="button" class="primary-button exam-tool-cta" data-open-modal="learning-material-upload">
+        Upload learning material
+      </button>
+      {% endif %}
+      <span class="exam-tool-panel-count">{{ materials|length }} uploaded</span>
+    </div>
+  </section>
+
+  <section class="exam-tool-panel learning-materials-library" aria-label="Uploaded learning materials">
+    <header class="exam-tool-panel-head">
+      <div>
+        <h3>Library</h3>
+        <p>Files stay in web-friendly formats for fast portal download.</p>
+      </div>
+      {% if allocations %}
+      <button type="button" class="ghost-button" data-open-modal="learning-material-upload">Upload</button>
+      {% endif %}
+    </header>
+
+    {% if materials %}
+    <div class="learning-material-list">
+      {% for item in materials %}
+      <article class="learning-material-card">
+        <div class="learning-material-cover" aria-hidden="true">
+          {% if item.cover_image %}
+          <img src="{{ item.cover_image.url }}" alt="">
+          {% else %}
+          <span>{{ item.file_extension|default:"LM"|cut:"."|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="learning-material-body">
+          <div class="learning-material-meta">
+            <span class="student-count-chip is-quiet">{{ item.category }}</span>
+            <span class="student-count-chip">{{ item.file_extension|default:""|cut:"."|upper|default:"FILE" }}</span>
+          </div>
+          <h4>{{ item.name }}</h4>
+          <p class="subtle">
+            {{ item.allocation.academic_level.code }} · {{ item.allocation.learning_area.code }}
+            · {{ item.human_file_size }}
+          </p>
+          {% if item.description %}<p class="learning-material-desc">{{ item.description }}</p>{% endif %}
+          <div class="learning-material-card-actions">
+            <a class="ghost-button" href="{% url 'employees:teacher_elearning_material_view' item.id %}" target="_blank" rel="noopener">View</a>
+            <a class="ghost-button" href="{% url 'employees:teacher_elearning_material_download' item.id %}">Download</a>
+            <form method="post" class="learning-material-delete-form" onsubmit="return confirm('Remove this learning material?');">
+              {% csrf_token %}
+              <input type="hidden" name="form_action" value="delete">
+              <input type="hidden" name="material_id" value="{{ item.id }}">
+              <button type="submit" class="ghost-button is-danger">Remove</button>
+            </form>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="exam-tool-empty">
+      <span class="exam-tool-empty-icon" aria-hidden="true">LM</span>
+      <strong>No materials yet</strong>
+      <p>{% if allocations %}Click <em>Upload learning material</em> to add your first file.{% else %}Ask IT Support to allocate you an e-learning subject first.{% endif %}</p>
+      {% if allocations %}
+      <button type="button" class="primary-button" data-open-modal="learning-material-upload">Upload learning material</button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+{% if allocations %}
+<div
+  class="app-modal{% if open_upload_modal %} is-open{% endif %}"
+  id="learning-material-upload-modal"
+  data-modal="learning-material-upload"
+  {% if not open_upload_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog learning-material-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="learning-material-upload-title"
+  >
+    <div class="app-modal-header">
+      <div>
+        <h2 id="learning-material-upload-title">Upload learning material</h2>
+        <p class="subtle learning-material-dialog-sub">Keep files portal-ready for quick download.</p>
+      </div>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="app-modal-form learning-material-form" novalidate data-learning-material-form>
+      {% csrf_token %}
+      <input type="hidden" name="form_action" value="upload">
+      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+      <div class="learning-material-simple-grid">
+        <div class="field">
+          <label for="{{ form.allocation.id_for_label }}">Subject</label>
+          {{ form.allocation }}
+          {% for error in form.allocation.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.content_format.id_for_label }}">Format</label>
+          {{ form.content_format }}
+          {% for error in form.content_format.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          <div class="learning-format-chips" aria-label="Accepted formats">
+            {% for label, fmt in format_guide %}
+            <span>{{ fmt }} · {{ label }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="{{ form.category.id_for_label }}">Category</label>
+          {{ form.category }}
+          <datalist id="material-category-suggestions">
+            {% for category in material_categories %}
+            <option value="{{ category }}"></option>
+            {% endfor %}
+            <option value="Week 1"></option>
+            <option value="Revision"></option>
+            <option value="Term notes"></option>
+            <option value="Homework"></option>
+          </datalist>
+          {% for error in form.category.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.name.id_for_label }}">Name</label>
+          {{ form.name }}
+          {% for error in form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+
+        <div class="field learning-material-span">
+          <label for="{{ form.description.id_for_label }}">Description</label>
+          {{ form.description }}
+          {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.cover_image.id_for_label }}">Cover image</label>
+          {{ form.cover_image }}
+          {% for error in form.cover_image.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.material_file.id_for_label }}">File</label>
+          {{ form.material_file }}
+          {% for error in form.material_file.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+      </div>
+
+      <div class="app-modal-actions learning-material-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">Upload</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(() => {
+  const modal = document.querySelector('[data-modal="learning-material-upload"]');
+  const form = document.querySelector("[data-learning-material-form]");
+  const openers = document.querySelectorAll('[data-open-modal="learning-material-upload"]');
+  const closers = modal ? modal.querySelectorAll("[data-modal-close]") : [];
+
+  function setOpen(open) {
+    if (!modal) return;
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) {
+      const focusTarget = modal.querySelector("select, input, textarea, button");
+      focusTarget?.focus();
+    }
+  }
+
+  openers.forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+
+  if (!form) return;
+  const formatField = form.querySelector("#id_content_format");
+  const fileField = form.querySelector("#id_material_file");
+  const accepts = {
+    NOTES: ".pdf",
+    LECTURE_VIDEO: ".mp4",
+    SLIDES: ".pdf,.pptx",
+    QUIZ_SCORM: ".zip",
+    AUDIO: ".mp3",
+  };
+  const syncAccept = () => {
+    if (!formatField || !fileField) return;
+    fileField.setAttribute("accept", accepts[formatField.value] || ".pdf,.mp4,.pptx,.zip,.mp3");
+  };
+  formatField?.addEventListener("change", syncAccept);
+  syncAccept();
+})();
+</script>
+{% endblock %}

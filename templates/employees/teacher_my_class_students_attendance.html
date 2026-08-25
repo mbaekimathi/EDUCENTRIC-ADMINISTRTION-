@@ -1,0 +1,260 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}My class{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_my_class_attendance_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="sa-hub-page class-attendance-page">
+  <section class="teacher-dash-hero" aria-label="{{ page.title }} overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">Class teacher · {{ selected_class.display_label }}</p>
+      <h2>{{ page.title }}</h2>
+      <p>Pick one day from the calendar, then mark morning, afternoon, and evening attendance.</p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ students|length }}</strong>
+        <span>Student{{ students|length|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ present_morning }}</strong>
+        <span>Morning</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ present_afternoon }}</strong>
+        <span>Afternoon</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ present_evening }}</strong>
+        <span>Evening</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="class-attendance-day-filter" aria-label="Filter attendance by day">
+    <div class="class-attendance-day-copy">
+      <p class="class-attendance-day-label">Attendance day</p>
+      <strong class="class-attendance-day-title">{{ attendance_date|date:"l, j F Y" }}</strong>
+      <p class="subtle">Showing attendance for this single day only. Choose another date from the calendar to switch days.</p>
+    </div>
+    <div class="class-attendance-day-controls">
+      {% if led_classes|length > 1 %}
+      <label class="attendance-control">
+        <span>Class</span>
+        <select data-attendance-class aria-label="Select class">
+          {% for academic_class in led_classes %}
+          <option value="{{ academic_class.id }}" {% if academic_class.id == selected_class.id %}selected{% endif %}>
+            {{ academic_class.display_label }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="attendance-control class-attendance-calendar-control">
+        <span>Select date</span>
+        <input
+          type="date"
+          value="{{ attendance_date|date:'Y-m-d' }}"
+          required
+          data-attendance-date
+          aria-label="Select attendance date from calendar"
+        >
+      </label>
+      <div class="class-attendance-day-actions">
+        <button type="button" class="ghost-button" data-day-step="-1" aria-label="Previous day">← Day</button>
+        <button type="button" class="ghost-button" data-day-today>Today</button>
+        <button type="button" class="ghost-button" data-day-step="1" aria-label="Next day">Day →</button>
+        <button type="button" class="primary-button" data-open-calendar>Open calendar</button>
+      </div>
+    </div>
+  </section>
+
+  <form method="post" class="class-attendance-form" data-class-attendance-form>
+    {% csrf_token %}
+    <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-attendance-class-id>
+    <input type="hidden" name="attendance_date" value="{{ attendance_date|date:'Y-m-d' }}" data-attendance-date-value>
+
+    <label class="attendance-control is-wide attendance-notes-control">
+      <span>Notes for {{ attendance_date|date:"j M Y" }}</span>
+      <input type="text" name="attendance_notes" value="{% if attendance_session %}{{ attendance_session.notes }}{% endif %}" placeholder="Optional notes for this day…">
+    </label>
+
+    <div class="attendance-quick-actions">
+      <button type="button" class="ghost-button" data-mark-session="morning">All morning</button>
+      <button type="button" class="ghost-button" data-mark-session="afternoon">All afternoon</button>
+      <button type="button" class="ghost-button" data-mark-session="evening">All evening</button>
+      <button type="button" class="ghost-button" data-clear-session>Clear all</button>
+      <button type="submit" class="primary-button">Save attendance for {{ attendance_date|date:"j M Y" }}</button>
+    </div>
+
+    {% if students %}
+    <div class="settings-table-panel attendance-roll-table">
+      <table class="settings-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Admission no.</th>
+            <th class="attendance-check-col">Morning</th>
+            <th class="attendance-check-col">Afternoon</th>
+            <th class="attendance-check-col">Evening</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td data-label="#">{{ forloop.counter }}</td>
+            <td data-label="Student">
+              <strong class="is-uppercase">{{ student.first_name }} {{ student.last_name }}</strong>
+            </td>
+            <td data-label="Admission no."><code>{{ student.admission_number }}</code></td>
+            <td data-label="Morning" class="attendance-check-col">
+              <label class="attendance-check">
+                <input type="checkbox" name="morning_{{ student.id }}" {% if student.morning %}checked{% endif %} data-session="morning">
+                <span class="sr-only">Morning present</span>
+              </label>
+            </td>
+            <td data-label="Afternoon" class="attendance-check-col">
+              <label class="attendance-check">
+                <input type="checkbox" name="afternoon_{{ student.id }}" {% if student.afternoon %}checked{% endif %} data-session="afternoon">
+                <span class="sr-only">Afternoon present</span>
+              </label>
+            </td>
+            <td data-label="Evening" class="attendance-check-col">
+              <label class="attendance-check">
+                <input type="checkbox" name="evening_{{ student.id }}" {% if student.evening %}checked{% endif %} data-session="evening">
+                <span class="sr-only">Evening present</span>
+              </label>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="allocation-actions">
+      <button type="submit" class="primary-button">Save attendance for {{ attendance_date|date:"j M Y" }}</button>
+      {% if attendance_session %}
+      <span class="subtle">Last saved {{ attendance_session.updated_at|date:"j M Y, H:i" }}</span>
+      {% else %}
+      <span class="subtle">No attendance saved for this day yet</span>
+      {% endif %}
+    </div>
+    {% else %}
+    <section class="sa-hub-empty">
+      <strong>No students in this class</strong>
+      <p class="settings-empty">No students are linked to {{ selected_class.display_label }} yet.</p>
+    </section>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const root = document.querySelector(".class-attendance-page");
+  if (!root) return;
+  const form = root.querySelector("[data-class-attendance-form]");
+  const dateInput = root.querySelector("[data-attendance-date]");
+  const classSelect = root.querySelector("[data-attendance-class]");
+  const classIdInput = root.querySelector("[data-attendance-class-id]");
+  const dateValueInput = root.querySelector("[data-attendance-date-value]");
+  const openCalendarBtn = root.querySelector("[data-open-calendar]");
+
+  function selectedClassId() {
+    if (classSelect) return classSelect.value;
+    return classIdInput ? classIdInput.value : "";
+  }
+
+  function reloadWith(params) {
+    const url = new URL(window.location.href);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    });
+    window.location.href = url.toString();
+  }
+
+  function shiftDate(iso, days) {
+    const parts = String(iso || "").split("-").map(Number);
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return iso;
+    const next = new Date(parts[0], parts[1] - 1, parts[2]);
+    next.setDate(next.getDate() + days);
+    const yyyy = next.getFullYear();
+    const mm = String(next.getMonth() + 1).padStart(2, "0");
+    const dd = String(next.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function todayIso() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  if (dateInput) {
+    dateInput.addEventListener("change", () => {
+      if (!dateInput.value) return;
+      reloadWith({ date: dateInput.value, class_id: selectedClassId() });
+    });
+  }
+  if (classSelect) {
+    classSelect.addEventListener("change", () => {
+      reloadWith({
+        class_id: classSelect.value,
+        date: dateInput && dateInput.value ? dateInput.value : "",
+      });
+    });
+  }
+  if (openCalendarBtn && dateInput) {
+    openCalendarBtn.addEventListener("click", () => {
+      if (typeof dateInput.showPicker === "function") {
+        dateInput.showPicker();
+      } else {
+        dateInput.focus();
+        dateInput.click();
+      }
+    });
+  }
+  root.querySelectorAll("[data-day-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const step = Number(button.getAttribute("data-day-step") || "0");
+      const current = (dateInput && dateInput.value) || (dateValueInput && dateValueInput.value) || todayIso();
+      reloadWith({ date: shiftDate(current, step), class_id: selectedClassId() });
+    });
+  });
+  const todayBtn = root.querySelector("[data-day-today]");
+  if (todayBtn) {
+    todayBtn.addEventListener("click", () => {
+      reloadWith({ date: todayIso(), class_id: selectedClassId() });
+    });
+  }
+
+  if (!form) return;
+  form.querySelectorAll("[data-mark-session]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const session = button.getAttribute("data-mark-session");
+      form.querySelectorAll(`input[data-session="${session}"]`).forEach((input) => {
+        input.checked = true;
+      });
+    });
+  });
+  const clearBtn = form.querySelector("[data-clear-session]");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      form.querySelectorAll("input[data-session]").forEach((input) => {
+        input.checked = false;
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ module.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_title %}{{ module.title }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="{{ module.title }} overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">IT Support</p>
+      <h2>{{ module.title }}</h2>
+      <p>{{ module.copy }}</p>
+    </div>
+  </section>
+
+  {% if module.slug == 'financial-management' %}
+  <section class="module-grid" aria-label="Financial management tools">
+    <a class="module-card" href="{% url 'employees:finance_settings' %}">
+      <span class="module-icon">FN</span>
+      <h3>Finance settings</h3>
+      <p>Fees, billing rules, and financial configuration.</p>
+      <span class="module-meta">Open →</span>
+    </a>
+  </section>
+  {% elif module.slug == 'human-resource-management' %}
+  <section class="module-grid" aria-label="Human resource tools">
+    <a class="module-card" href="{% url 'employees:it_support_employee_management' %}">
+      <span class="module-icon">EM</span>
+      <h3>Employee management</h3>
+      <p>List staff by role, edit details, suspend access, or remove employees.</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    <a class="module-card" href="{% url 'employees:hr_settings' %}">
+      <span class="module-icon">HR</span>
+      <h3>HR settings</h3>
+      <p>Staff roles, employment defaults, and people policies.</p>
+      <span class="module-meta">Open →</span>
+    </a>
+  </section>
+  {% else %}
+  <section class="exam-tool-empty">
+    <span class="exam-tool-empty-icon" aria-hidden="true">MD</span>
+    <strong>Tools coming soon</strong>
+    <p>Tools for {{ module.title|lower }} will appear here as this module is enabled.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

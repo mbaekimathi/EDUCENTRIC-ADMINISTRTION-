@@ -1,0 +1,1032 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Curriculum reports{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<script>
+(function () {
+  const nav = performance.getEntriesByType("navigation")[0];
+  const isReload = nav
+    ? nav.type === "reload"
+    : typeof performance.navigation !== "undefined" && performance.navigation.type === 1;
+  if (!isReload || !window.location.search) return;
+  window.location.replace(window.location.pathname);
+})();
+</script>
+<div class="exam-tool-page exam-report-builder-page{% if report and not report.error %} has-report{% endif %}">
+  <section class="exam-tool-hero no-print" aria-label="{{ page.title }} overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Curriculum reports</p>
+      <h2>{{ page.title }}</h2>
+      <p>Choose the academic year, exam, report type, and scope, then generate the report.</p>
+    </div>
+    {% if report and not report.error %}
+    <aside class="exam-tool-hero-aside" aria-label="Report summary">
+      <div class="exam-tool-stats">
+        <div class="exam-tool-stat">
+          <strong>{{ report.student_count }}</strong>
+          <span>Report card{{ report.student_count|pluralize }}</span>
+        </div>
+        <div class="exam-tool-stat">
+          <strong>{{ report.kind_label }}</strong>
+          <span>Report type</span>
+        </div>
+      </div>
+      <button type="button" class="primary-button exam-tool-cta" data-print-report-card>Print</button>
+    </aside>
+    {% endif %}
+  </section>
+
+  {% if report_error %}<div class="notice error">{{ report_error }}</div>{% endif %}
+
+  <details class="exam-report-builder-details no-print"{% if not report or report.error %} open{% endif %}>
+    <summary class="exam-report-builder-summary">
+      <span>
+        <strong>Generate exam report</strong>
+        <small>Year, exam, type, and scope</small>
+      </span>
+      <span class="exam-report-builder-summary-action" aria-hidden="true">Edit options</span>
+    </summary>
+    <section class="exam-tool-panel exam-report-builder" aria-label="Exam report options">
+      <header class="exam-tool-panel-head">
+        <div>
+          <h3>Report options</h3>
+          <p>Complete each step to set the report scope.</p>
+        </div>
+      </header>
+
+      {% if exam_years %}
+      <form
+        method="get"
+        class="exam-report-form"
+        data-exam-report-builder
+        data-students-url="{% url 'employees:it_support_exam_report_students' %}"
+      >
+        {{ exam_catalog_json|json_script:"exam-report-catalog" }}
+        <input type="hidden" name="generate" value="1">
+
+        <div class="exam-report-steps">
+          <div class="field exam-report-step" data-step="year">
+            <label for="exam-report-year">1. Academic year</label>
+            <select id="exam-report-year" name="year_id" class="uppercase-input" required>
+              <option value="">Select academic year</option>
+              {% for year in exam_years %}
+              <option value="{{ year.id }}" {% if selection.year_id == year.id %}selected{% endif %}>
+                {{ year.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field exam-report-step" data-step="exam" hidden>
+            <label for="exam-report-exam">2. Exam</label>
+            <select id="exam-report-exam" name="exam_id" class="uppercase-input">
+              <option value="">Select exam</option>
+            </select>
+          </div>
+
+          <div class="field exam-report-step exam-report-step-span" data-step="kind" hidden>
+            <span class="field-label" id="exam-report-kind-label">3. Report type</span>
+            <div class="exam-report-kind" role="radiogroup" aria-labelledby="exam-report-kind-label">
+              <label class="exam-report-choice">
+                <input
+                  type="radio"
+                  name="report_kind"
+                  value="academic_level"
+                  {% if selection.report_kind == "academic_level" %}checked{% endif %}
+                >
+                <span>
+                  <strong>Academic level report</strong>
+                  <small>Whole grade or one class · students in rows, subjects in columns</small>
+                </span>
+              </label>
+              <label class="exam-report-choice">
+                <input
+                  type="radio"
+                  name="report_kind"
+                  value="individual"
+                  {% if selection.report_kind == "individual" %}checked{% endif %}
+                >
+                <span>
+                  <strong>Individual report</strong>
+                  <small>Results for one student or all students in a class</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field exam-report-step" data-step="level" hidden>
+            <label for="exam-report-level">4. Academic level</label>
+            <select id="exam-report-level" name="level_id" class="uppercase-input">
+              <option value="">Select academic level</option>
+            </select>
+          </div>
+
+          <div class="field exam-report-step exam-report-step-span" data-step="level-scope" hidden>
+            <span class="field-label" id="exam-report-scope-label">5. Report scope</span>
+            <div class="exam-report-kind" role="radiogroup" aria-labelledby="exam-report-scope-label">
+              <label class="exam-report-choice">
+                <input
+                  type="radio"
+                  name="level_scope"
+                  value="all_level"
+                  {% if selection.level_scope == "all_level" %}checked{% endif %}
+                >
+                <span>
+                  <strong>Whole grade</strong>
+                  <small>List every student from all classes in this grade together</small>
+                </span>
+              </label>
+              <label class="exam-report-choice">
+                <input
+                  type="radio"
+                  name="level_scope"
+                  value="individual_class"
+                  {% if selection.level_scope == "individual_class" %}checked{% endif %}
+                >
+                <span>
+                  <strong>Per class</strong>
+                  <small>Choose one class, then generate for that class only</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field exam-report-step" data-step="class" hidden>
+            <label for="exam-report-class">
+              <span data-class-step-label>6. Select class</span>
+            </label>
+            <select id="exam-report-class" name="class_id" class="uppercase-input">
+              <option value="">Select class</option>
+            </select>
+            <small class="field-hint" data-class-hint hidden>
+              Pick the class whose students should appear in the report.
+            </small>
+          </div>
+
+          <div class="field exam-report-step" data-step="student" hidden>
+            <label for="exam-report-student">6. Student</label>
+            <select id="exam-report-student" name="student_id" class="uppercase-input">
+              <option value="">Select student</option>
+            </select>
+            <small class="field-hint" data-student-hint hidden>Loading students…</small>
+          </div>
+        </div>
+
+        <div class="exam-report-actions">
+          <button type="submit" class="primary-button" data-generate-btn disabled>Generate report</button>
+        </div>
+      </form>
+      {% else %}
+      <div class="exam-tool-empty">
+        <span class="exam-tool-empty-icon" aria-hidden="true">ER</span>
+        <strong>No exams registered</strong>
+        <p>Register an exam timetable first, then return here to generate reports.</p>
+      </div>
+      {% endif %}
+    </section>
+  </details>
+
+  {% if report and not report.error %}
+  <div class="exam-report-toolbar no-print">
+    <div class="exam-report-toolbar-copy">
+      <strong>{{ report.kind_label }}</strong>
+      <p>{{ report.exam_title }} · {{ report.scope_label }}</p>
+    </div>
+    <div class="exam-report-toolbar-actions">
+      <span class="exam-tool-panel-count">
+        {% if report.is_matrix %}
+          {{ report.student_count }} student{{ report.student_count|pluralize }}
+          · {{ report.subject_count }} subject{{ report.subject_count|pluralize }}
+        {% else %}
+          {{ report.student_count }} report card{{ report.student_count|pluralize }}
+        {% endif %}
+      </span>
+      <button type="button" class="primary-button" data-print-report-card>
+        {% if report.is_matrix %}Print report{% else %}Print report card{{ report.student_count|pluralize }}{% endif %}
+      </button>
+    </div>
+  </div>
+  <p class="exam-report-print-hint no-print">
+    To hide the date and page URL when printing: open More settings and turn off Headers and footers.
+  </p>
+
+  {% if report.is_matrix and report.matrix_sheets %}
+  <div class="exam-report-matrices" aria-label="Academic level mark sheets">
+    {% for sheet in report.matrix_sheets %}
+    <section class="exam-matrix-list exam-matrix-sheet" aria-label="{{ sheet.exam_title }}">
+      <header class="exam-matrix-list-head" aria-label="Mark sheet letterhead">
+        <div class="exam-matrix-list-brand">
+          {% if report.school_profile and report.school_profile.school_logo %}
+          <img class="exam-matrix-list-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
+          {% else %}
+          <span class="exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
+            {% if report.school_profile %}
+              {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+            {% else %}
+              E
+            {% endif %}
+          </span>
+          {% endif %}
+          <div class="exam-matrix-list-titles">
+            <p class="exam-matrix-list-kicker">Academic level mark sheet</p>
+            <h2 class="is-uppercase">
+              {% if report.school_profile %}
+                {{ report.school_profile.official_name|default:report.school_profile.display_name }}
+              {% else %}
+                Edu-Centric School
+              {% endif %}
+            </h2>
+            {% if report.school_profile and report.school_profile.motto %}
+            <p class="exam-matrix-list-motto">“{{ report.school_profile.motto }}”</p>
+            {% endif %}
+            {% if report.school_profile %}
+              {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
+              <p class="exam-matrix-list-contact">
+                {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
+                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} · {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} · {% endif %}{{ report.school_profile.general_email }}{% endif %}
+              </p>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+        <p class="exam-matrix-list-meta">
+          <span>{{ sheet.exam_title }}{% if sheet.academic_term %} · {{ sheet.academic_term.name }}{% endif %}</span>
+          <span>{% if report.level %}{{ report.level.name }}{% endif %}{% if report.selected_class %} · {{ report.selected_class.display_label }}{% else %} · whole grade{% endif %}</span>
+          <span>{{ sheet.student_count }} student{{ sheet.student_count|pluralize }}</span>
+          <span>{{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
+        </p>
+      </header>
+      <div class="exam-matrix-list-wrap">
+        <table class="exam-matrix-list-table">
+          <thead>
+            <tr>
+              <th class="is-left">Learner</th>
+              <th class="is-left">Class</th>
+              {% for subject in sheet.subjects %}
+              <th title="{{ subject.name }}">{{ subject.code }}</th>
+              {% endfor %}
+              <th class="exam-matrix-avg-col">Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in sheet.rows %}
+            <tr>
+              <td class="is-left exam-matrix-learner">{{ row.student.display_name }}</td>
+              <td class="is-left exam-matrix-class">{{ row.class_label }}</td>
+              {% for cell in row.cells %}
+              <td class="exam-matrix-mark">
+                {% if cell.percent != None %}
+                  <strong>{{ cell.percent }}</strong>
+                  {% if cell.grade %}<em>{{ cell.grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="exam-matrix-mark exam-matrix-avg-col">
+                {% if row.mean_percent != None %}
+                  <strong>{{ row.mean_percent }}</strong>
+                  {% if row.overall_grade %}<em>{{ row.overall_grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td class="is-left" colspan="{{ sheet.subjects|length|add:3 }}">
+                No students found for this academic level.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% elif report.report_cards %}
+  <div class="exam-report-cards" aria-label="Student report cards">
+    {% for card in report.report_cards %}
+    <article class="student-report-card" aria-label="Report card for {{ card.student.display_name }}">
+      <div class="src-sheet">
+        <header class="src-dual-head" aria-label="Report letterhead">
+          <section class="src-dual-school" aria-label="School letterhead">
+            {% if report.school_profile and report.school_profile.school_logo %}
+            <img class="src-dual-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
+            {% else %}
+            <span class="src-dual-logo src-dual-logo-mark" aria-hidden="true">
+              {% if report.school_profile %}
+                {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+              {% else %}
+                E
+              {% endif %}
+            </span>
+            {% endif %}
+            <div class="src-dual-copy">
+              <p class="src-dual-kicker">Student progress report</p>
+              <h1 class="is-uppercase">
+                {% if report.school_profile %}
+                  {{ report.school_profile.official_name|default:report.school_profile.display_name }}
+                {% else %}
+                  Edu-Centric School
+                {% endif %}
+              </h1>
+              {% if report.school_profile and report.school_profile.motto %}
+              <p class="src-dual-motto">“{{ report.school_profile.motto }}”</p>
+              {% endif %}
+              {% if report.school_profile %}
+                {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
+                <p class="src-dual-contact">
+                  {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
+                  {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} · {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                  {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} · {% endif %}{{ report.school_profile.general_email }}{% endif %}
+                </p>
+                {% endif %}
+              {% endif %}
+              <p class="src-dual-school-meta">
+                {% if report.academic_year %}{{ report.academic_year.name }}{% endif %}
+                {% if card.exam_title %}
+                  {% if report.academic_year %} · {% endif %}
+                  {{ card.exam_title }}{% if card.academic_term %} · {{ card.academic_term.name }}{% endif %}
+                {% endif %}
+              </p>
+            </div>
+          </section>
+
+          <section class="src-dual-student" aria-label="Learner identity">
+            <div class="src-dual-student-top">
+              {% if card.student.profile_image %}
+              <img class="src-student-photo" src="{{ card.student.profile_image.url }}" alt="">
+              {% else %}
+              <span class="src-student-photo src-student-photo-mark" aria-hidden="true">
+                {{ card.student.first_name|slice:":1"|upper }}{{ card.student.last_name|slice:":1"|upper }}
+              </span>
+              {% endif %}
+              <div class="src-dual-student-copy">
+                <p class="src-dual-kicker">Learner</p>
+                <h2 class="src-dual-student-name is-uppercase">{{ card.student.display_name }}</h2>
+              </div>
+            </div>
+            <dl class="src-dual-facts">
+              <div>
+                <dt>Admission no.</dt>
+                <dd>{% if card.student.admission_number %}{{ card.student.admission_number }}{% else %}—{% endif %}</dd>
+              </div>
+              <div>
+                <dt>Assessment no.</dt>
+                <dd>{{ card.student.assessment_number }}</dd>
+              </div>
+              <div>
+                <dt>Class</dt>
+                <dd>
+                  {% if report.selected_class %}
+                    {{ report.selected_class.display_label }}
+                  {% elif card.student.class_group %}
+                    {{ card.student.class_group }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </dd>
+              </div>
+              {% if report.level %}
+              <div>
+                <dt>Level</dt>
+                <dd>{{ report.level.name }}</dd>
+              </div>
+              {% endif %}
+            </dl>
+          </section>
+        </header>
+
+        <section class="src-summary" aria-label="Performance summary">
+          <div class="src-summary-item{% if card.overall_grade %} src-summary-grade{% endif %}">
+            <span>Overall grade</span>
+            <strong>{% if card.overall_grade %}{{ card.overall_grade }}{% else %}—{% endif %}</strong>
+          </div>
+          <div class="src-summary-item">
+            <span>Mean score</span>
+            <strong>{% if card.mean_percent != None %}{{ card.mean_percent }}%{% else %}—{% endif %}</strong>
+          </div>
+          <div class="src-summary-item">
+            <span>Subjects assessed</span>
+            <strong>{{ card.subjects_sat }}</strong>
+          </div>
+          <div class="src-summary-item src-summary-wide">
+            <span>Performance remark</span>
+            <strong>
+              {% if card.overall_meaning %}
+                {{ card.overall_meaning }}
+              {% elif card.overall_mark_level %}
+                {{ card.overall_mark_level }}
+              {% else %}
+                —
+              {% endif %}
+            </strong>
+          </div>
+        </section>
+
+        <section class="src-results" aria-label="Assessment results">
+          <p class="src-section-label">Assessment results</p>
+          {% if card.is_multi_exam %}
+          <div class="src-table-wrap">
+            <table class="src-table src-table-multi">
+              <thead>
+                <tr>
+                  <th class="is-left">Code</th>
+                  {% for column in card.exam_columns %}
+                  <th title="{{ column.title }}">{{ column.label }}</th>
+                  {% endfor %}
+                  <th class="src-avg-col">Avg</th>
+                  <th class="is-left">Remark</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in card.rows %}
+                <tr>
+                  <td class="is-left src-subject" title="{{ row.subject.name }}">{% if row.subject.code %}{{ row.subject.code }}{% else %}{{ row.subject.name }}{% endif %}</td>
+                  {% for cell in row.cells %}
+                  <td class="src-mark">
+                    {% if cell.percent != None %}
+                      <strong>{{ cell.percent }}</strong>
+                      {% if cell.grade %}<em>{{ cell.grade }}</em>{% endif %}
+                    {% else %}
+                      <span class="src-empty">—</span>
+                    {% endif %}
+                  </td>
+                  {% endfor %}
+                  <td class="src-mark src-avg-col">
+                    {% if row.mean_percent != None %}
+                      <strong>{{ row.mean_percent }}</strong>
+                      {% if row.grade %}<em>{{ row.grade }}</em>{% endif %}
+                    {% else %}
+                      <span class="src-empty">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="is-left src-remark">{% if row.meaning %}{{ row.meaning }}{% elif row.mark_level %}{{ row.mark_level }}{% else %}<span class="src-empty">—</span>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td class="is-left" colspan="{{ card.exam_columns|length|add:3 }}">No exam subjects are configured for this academic level.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              {% if card.exam_means %}
+              <tfoot>
+                <tr>
+                  <th class="is-left">Exam mean</th>
+                  {% for mean in card.exam_means %}
+                  <th class="src-mark">
+                    {% if mean.percent != None %}
+                      <strong>{{ mean.percent }}</strong>
+                      {% if mean.grade %}<em>{{ mean.grade }}</em>{% endif %}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </th>
+                  {% endfor %}
+                  <th class="src-mark src-avg-col">
+                    {% if card.mean_percent != None %}
+                      <strong>{{ card.mean_percent }}</strong>
+                      {% if card.overall_grade %}<em>{{ card.overall_grade }}</em>{% endif %}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </th>
+                  <th class="is-left">
+                    {% if card.overall_meaning %}
+                      {{ card.overall_meaning }}
+                    {% elif card.overall_mark_level %}
+                      {{ card.overall_mark_level }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </th>
+                </tr>
+              </tfoot>
+              {% endif %}
+            </table>
+          </div>
+          {% else %}
+          <div class="src-table-wrap">
+            <table class="src-table">
+              <thead>
+                <tr>
+                  <th class="is-left">Code</th>
+                  <th>Score</th>
+                  <th class="src-avg-col">Mark</th>
+                  <th class="is-left">Remark</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in card.rows %}
+                <tr>
+                  <td class="is-left src-subject" title="{{ row.subject.name }}">{% if row.subject.code %}{{ row.subject.code }}{% else %}{{ row.subject.name }}{% endif %}</td>
+                  <td>
+                    {% if row.raw != None and row.out_of %}
+                      {{ row.raw }}/{{ row.out_of }}
+                    {% else %}
+                      <span class="src-empty">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="src-mark src-avg-col">
+                    {% if row.percent != None %}
+                      <strong>{{ row.percent }}</strong>
+                      {% if row.grade %}<em>{{ row.grade }}</em>{% endif %}
+                    {% else %}
+                      <span class="src-empty">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="is-left src-remark">{% if row.meaning %}{{ row.meaning }}{% elif row.mark_level %}{{ row.mark_level }}{% else %}<span class="src-empty">—</span>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td class="is-left" colspan="4">No exam subjects are configured for this academic level.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              {% if card.mean_percent != None %}
+              <tfoot>
+                <tr>
+                  <th class="is-left">Exam mean</th>
+                  <th>—</th>
+                  <th class="src-mark src-avg-col">
+                    <strong>{{ card.mean_percent }}</strong>
+                    {% if card.overall_grade %}<em>{{ card.overall_grade }}</em>{% endif %}
+                  </th>
+                  <th class="is-left">
+                    {% if card.overall_meaning %}
+                      {{ card.overall_meaning }}
+                    {% elif card.overall_mark_level %}
+                      {{ card.overall_mark_level }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </th>
+                </tr>
+              </tfoot>
+              {% endif %}
+            </table>
+          </div>
+          {% endif %}
+        </section>
+
+        {% if card.trend and card.trend.points %}
+        <section class="src-trend" aria-label="{{ card.trend.title }}">
+          <div class="src-trend-copy">
+            <p class="src-section-label">{{ card.trend.title }}</p>
+            {% if card.trend.subtitle %}<p class="src-trend-subtitle">{{ card.trend.subtitle }}</p>{% endif %}
+          </div>
+          <div class="src-trend-frame">
+            <svg
+              class="src-trend-svg"
+              viewBox="0 0 {{ card.trend.width }} {{ card.trend.height }}"
+              role="img"
+              aria-label="{{ card.trend.title }}"
+            >
+              {% for tick in card.trend.grid %}
+              <line
+                class="src-trend-grid"
+                x1="{{ card.trend.plot_left }}"
+                y1="{{ tick.y }}"
+                x2="{{ card.trend.plot_right }}"
+                y2="{{ tick.y }}"
+              ></line>
+              <text class="src-trend-axis" x="28" y="{{ tick.y }}" dy="0.35em" text-anchor="end">{{ tick.value }}</text>
+              {% endfor %}
+              {% if card.trend.mode == "line" %}
+              <polygon class="src-trend-area" points="{{ card.trend.area }}"></polygon>
+              <polyline class="src-trend-line" points="{{ card.trend.line }}" fill="none"></polyline>
+              {% for point in card.trend.points %}
+              <circle class="src-trend-dot" cx="{{ point.x }}" cy="{{ point.y }}" r="4.2"></circle>
+              <text class="src-trend-value" x="{{ point.x }}" y="{{ point.y }}" dy="-8" text-anchor="middle">{{ point.percent }}{% if point.grade %} · {{ point.grade }}{% endif %}</text>
+              <text class="src-trend-label" x="{{ point.x }}" y="{{ card.trend.baseline_y }}" dy="16" text-anchor="middle">{{ point.label }}</text>
+              {% endfor %}
+              {% else %}
+              {% for point in card.trend.points %}
+              <rect
+                class="src-trend-bar"
+                x="{{ point.x }}"
+                y="{{ point.y }}"
+                width="{{ point.width }}"
+                height="{{ point.height }}"
+                rx="3"
+              ></rect>
+              <text class="src-trend-value" x="{{ point.label_x }}" y="{{ point.y }}" dy="-6" text-anchor="middle">{{ point.percent }}{% if point.grade %} · {{ point.grade }}{% endif %}</text>
+              <text class="src-trend-label" x="{{ point.label_x }}" y="{{ card.trend.baseline_y }}" dy="14" text-anchor="middle">{{ point.label }}</text>
+              {% endfor %}
+              {% endif %}
+            </svg>
+          </div>
+        </section>
+        {% endif %}
+
+        <section class="src-signoff" aria-label="Signatures">
+          <div class="src-sign">
+            <span class="src-sign-line" aria-hidden="true"></span>
+            <strong>Class teacher</strong>
+            <small>
+              {% if report.class_teacher_name %}
+                {{ report.class_teacher_name }}
+              {% else %}
+                Name &amp; signature
+              {% endif %}
+            </small>
+          </div>
+          <div class="src-sign">
+            <span class="src-sign-line" aria-hidden="true"></span>
+            <strong>Head of institution</strong>
+            <small>
+              {% if report.head_of_institution_name %}
+                {{ report.head_of_institution_name }}
+              {% else %}
+                Name &amp; signature
+              {% endif %}
+            </small>
+          </div>
+          <div class="src-sign">
+            <span class="src-sign-line" aria-hidden="true"></span>
+            <strong>Parent / guardian</strong>
+            <small>Name &amp; signature</small>
+          </div>
+        </section>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="exam-tool-panel exam-report-preview no-print">
+    <div class="exam-tool-empty">
+      <span class="exam-tool-empty-icon" aria-hidden="true">ST</span>
+      <strong>No students in this scope</strong>
+      <p>No enrolled students matched the selected level or class.</p>
+    </div>
+  </section>
+  {% endif %}
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  const form = document.querySelector("[data-exam-report-builder]");
+  if (!form) return;
+
+  const catalogNode = document.getElementById("exam-report-catalog");
+  const catalog = catalogNode ? JSON.parse(catalogNode.textContent) : { years: [], exams: [] };
+  const years = catalog.years || [];
+  const yearsById = Object.fromEntries(years.map((year) => [String(year.id), year]));
+  const studentsUrl = form.getAttribute("data-students-url");
+
+  const yearSelect = form.querySelector("#exam-report-year");
+  const examSelect = form.querySelector("#exam-report-exam");
+  const levelSelect = form.querySelector("#exam-report-level");
+  const classSelect = form.querySelector("#exam-report-class");
+  const studentSelect = form.querySelector("#exam-report-student");
+  const generateBtn = form.querySelector("[data-generate-btn]");
+  const classStepLabel = form.querySelector("[data-class-step-label]");
+  const classHint = form.querySelector("[data-class-hint]");
+  const studentHint = form.querySelector("[data-student-hint]");
+
+  const steps = {
+    exam: form.querySelector('[data-step="exam"]'),
+    kind: form.querySelector('[data-step="kind"]'),
+    level: form.querySelector('[data-step="level"]'),
+    levelScope: form.querySelector('[data-step="level-scope"]'),
+    class: form.querySelector('[data-step="class"]'),
+    student: form.querySelector('[data-step="student"]'),
+  };
+
+  const initial = {
+    yearId: "{{ selection.year_id|escapejs }}",
+    examId: "{{ selection.exam_id|escapejs }}",
+    reportKind: "{{ selection.report_kind|escapejs }}",
+    levelId: "{{ selection.level_id|escapejs }}",
+    levelScope: "{{ selection.level_scope|escapejs }}",
+    classId: "{{ selection.class_id|escapejs }}",
+    studentId: "{{ selection.student_id|escapejs }}",
+  };
+
+  let studentRequest = 0;
+
+  function selectedKind() {
+    const checked = form.querySelector('input[name="report_kind"]:checked');
+    return checked ? checked.value : "";
+  }
+
+  function selectedScope() {
+    const checked = form.querySelector('input[name="level_scope"]:checked');
+    return checked ? checked.value : "";
+  }
+
+  function setOptions(select, items, placeholder, selectedId) {
+    select.innerHTML = "";
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    items.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = String(item.id);
+      option.textContent = item.label || item.name;
+      if (String(item.id) === String(selectedId || "")) option.selected = true;
+      select.appendChild(option);
+    });
+  }
+
+  function show(el, visible) {
+    if (!el) return;
+    el.hidden = !visible;
+  }
+
+  function currentExams() {
+    const year = yearsById[yearSelect.value];
+    return year ? year.exams : [];
+  }
+
+  function currentExam() {
+    return currentExams().find((item) => String(item.id) === String(examSelect.value)) || null;
+  }
+
+  function currentLevels() {
+    const exam = currentExam();
+    return exam ? exam.levels : [];
+  }
+
+  function currentClasses() {
+    const level = currentLevels().find((item) => String(item.id) === String(levelSelect.value));
+    return level ? level.classes : [];
+  }
+
+  function clearDownstreamFromExam() {
+    fillLevels("");
+    fillClasses("");
+    setOptions(studentSelect, [], "Select student", "");
+    form.querySelectorAll('input[name="report_kind"]').forEach((input) => {
+      input.checked = false;
+    });
+    form.querySelectorAll('input[name="level_scope"]').forEach((input) => {
+      input.checked = false;
+    });
+  }
+
+  function syncRequired() {
+    const kind = selectedKind();
+    const scope = selectedScope();
+    examSelect.required = Boolean(yearSelect.value);
+    levelSelect.required = Boolean(examSelect.value) && Boolean(kind);
+    classSelect.required =
+      kind === "individual" || (kind === "academic_level" && scope === "individual_class");
+    studentSelect.required = kind === "individual";
+  }
+
+  function canGenerate() {
+    const kind = selectedKind();
+    if (!yearSelect.value || !examSelect.value || !kind || !levelSelect.value) return false;
+    if (kind === "academic_level") {
+      const scope = selectedScope();
+      if (!scope) return false;
+      if (scope === "individual_class" && !classSelect.value) return false;
+      return true;
+    }
+    return Boolean(classSelect.value && studentSelect.value);
+  }
+
+  function updateVisibility() {
+    const hasYear = Boolean(yearSelect.value);
+    const hasExam = Boolean(examSelect.value);
+    const kind = selectedKind();
+    const scope = selectedScope();
+    show(steps.exam, hasYear);
+    show(steps.kind, hasExam);
+    show(steps.level, hasExam && Boolean(kind));
+    show(steps.levelScope, kind === "academic_level" && Boolean(levelSelect.value));
+    const needClass =
+      kind === "individual" ||
+      (kind === "academic_level" && scope === "individual_class");
+    show(steps.class, needClass && Boolean(levelSelect.value));
+    show(steps.student, kind === "individual" && Boolean(classSelect.value));
+    if (classStepLabel) {
+      classStepLabel.textContent =
+        kind === "academic_level" ? "6. Select class" : "5. Class";
+    }
+    if (classHint) {
+      classHint.hidden = !(kind === "academic_level" && scope === "individual_class");
+    }
+    syncRequired();
+    generateBtn.disabled = !canGenerate();
+  }
+
+  function fillExams(selectedId) {
+    setOptions(examSelect, currentExams(), "Select exam", selectedId);
+  }
+
+  function fillLevels(selectedId) {
+    setOptions(levelSelect, currentLevels(), "Select academic level", selectedId);
+  }
+
+  function fillClasses(selectedId) {
+    setOptions(classSelect, currentClasses(), "Select class", selectedId);
+  }
+
+  async function fillStudents(selectedId) {
+    const requestId = ++studentRequest;
+    setOptions(studentSelect, [], "Select student", "");
+    if (!levelSelect.value || !classSelect.value) {
+      if (studentHint) studentHint.hidden = true;
+      updateVisibility();
+      return;
+    }
+    if (studentHint) {
+      studentHint.hidden = false;
+      studentHint.textContent = "Loading students…";
+    }
+    try {
+      const url = new URL(studentsUrl, window.location.origin);
+      url.searchParams.set("level_id", levelSelect.value);
+      url.searchParams.set("class_id", classSelect.value);
+      const response = await fetch(url.toString(), {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      const data = await response.json();
+      if (requestId !== studentRequest) return;
+      const learners = (data.students || []).map((student) => ({
+        id: student.id,
+        label: student.admission
+          ? `${student.name} (${student.admission})`
+          : student.name,
+      }));
+      const students = learners.length
+        ? [{ id: "all", label: "All students" }, ...learners]
+        : [];
+      setOptions(studentSelect, students, "Select student", selectedId);
+      if (studentHint) {
+        studentHint.hidden = learners.length > 0;
+        studentHint.textContent = learners.length
+          ? ""
+          : "No students found in this class.";
+      }
+    } catch (error) {
+      if (requestId !== studentRequest) return;
+      if (studentHint) {
+        studentHint.hidden = false;
+        studentHint.textContent = "Could not load students.";
+      }
+    }
+    updateVisibility();
+  }
+
+  yearSelect.addEventListener("change", () => {
+    fillExams("");
+    clearDownstreamFromExam();
+    updateVisibility();
+  });
+
+  examSelect.addEventListener("change", () => {
+    clearDownstreamFromExam();
+    updateVisibility();
+  });
+
+  form.querySelectorAll('input[name="report_kind"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      form.querySelectorAll('input[name="level_scope"]').forEach((scopeInput) => {
+        scopeInput.checked = false;
+      });
+      fillClasses("");
+      setOptions(studentSelect, [], "Select student", "");
+      updateVisibility();
+    });
+  });
+
+  levelSelect.addEventListener("change", () => {
+    fillClasses("");
+    setOptions(studentSelect, [], "Select student", "");
+    updateVisibility();
+  });
+
+  form.querySelectorAll('input[name="level_scope"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      if (selectedScope() === "individual_class") {
+        fillClasses(classSelect.value || "");
+      } else {
+        classSelect.value = "";
+        setOptions(studentSelect, [], "Select student", "");
+      }
+      updateVisibility();
+    });
+  });
+
+  classSelect.addEventListener("change", () => {
+    if (selectedKind() === "individual") {
+      fillStudents("");
+    } else {
+      updateVisibility();
+    }
+  });
+
+  studentSelect.addEventListener("change", updateVisibility);
+
+  function findExamYearId(examId) {
+    if (!examId || examId === "all") return "";
+    for (const year of years) {
+      if ((year.exams || []).some((exam) => String(exam.id) === String(examId))) {
+        return String(year.id);
+      }
+    }
+    return "";
+  }
+
+  function restoreSelection() {
+    if (initial.reportKind) {
+      const kindInput = form.querySelector(
+        `input[name="report_kind"][value="${initial.reportKind}"]`
+      );
+      if (kindInput) kindInput.checked = true;
+    }
+    if (initial.levelScope) {
+      const scopeInput = form.querySelector(
+        `input[name="level_scope"][value="${initial.levelScope}"]`
+      );
+      if (scopeInput) scopeInput.checked = true;
+    }
+    fillClasses(initial.classId);
+    updateVisibility();
+    if (selectedKind() === "individual" && initial.classId) {
+      fillStudents(initial.studentId);
+    }
+  }
+
+  if (initial.yearId) {
+    yearSelect.value = initial.yearId;
+    fillExams(initial.examId);
+    if (initial.examId) {
+      fillLevels(initial.levelId);
+      restoreSelection();
+    } else {
+      updateVisibility();
+    }
+  } else if (initial.examId) {
+    const inferredYear = findExamYearId(initial.examId);
+    if (inferredYear) {
+      yearSelect.value = inferredYear;
+      fillExams(initial.examId);
+      fillLevels(initial.levelId);
+      restoreSelection();
+    } else {
+      updateVisibility();
+    }
+  } else {
+    updateVisibility();
+  }
+})();
+</script>
+<script>
+(function () {
+  const buttons = document.querySelectorAll("[data-print-report-card]");
+  if (!buttons.length) return;
+
+  let pageStyle = null;
+
+  const preparePrint = () => {
+    const hasMatrix = Boolean(document.querySelector(".exam-report-matrices"));
+    if (!hasMatrix || pageStyle) return;
+    pageStyle = document.createElement("style");
+    pageStyle.textContent = "@page { size: A4 portrait; margin: 12mm; }";
+    document.head.appendChild(pageStyle);
+  };
+
+  const clearPrint = () => {
+    if (pageStyle) {
+      pageStyle.remove();
+      pageStyle = null;
+    }
+  };
+
+  window.addEventListener("beforeprint", preparePrint);
+  window.addEventListener("afterprint", clearPrint);
+
+  const printReport = () => {
+    const previous = document.title;
+    document.title = "\u00a0";
+    preparePrint();
+    const restore = () => {
+      document.title = previous;
+      clearPrint();
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    window.print();
+    setTimeout(restore, 1000);
+  };
+
+  buttons.forEach((button) => {
+    button.addEventListener("click", printReport);
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ selected_level.name }} e-learning subjects | Edu-Centric{% endblock %}
+{% block header_eyebrow %}E-learning attendance{% endblock %}
+{% block header_title %}{{ selected_level.name }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_elearning_attendance_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="sa-hub-page">
+  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+  <section class="teacher-dash-hero" aria-label="{{ selected_level.name }} overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">{{ selected_level.code }} · E-learning</p>
+      <h2 class="is-uppercase">{{ selected_level.name }}</h2>
+      <p>Choose a subject to open its lesson plan, attendance roll, or outcome for this academic level.</p>
+    </div>
+    <div class="teacher-dash-stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ allocations|length }}</strong>
+        <span>Subject{{ allocations|length|pluralize }}</span>
+      </div>
+      <a class="ghost-button" href="{{ teacher_elearning_attendance_home_url }}">Back to levels</a>
+    </div>
+  </section>
+
+  {% if allocations %}
+  <div class="sa-hub-scroll">
+    <section class="sa-level-block" aria-label="Subjects for {{ selected_level.name }}">
+      <header class="sa-level-head">
+        <div>
+          <h3 class="is-uppercase">Your e-learning subjects</h3>
+          <p class="subtle">Open a subject, or jump straight to a section</p>
+        </div>
+      </header>
+      <div class="sa-subject-grid">
+        {% for item in allocations %}
+        {% url 'employees:teacher_elearning_attendance_profile' selected_level.id item.learning_area_id as profile_url %}
+        <article class="sa-subject-tile">
+          <a class="sa-subject-tile-main" href="{{ profile_url }}">
+            <span class="sa-subject-tile-icon" aria-hidden="true">{{ item.learning_area.code|slice:":3" }}</span>
+            <span class="sa-subject-tile-text">
+              <strong>{{ item.learning_area.name }}</strong>
+              <span>{{ item.learning_area.code }}</span>
+            </span>
+          </a>
+          <div class="sa-subject-tile-meta">
+            <span class="sa-pill {% if item.has_lesson_plan %}is-done{% endif %}">Plan{% if item.has_lesson_plan %} ✓{% endif %}</span>
+            <span class="sa-pill {% if item.has_attendance %}is-done{% endif %}">Roll{% if item.has_attendance %} ✓{% endif %}</span>
+            <span class="sa-pill {% if item.has_outcome %}is-done{% endif %}">Outcome{% if item.has_outcome %} ✓{% endif %}</span>
+          </div>
+          <div class="sa-subject-tile-actions">
+            <a href="{{ profile_url }}#lesson-plan">Lesson plan</a>
+            <a href="{{ profile_url }}#attendance">Attendance</a>
+            <a href="{{ profile_url }}#outcome">Outcome</a>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No subjects allocated</strong>
+    <p class="settings-empty">No e-learning subjects are allocated to you on this level yet.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

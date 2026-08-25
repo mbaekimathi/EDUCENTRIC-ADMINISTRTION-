@@ -1,0 +1,36 @@
+<p class="workspace-nav-label">Class attendance</p>
+<a
+  class="workspace-nav-link {% if active_my_class_tool == 'register-class-attendance' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}"
+  {% if active_my_class_tool == 'register-class-attendance' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M8 6h11M8 12h11M8 18h11M5 6h.01M5 12h.01M5 18h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Register class attendance
+</a>
+<a
+  class="workspace-nav-link {% if active_my_class_tool == 'students-class-attendance' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}"
+  {% if active_my_class_tool == 'students-class-attendance' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-3 2 2 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Students class attendance
+</a>
+{% if led_classes %}
+<p class="workspace-nav-label">Subject attendance</p>
+{% for academic_class in led_classes %}
+<a
+  class="workspace-nav-link {% if selected_class and selected_class.id == academic_class.id and active_my_class_tool == 'subject-attendance-overview' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_subject_attendance_class' academic_class.id %}"
+  {% if selected_class and selected_class.id == academic_class.id and active_my_class_tool == 'subject-attendance-overview' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 19V9l7-4 7 4v10H5zm3-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
+  </span>
+  {{ academic_class.display_label }}
+</a>
+{% endfor %}
+{% endif %}

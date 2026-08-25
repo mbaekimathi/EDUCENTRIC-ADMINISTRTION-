@@ -1,0 +1,398 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}My class{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_my_class_attendance_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="sa-hub-page class-subject-attendance-overview class-attendance-analytics">
+  <section class="teacher-dash-hero" aria-label="{{ page.title }} overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">Class teacher · {{ selected_class.display_label }}</p>
+      <h2>{{ page.title }}</h2>
+      <p>Morning, afternoon, and evening attendance analytics by day, period, term, or academic year.</p>
+    </div>
+    <div class="teacher-dash-stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ students|length }}</strong>
+        <span>Student{{ students|length|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ session_total }}</strong>
+        <span>Day{{ session_total|pluralize }} recorded</span>
+      </div>
+      <a class="ghost-button" href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}?class_id={{ selected_class.id }}">
+        Register attendance
+      </a>
+    </div>
+  </section>
+
+  <section class="class-attendance-day-filter sa-scope-filter" aria-label="Filter class attendance analytics">
+    <div class="class-attendance-day-copy">
+      <p class="class-attendance-day-label">Attendance filter</p>
+      <strong class="class-attendance-day-title">{{ filter_title }}</strong>
+      <p class="subtle">{{ filter_subtitle }}</p>
+    </div>
+    <form class="sa-scope-form" method="get" data-scope-form>
+      {% if led_classes|length > 1 %}
+      <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-keep-class>
+      {% endif %}
+      <div class="class-attendance-day-controls sa-scope-controls">
+        {% if led_classes|length > 1 %}
+        <label class="attendance-control">
+          <span>Class</span>
+          <select data-analytics-class aria-label="Select class">
+            {% for academic_class in led_classes %}
+            <option value="{{ academic_class.id }}" {% if academic_class.id == selected_class.id %}selected{% endif %}>
+              {{ academic_class.display_label }}
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+
+        <label class="attendance-control">
+          <span>Filter by</span>
+          <select name="scope" data-scope-select aria-label="Filter attendance by">
+            <option value="day" {% if filter_scope == 'day' %}selected{% endif %}>Day</option>
+            <option value="period" {% if filter_scope == 'period' %}selected{% endif %}>Period</option>
+            <option value="term" {% if filter_scope == 'term' %}selected{% endif %}>Term</option>
+            <option value="year" {% if filter_scope == 'year' %}selected{% endif %}>Academic year</option>
+          </select>
+        </label>
+
+        <label class="attendance-control" data-filter-field="year" hidden>
+          <span>Academic year</span>
+          <select name="year" data-scope-year {% if not academic_years %}disabled{% endif %}>
+            {% for year in academic_years %}
+            <option value="{{ year.id }}" {% if selected_year_id == year.id %}selected{% endif %}>
+              {{ year.name }}{% if year.is_current %} (current){% endif %}
+            </option>
+            {% empty %}
+            <option value="">No academic years registered</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="attendance-control" data-filter-field="term" hidden>
+          <span>Term</span>
+          <select name="term" data-scope-term {% if not year_terms %}disabled{% endif %}>
+            {% if year_terms %}
+              {% for term in year_terms %}
+              <option value="{{ term.id }}" {% if selected_term_id == term.id %}selected{% endif %}>
+                {{ term.name }}{% if term.is_current %} (current){% endif %}
+              </option>
+              {% endfor %}
+            {% else %}
+              <option value="">No terms registered</option>
+            {% endif %}
+          </select>
+        </label>
+
+        <label class="attendance-control" data-filter-field="period" hidden>
+          <span>Period</span>
+          <select name="period" data-scope-period {% if not period_options %}disabled{% endif %}>
+            {% for option in period_options %}
+            <option value="{{ option.value }}" {% if selected_period == option.value %}selected{% endif %}>{{ option.label }}</option>
+            {% empty %}
+            <option value="">Select a term first</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="attendance-control class-attendance-calendar-control" data-filter-field="day" hidden>
+          <span>Select date</span>
+          <input
+            type="date"
+            name="date"
+            value="{{ attendance_date|date:'Y-m-d' }}"
+            data-overview-date
+            aria-label="Select attendance date from calendar"
+          >
+        </label>
+
+        <div class="class-attendance-day-actions" data-filter-field="day-actions" hidden>
+          <button type="button" class="ghost-button" data-day-step="-1">← Day</button>
+          <button type="button" class="ghost-button" data-day-today>Today</button>
+          <button type="button" class="ghost-button" data-day-step="1">Day →</button>
+          <button type="button" class="primary-button" data-open-calendar>Open calendar</button>
+        </div>
+
+        <div class="class-attendance-day-actions" data-filter-field="apply">
+          <button type="submit" class="primary-button">Apply filter</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  {% if students %}
+  <div class="settings-table-panel subject-attendance-matrix-panel">
+    <table class="settings-table subject-attendance-matrix">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Admission no.</th>
+          <th class="subject-attendance-col">Morning</th>
+          <th class="subject-attendance-col">Afternoon</th>
+          <th class="subject-attendance-col">Evening</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in student_rows %}
+        <tr>
+          <td data-label="Student">
+            <strong class="is-uppercase exam-student-name">
+              <span class="sa-student-index" aria-hidden="true">{{ forloop.counter }}.</span>
+              <span class="exam-student-first">{{ row.student.first_name }}</span>
+              <span class="exam-student-last">{{ row.student.last_name }}</span>
+            </strong>
+          </td>
+          <td data-label="Admission no."><code>{{ row.student.admission_number }}</code></td>
+          <td data-label="Morning" class="subject-attendance-col">
+            <span class="sa-status-pill {{ row.morning.rate_class }}" title="{{ row.morning.title }}">{{ row.morning.display }}</span>
+          </td>
+          <td data-label="Afternoon" class="subject-attendance-col">
+            <span class="sa-status-pill {{ row.afternoon.rate_class }}" title="{{ row.afternoon.title }}">{{ row.afternoon.display }}</span>
+          </td>
+          <td data-label="Evening" class="subject-attendance-col">
+            <span class="sa-status-pill {{ row.evening.rate_class }}" title="{{ row.evening.title }}">{{ row.evening.display }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No students in this class</strong>
+    <p class="settings-empty">No students are linked to {{ selected_class.display_label }} yet.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+{{ calendar_options_json|json_script:"sa-calendar-options" }}
+<script>
+(function () {
+  const root = document.querySelector(".class-attendance-analytics");
+  if (!root) return;
+  const form = root.querySelector("[data-scope-form]");
+  const scopeSelect = root.querySelector("[data-scope-select]");
+  const dateInput = root.querySelector("[data-overview-date]");
+  const openCalendarBtn = root.querySelector("[data-open-calendar]");
+  const yearSelect = root.querySelector("[data-scope-year]");
+  const termSelect = root.querySelector("[data-scope-term]");
+  const periodSelect = root.querySelector("[data-scope-period]");
+  const classSelect = root.querySelector("[data-analytics-class]");
+  const classHidden = root.querySelector("[data-keep-class]");
+  const calendarNode = document.getElementById("sa-calendar-options");
+  const calendarOptions = calendarNode ? JSON.parse(calendarNode.textContent) : {};
+
+  function fieldsForScope(scope) {
+    if (scope === "day") return ["day", "day-actions", "apply"];
+    if (scope === "period") return ["year", "term", "period", "apply"];
+    if (scope === "term") return ["year", "term", "apply"];
+    if (scope === "year") return ["year", "apply"];
+    return ["apply"];
+  }
+
+  function setFieldVisible(name, visible) {
+    root.querySelectorAll(`[data-filter-field="${name}"]`).forEach((el) => {
+      el.hidden = !visible;
+      el.querySelectorAll("input, select").forEach((control) => {
+        if (control === dateInput) {
+          control.disabled = false;
+          return;
+        }
+        if (!visible) {
+          control.disabled = true;
+          return;
+        }
+        if (control.tagName === "SELECT") {
+          const hasRealOption = [...control.options].some((opt) => opt.value !== "");
+          control.disabled = !hasRealOption;
+        } else {
+          control.disabled = false;
+        }
+      });
+    });
+  }
+
+  function fillSelect(select, items, valueKey, labelKey, currentValue, emptyLabel) {
+    if (!select) return;
+    const current = currentValue == null ? select.value : String(currentValue);
+    select.innerHTML = "";
+    if (!items.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = emptyLabel;
+      select.appendChild(option);
+      select.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    items.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = String(item[valueKey]);
+      option.textContent = item[labelKey];
+      if (String(item[valueKey]) === current) option.selected = true;
+      select.appendChild(option);
+    });
+    if (![...select.options].some((opt) => opt.selected) && select.options.length) {
+      select.options[0].selected = true;
+    }
+  }
+
+  function syncPeriodsForTerm() {
+    if (!termSelect || !periodSelect) return;
+    const yearId = yearSelect ? yearSelect.value : "";
+    const terms = calendarOptions[yearId] || [];
+    const term = terms.find((item) => String(item.id) === String(termSelect.value));
+    fillSelect(
+      periodSelect,
+      term ? term.periods || [] : [],
+      "value",
+      "label",
+      periodSelect.value,
+      "Select a term first"
+    );
+  }
+
+  function syncTermsForYear() {
+    if (!yearSelect || !termSelect) return;
+    fillSelect(
+      termSelect,
+      calendarOptions[yearSelect.value] || [],
+      "id",
+      "name",
+      termSelect.value,
+      "No terms registered"
+    );
+    syncPeriodsForTerm();
+  }
+
+  function syncFilterFields() {
+    const scope = (scopeSelect && scopeSelect.value) || "day";
+    const visible = new Set(fieldsForScope(scope));
+    ["year", "term", "period", "day", "day-actions", "apply"].forEach((name) => {
+      setFieldVisible(name, visible.has(name));
+    });
+    if (visible.has("year") || visible.has("term") || visible.has("period")) {
+      syncTermsForYear();
+    }
+    if (dateInput) {
+      dateInput.required = visible.has("day");
+      dateInput.disabled = false;
+    }
+  }
+
+  function reloadWith(params) {
+    const url = new URL(window.location.href);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+    });
+    window.location.href = url.toString();
+  }
+
+  function shiftDate(iso, days) {
+    const parts = String(iso || "").split("-").map(Number);
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return iso;
+    const next = new Date(parts[0], parts[1] - 1, parts[2]);
+    next.setDate(next.getDate() + days);
+    const yyyy = next.getFullYear();
+    const mm = String(next.getMonth() + 1).padStart(2, "0");
+    const dd = String(next.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function todayIso() {
+    const now = new Date();
+    return [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+  }
+
+  if (scopeSelect) scopeSelect.addEventListener("change", syncFilterFields);
+  if (yearSelect) yearSelect.addEventListener("change", syncTermsForYear);
+  if (termSelect) termSelect.addEventListener("change", syncPeriodsForTerm);
+  if (form) {
+    form.addEventListener("submit", () => {
+      syncFilterFields();
+      const scope = (scopeSelect && scopeSelect.value) || "day";
+      const visible = new Set(fieldsForScope(scope));
+      ["year", "term", "period", "day"].forEach((name) => {
+        if (!visible.has(name)) return;
+        root.querySelectorAll(`[data-filter-field="${name}"] select, [data-filter-field="${name}"] input`).forEach((control) => {
+          if (control.tagName === "SELECT") {
+            const hasRealOption = [...control.options].some((opt) => opt.value !== "");
+            control.disabled = !hasRealOption;
+          } else {
+            control.disabled = false;
+          }
+        });
+      });
+      if (dateInput) dateInput.disabled = false;
+    });
+  }
+  if (classSelect) {
+    classSelect.addEventListener("change", () => {
+      if (classHidden) classHidden.value = classSelect.value;
+      reloadWith({ class_id: classSelect.value });
+    });
+  }
+  if (dateInput) {
+    dateInput.addEventListener("change", () => {
+      if (dateInput.value && form) form.requestSubmit();
+    });
+  }
+  if (openCalendarBtn && dateInput) {
+    openCalendarBtn.addEventListener("click", () => {
+      if (typeof dateInput.showPicker === "function") dateInput.showPicker();
+      else {
+        dateInput.focus();
+        dateInput.click();
+      }
+    });
+  }
+  root.querySelectorAll("[data-day-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const step = Number(button.getAttribute("data-day-step") || "0");
+      const current = (dateInput && dateInput.value) || todayIso();
+      const params = { scope: "day", date: shiftDate(current, step) };
+      if (classSelect) params.class_id = classSelect.value;
+      reloadWith(params);
+    });
+  });
+  const todayBtn = root.querySelector("[data-day-today]");
+  if (todayBtn) {
+    todayBtn.addEventListener("click", () => {
+      const params = { scope: "day", date: todayIso() };
+      if (classSelect) params.class_id = classSelect.value;
+      reloadWith(params);
+    });
+  }
+
+  syncFilterFields();
+
+  const scrollPanel = root.querySelector(".subject-attendance-matrix-panel");
+  const nameTable = root.querySelector(".subject-attendance-matrix");
+  function syncNameCollapse() {
+    if (!scrollPanel || !nameTable) return;
+    nameTable.classList.toggle("is-name-collapsed", scrollPanel.scrollLeft > 12);
+  }
+  if (scrollPanel && nameTable) {
+    scrollPanel.addEventListener("scroll", syncNameCollapse, { passive: true });
+    syncNameCollapse();
+  }
+})();
+</script>
+{% endblock %}

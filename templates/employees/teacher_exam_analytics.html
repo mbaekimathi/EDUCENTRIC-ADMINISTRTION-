@@ -1,0 +1,111 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ exam_title }} analytics | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam records{% endblock %}
+{% block header_title %}{{ exam_title }} analytics{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_exam_classes_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% if class_results %}
+<div class="settings-category-list exam-analytics-page">
+  {% for entry in class_results %}
+  <section class="exam-record-sheet" aria-label="{{ entry.academic_class.display_label }} results">
+    <header class="exam-record-bar">
+      <div class="exam-record-bar-title">
+        <h2 class="is-uppercase">{{ entry.academic_class.display_label }}</h2>
+        <span class="student-count-chip is-quiet">
+          {{ entry.students|length }} student{{ entry.students|length|pluralize }} · {{ entry.academic_class.academic_level.name }}
+        </span>
+      </div>
+      <div class="exam-record-bar-tools">
+        <a class="exam-back-link" href="{% url 'employees:teacher_exam_record_class' exam.id entry.academic_class.id %}">Open class sheet</a>
+      </div>
+    </header>
+
+    {% if entry.students %}
+    <div class="settings-table-panel exam-record-sheet-table exam-analytics-scroll">
+      <table class="settings-table exam-analytics-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Admission</th>
+            {% for subject in entry.subjects %}
+            <th title="{{ subject.name }}">{{ subject.code }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in entry.students %}
+          <tr>
+            <td title="{{ student.display_name }}">
+              <strong
+                class="is-uppercase"
+                data-student-name
+                data-full-name="{{ student.display_name }}"
+                data-first-name="{{ student.first_name }}"
+              >{{ student.display_name }}</strong>
+            </td>
+            <td>{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</td>
+            {% for cell in student.mark_cells %}
+            <td>{% if cell.percent != None %}{{ cell.percent }}{% else %}—{% endif %}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if entry.subject_means %}
+        <tfoot>
+          <tr class="exam-record-mean-row">
+            <td><strong>Mean</strong></td>
+            <td></td>
+            {% for mean in entry.subject_means %}
+            <td>{% if mean.percent_mean != None %}{{ mean.percent_mean }}{% else %}—{% endif %}</td>
+            {% endfor %}
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+    {% else %}
+    <div class="exam-record-sheet-empty">
+      <p class="settings-empty">No students are registered in {{ entry.academic_class.display_label }}.</p>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<section class="settings-panel">
+  <p class="settings-empty">No active classes are available for this exam.</p>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const scrollAreas = document.querySelectorAll(".exam-analytics-scroll");
+  if (!scrollAreas.length) return;
+
+  function syncNames(area, compact) {
+    area.querySelectorAll("[data-student-name]").forEach((node) => {
+      const full = (node.getAttribute("data-full-name") || "").trim();
+      const first = (node.getAttribute("data-first-name") || "").trim();
+      node.textContent = compact ? (first || full) : full;
+    });
+  }
+
+  function syncCompactState(area) {
+    const compact = area.scrollLeft > 8;
+    area.classList.toggle("is-compact", compact);
+    syncNames(area, compact);
+  }
+
+  scrollAreas.forEach((area) => {
+    syncCompactState(area);
+    area.addEventListener("scroll", () => syncCompactState(area), { passive: true });
+  });
+})();
+</script>
+{% endblock %}

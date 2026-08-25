@@ -1,0 +1,19 @@
+<p class="workspace-nav-label">Curriculum reports</p>
+<a
+  class="workspace-nav-link {% if active_curriculum_report == 'learning-reports' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_curriculum_report_page' 'learning-reports' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5V5zm3 3h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Learning reports
+</a>
+<a
+  class="workspace-nav-link {% if active_curriculum_report == 'exam-reports' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_curriculum_report_page' 'exam-reports' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5V4zm3 4h8M8 12h5M8 16h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </span>
+  Exam reports
+</a>

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Student & parent portal | Edu-Centric{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block content %}
+<main class="auth-shell">
+  {% include "partials/brand_panel.html" with eyebrow="Family access" headline="Student and<br>parent portal." copy="Sign in with your assessment number or parent phone." trust="Private family access" %}
+
+  <section class="auth-panel">
+    <div class="auth-card auth-card-elevated">
+      <div class="form-page-heading">
+        <span class="eyebrow">Portal</span>
+        <h2>Sign in</h2>
+      </div>
+
+      <div class="portal-tabs" role="tablist" aria-label="Portal type">
+        <button type="button" class="portal-tab active" data-portal="student" role="tab" aria-selected="true">Student</button>
+        <button type="button" class="portal-tab" data-portal="parent" role="tab" aria-selected="false">Parent</button>
+      </div>
+
+      <form method="post" class="portal-form auth-form" id="student-form">
+        {% csrf_token %}
+        <input type="hidden" name="portal_type" value="student">
+        {% if student_form.non_field_errors %}<div class="notice error">{{ student_form.non_field_errors|striptags }}</div>{% endif %}
+        <div class="field">
+          <label for="{{ student_form.assessment_number.id_for_label }}">Assessment number</label>
+          {{ student_form.assessment_number }}
+        </div>
+        <div class="field">
+          <label for="{{ student_form.password.id_for_label }}">Password</label>
+          <div class="password-input">
+            {{ student_form.password }}
+            <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9.3 3.1-11 7 1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.1 2.3 1.7 3.7l3.1 3.1C3 8.2 1.5 10 1 12c1.7 3.9 6 7 11 7 1.7 0 3.3-.3 4.8-.9l3.1 3.1 1.4-1.4L3.1 2.3zM12 17c-3.9 0-7.2-2.2-8.8-5 .7-1.3 1.8-2.5 3.1-3.4l1.7 1.7A5 5 0 0 0 12 17zm0-10c3.9 0 7.2 2.2 8.8 5-.5.9-1.1 1.7-1.9 2.4l1.5 1.5c1.2-1 2.2-2.3 2.6-3.9-1.7-3.9-6-7-11-7-1.1 0-2.1.1-3.1.4l1.6 1.6c.5-.1 1-.1 1.5-.1z"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+      </form>
+
+      <form method="post" class="portal-form auth-form" id="parent-form" hidden>
+        {% csrf_token %}
+        <input type="hidden" name="portal_type" value="parent">
+        {% if parent_form.non_field_errors %}<div class="notice error">{{ parent_form.non_field_errors|striptags }}</div>{% endif %}
+        <div class="field">
+          <label for="{{ parent_form.phone_number.id_for_label }}">Phone number</label>
+          {{ parent_form.phone_number }}
+        </div>
+        <div class="field">
+          <label for="{{ parent_form.password.id_for_label }}">Password</label>
+          <div class="password-input">
+            {{ parent_form.password }}
+            <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9.3 3.1-11 7 1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.1 2.3 1.7 3.7l3.1 3.1C3 8.2 1.5 10 1 12c1.7 3.9 6 7 11 7 1.7 0 3.3-.3 4.8-.9l3.1 3.1 1.4-1.4L3.1 2.3zM12 17c-3.9 0-7.2-2.2-8.8-5 .7-1.3 1.8-2.5 3.1-3.4l1.7 1.7A5 5 0 0 0 12 17zm0-10c3.9 0 7.2 2.2 8.8 5-.5.9-1.1 1.7-1.9 2.4l1.5 1.5c1.2-1 2.2-2.3 2.6-3.9-1.7-3.9-6-7-11-7-1.1 0-2.1.1-3.1.4l1.6 1.6c.5-.1 1-.1 1.5-.1z"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+      </form>
+
+      <div class="auth-footer">
+        <a class="auth-footer-link" href="{% url 'employees:login' %}">Staff sign in</a>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+(function () {
+  const tabs = document.querySelectorAll(".portal-tab");
+  const studentForm = document.getElementById("student-form");
+  const parentForm = document.getElementById("parent-form");
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const isStudent = tab.dataset.portal === "student";
+      tabs.forEach((item) => {
+        const active = item === tab;
+        item.classList.toggle("active", active);
+        item.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      studentForm.hidden = !isStudent;
+      parentForm.hidden = isStudent;
+    });
+  });
+})();
+</script>
+{% endblock %}

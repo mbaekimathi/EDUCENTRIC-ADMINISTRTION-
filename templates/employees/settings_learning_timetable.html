@@ -1,0 +1,657 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Learning timetable settings | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Curriculum settings{% endblock %}
+{% block header_title %}Learning timetable settings{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/curriculum_settings_sidebar.html" %}
+<p class="workspace-nav-label">Actions</p>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="schedule-profile"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Register schedule profile
+</button>
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="settings-toolbar">
+  <div class="settings-toolbar-copy">
+    <h2>Academic schedule configuration</h2>
+    <p class="subtle">Set the school-day structure for each academic level category before generating learning timetables.</p>
+  </div>
+  <button type="button" class="primary-button settings-toolbar-action" data-open-modal="schedule-profile">
+    Register schedule profile
+  </button>
+</div>
+
+{% if profiles %}
+<div class="schedule-profile-list">
+  {% for profile in profiles %}
+  <section class="schedule-profile-card">
+    <header class="schedule-profile-header">
+      <div>
+        <span class="schedule-profile-category is-uppercase">{{ profile.category }}</span>
+        <h3 class="is-uppercase">{{ profile.name }}</h3>
+        <p class="subtle">
+          {% for level in profile.academic_levels.all %}
+            {{ level.name }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </p>
+      </div>
+      <div class="record-actions">
+        <a class="record-action" href="{% url 'employees:learning_timetable_settings' %}?edit={{ profile.id }}">Edit</a>
+        <form method="post" action="{% url 'employees:delete_learning_timetable_profile' profile.id %}" onsubmit="return confirm('Delete {{ profile.name|escapejs }}? This cannot be undone.');">
+          {% csrf_token %}
+          <button type="submit" class="record-action is-danger">Delete</button>
+        </form>
+      </div>
+    </header>
+    <div class="schedule-profile-summary">
+      <div>
+        <span class="subtle">Study days</span>
+        <strong>
+          {% for day in profile.study_days %}
+            {{ day }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </strong>
+      </div>
+      <div>
+        <span class="subtle">Lesson duration</span>
+        <strong>{{ profile.lesson_duration_minutes }} min</strong>
+      </div>
+      <div>
+        <span class="subtle">First class</span>
+        <strong>{{ profile.first_class_start_time|time:"H:i" }}</strong>
+      </div>
+      <div>
+        <span class="subtle">Lesson end</span>
+        <strong>{{ profile.last_class_end_time|time:"H:i" }}</strong>
+      </div>
+    </div>
+    {% if profile.day_preview.issues %}
+    <div class="schedule-preview-alerts">
+      {% for issue in profile.day_preview.issues %}
+      <p class="schedule-preview-alert is-{{ issue.type }}">{{ issue.message }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if profile.day_preview.blocks %}
+    <div class="schedule-timetable-wrap">
+      <table class="schedule-timetable">
+        <thead>
+          <tr>
+            <th>Day</th>
+            {% for block in profile.day_preview.blocks %}
+            <th class="is-{{ block.kind }}{% if block.collision %} is-collision{% endif %}">
+              <span>{{ block.start_label }}</span>
+              <span>{{ block.end_label }}</span>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in profile.day_preview.days %}
+          <tr>
+            <th scope="row">{{ day }}</th>
+            {% for block in profile.day_preview.blocks %}
+            <td class="is-{{ block.kind }}{% if block.collision %} is-collision{% endif %}">{{ block.label }}</td>
+            {% endfor %}
+          </tr>
+          {% empty %}
+          <tr>
+            <th scope="row">Period</th>
+            {% for block in profile.day_preview.blocks %}
+            <td class="is-{{ block.kind }}{% if block.collision %} is-collision{% endif %}">{{ block.label }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<section class="settings-panel">
+  <p class="settings-empty">No schedule profiles yet. Register a profile to configure learning days, class timings, and activities.</p>
+</section>
+{% endif %}
+
+<div
+  class="app-modal{% if open_profile_modal %} is-open{% endif %}"
+  id="schedule-profile-modal"
+  data-modal="schedule-profile"
+  {% if not open_profile_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-dialog app-modal-dialog-wide schedule-profile-dialog" role="dialog" aria-modal="true" aria-labelledby="schedule-profile-title">
+    <div class="app-modal-header">
+      <div>
+        <p class="schedule-profile-kicker">Learning timetable</p>
+        <h2 id="schedule-profile-title">{% if edit_profile %}Edit schedule profile{% else %}Register schedule profile{% endif %}</h2>
+      </div>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form schedule-profile-form" data-schedule-profile-form novalidate>
+      {% csrf_token %}
+      {% if edit_profile %}<input type="hidden" name="profile_id" value="{{ edit_profile.id }}">{% endif %}
+      {{ activity_formset.management_form }}
+      <div class="schedule-profile-form-body">
+        {% if profile_form.non_field_errors %}<div class="notice error">{{ profile_form.non_field_errors|striptags }}</div>{% endif %}
+        {% if activity_formset.non_form_errors %}<div class="notice error">{{ activity_formset.non_form_errors|striptags }}</div>{% endif %}
+
+        <section class="schedule-form-section">
+          <h3>1. Who this profile is for</h3>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="{{ profile_form.category.id_for_label }}">Academic category <span class="required">*</span></label>
+              {{ profile_form.category }}
+              {% for error in profile_form.category.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field">
+              <label for="{{ profile_form.name.id_for_label }}">Profile name</label>
+              {{ profile_form.name }}
+              <small class="subtle">Filled automatically from the category</small>
+              {% for error in profile_form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Applicable academic levels <span class="required">*</span></span>
+            <p class="schedule-empty-hint" data-schedule-levels-empty>Select an academic category to load its levels.</p>
+            <div class="choice-chips is-uppercase is-pills" data-schedule-levels hidden>{{ profile_form.academic_levels }}</div>
+            {% for error in profile_form.academic_levels.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>2. Learning day</h3>
+          <div class="schedule-day-times">
+            <div class="field">
+              <label for="{{ profile_form.first_class_start_time.id_for_label }}">First class starts at <span class="required">*</span></label>
+              {{ profile_form.first_class_start_time }}
+              {% for error in profile_form.first_class_start_time.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field">
+              <label for="{{ profile_form.last_class_end_time.id_for_label }}">Lesson end time <span class="required">*</span></label>
+              {{ profile_form.last_class_end_time }}
+              {% for error in profile_form.last_class_end_time.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field">
+              <label for="{{ profile_form.lesson_duration_minutes.id_for_label }}">Lesson duration (minutes) <span class="required">*</span></label>
+              {{ profile_form.lesson_duration_minutes }}
+              {% for error in profile_form.lesson_duration_minutes.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Days studied <span class="required">*</span></span>
+            <div class="choice-chips is-pills">{{ profile_form.study_days }}</div>
+            {% for error in profile_form.study_days.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <div class="schedule-activities-heading">
+            <div>
+              <h3>3. Breaks and activities</h3>
+              <p class="subtle">Add each break or special period. End time is calculated from start time and duration.</p>
+            </div>
+          </div>
+          <div class="schedule-activity-rows" data-activity-rows>
+            {% for form in activity_formset %}
+            <article class="schedule-activity-row" data-activity-row>
+              {{ form.id }}
+              <div class="schedule-activity-delete" hidden>{{ form.DELETE }}</div>
+              <div class="schedule-activity-row-top">
+                <div class="field schedule-activity-name">
+                  <label for="{{ form.name.id_for_label }}">Activity</label>
+                  {{ form.name }}
+                  {% for error in form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                </div>
+                <button type="button" class="icon-button is-danger" data-remove-activity aria-label="Remove activity">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="schedule-activity-timing">
+                <div class="field">
+                  <label for="{{ form.start_time.id_for_label }}">Start time</label>
+                  {{ form.start_time }}
+                  {% for error in form.start_time.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                </div>
+                <div class="field">
+                  <label for="{{ form.duration_minutes.id_for_label }}">Duration (min)</label>
+                  {{ form.duration_minutes }}
+                  {% for error in form.duration_minutes.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                </div>
+                <div class="field">
+                  <span class="field-label">End time</span>
+                  <output class="schedule-end-time" data-activity-end>—</output>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          <button type="button" class="schedule-add-activity" data-add-activity>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Add activity
+          </button>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>4. Timetable preview</h3>
+          <p class="subtle">Gaps between activities are filled with lessons of the set duration. Overlapping times are highlighted.</p>
+          <div class="schedule-preview-alerts" data-preview-alerts></div>
+          <p class="schedule-empty-hint" data-preview-empty>Enter first class start time, lesson end time, and lesson duration to preview the timetable.</p>
+          <div class="schedule-timetable-wrap" data-preview-timeline hidden></div>
+        </section>
+      </div>
+
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">{% if edit_profile %}Save changes{% else %}Register profile{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector('[data-modal="schedule-profile"]');
+  const form = document.querySelector("[data-schedule-profile-form]");
+  const rows = document.querySelector("[data-activity-rows]");
+  const addButton = document.querySelector("[data-add-activity]");
+  const totalForms = form?.querySelector("#id_activities-TOTAL_FORMS");
+  const categorySelect = form?.querySelector("[data-schedule-category]");
+  const nameInput = form?.querySelector("[data-schedule-name]");
+  const levelsGrid = form?.querySelector("[data-schedule-levels]");
+  const levelsEmpty = form?.querySelector("[data-schedule-levels-empty]");
+  const previewAlerts = form?.querySelector("[data-preview-alerts]");
+  const previewEmpty = form?.querySelector("[data-preview-empty]");
+  const previewTimeline = form?.querySelector("[data-preview-timeline]");
+  const isEditing = Boolean(form?.querySelector('input[name="profile_id"]')?.value);
+
+  function syncProfileName() {
+    if (!categorySelect || !nameInput) return;
+    const category = (categorySelect.value || "").trim().toUpperCase();
+    nameInput.value = category ? `${category} SESSION` : "";
+  }
+
+  function levelItem(input) {
+    return (
+      input.closest("li") ||
+      input.closest("label")?.parentElement ||
+      input.closest("label") ||
+      input.parentElement
+    );
+  }
+
+  function syncLevelOptions({ selectMatching = false } = {}) {
+    if (!categorySelect || !levelsGrid) return;
+    const category = (categorySelect.value || "").trim().toUpperCase();
+    let visible = 0;
+    levelsGrid.querySelectorAll("input[type='checkbox']").forEach((input) => {
+      const item = levelItem(input);
+      const matches = Boolean(category) && (input.dataset.category || "").trim().toUpperCase() === category;
+      if (item) item.hidden = !matches;
+      if (!matches) {
+        input.checked = false;
+      } else if (selectMatching) {
+        input.checked = true;
+      }
+      if (matches) visible += 1;
+    });
+    levelsGrid.hidden = !category || visible === 0;
+    if (levelsEmpty) {
+      levelsEmpty.hidden = Boolean(category) && visible > 0;
+      levelsEmpty.textContent = category
+        ? "No active academic levels were found in this category."
+        : "Select an academic category to load its levels.";
+    }
+  }
+
+  function syncCategoryScope(options) {
+    syncProfileName();
+    syncLevelOptions(options);
+  }
+
+  categorySelect?.addEventListener("change", () => syncCategoryScope({ selectMatching: true }));
+  syncCategoryScope({ selectMatching: !isEditing });
+
+  function setOpen(open) {
+    if (!modal) return;
+    modal.hidden = !open;
+    modal.classList.toggle("is-open", open);
+    document.body.classList.toggle("modal-open", open);
+    if (open) {
+      syncCategoryScope();
+      renderPreview();
+    }
+  }
+
+  document.querySelectorAll('[data-open-modal="schedule-profile"]').forEach((button) => {
+    button.addEventListener("click", () => setOpen(true));
+  });
+  modal?.querySelectorAll("[data-modal-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setOpen(false);
+      if (window.location.search.includes("edit=")) {
+        window.location.href = "{% url 'employees:learning_timetable_settings' %}";
+      }
+    });
+  });
+
+  function updateEndTime(row) {
+    const start = row.querySelector('input[name$="-start_time"]');
+    const duration = row.querySelector('input[name$="-duration_minutes"]');
+    const output = row.querySelector("[data-activity-end]");
+    if (!start?.value || !duration?.value || !output) {
+      if (output) output.textContent = "—";
+      return;
+    }
+    const [hours, minutes] = start.value.split(":").map(Number);
+    const total = (hours * 60 + minutes + Number(duration.value)) % (24 * 60);
+    output.textContent = `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  }
+
+  function reindexRow(row, index) {
+    row.querySelectorAll("input, label, output").forEach((el) => {
+      if (el.name) el.name = el.name.replace(/activities-\d+-/, `activities-${index}-`);
+      if (el.id) el.id = el.id.replace(/activities-\d+-/, `activities-${index}-`);
+      if (el.htmlFor) el.htmlFor = el.htmlFor.replace(/activities-\d+-/, `activities-${index}-`);
+    });
+  }
+
+  function clearRow(row) {
+    row.hidden = false;
+    row.querySelectorAll("input").forEach((input) => {
+      if (input.type === "checkbox") input.checked = false;
+      else if (input.name && /-id$/.test(input.name)) input.value = "";
+      else if (input.type !== "hidden") input.value = "";
+    });
+    const output = row.querySelector("[data-activity-end]");
+    if (output) output.textContent = "—";
+  }
+
+  function visibleActivityRows() {
+    return [...(rows?.querySelectorAll("[data-activity-row]") || [])].filter((row) => !row.hidden);
+  }
+
+  function removeRow(row) {
+    const del = row.querySelector('input[name$="-DELETE"]');
+    const hasSavedId = Boolean(row.querySelector('input[name$="-id"]')?.value);
+    if (visibleActivityRows().length <= 1 && !hasSavedId) {
+      clearRow(row);
+      renderPreview();
+      return;
+    }
+    if (del) del.checked = true;
+    row.hidden = true;
+    if (visibleActivityRows().length === 0) addButton?.click();
+    renderPreview();
+  }
+
+  function wireRow(row) {
+    row.querySelectorAll('input[name$="-start_time"], input[name$="-duration_minutes"]').forEach((input) => {
+      input.addEventListener("input", () => updateEndTime(row));
+      input.addEventListener("change", () => updateEndTime(row));
+    });
+    row.querySelector("[data-remove-activity]")?.addEventListener("click", () => removeRow(row));
+    updateEndTime(row);
+  }
+
+  rows?.querySelectorAll("[data-activity-row]").forEach(wireRow);
+
+  addButton?.addEventListener("click", () => {
+    if (!rows || !totalForms) return;
+    const template = visibleActivityRows()[0] || rows.querySelector("[data-activity-row]");
+    if (!template) return;
+    const index = Number(totalForms.value);
+    const row = template.cloneNode(true);
+    reindexRow(row, index);
+    clearRow(row);
+    rows.appendChild(row);
+    totalForms.value = index + 1;
+    wireRow(row);
+    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    renderPreview();
+  });
+
+  const DAY_LABELS = {
+    MON: "Monday",
+    TUE: "Tuesday",
+    WED: "Wednesday",
+    THU: "Thursday",
+    FRI: "Friday",
+    SAT: "Saturday",
+    SUN: "Sunday",
+  };
+
+  function parseMinutes(value) {
+    if (!value) return null;
+    const [hours, minutes] = String(value).split(":").map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  }
+
+  function formatMinutes(total) {
+    const wrapped = ((Number(total) % (24 * 60)) + 24 * 60) % (24 * 60);
+    return `${String(Math.floor(wrapped / 60)).padStart(2, "0")}:${String(wrapped % 60).padStart(2, "0")}`;
+  }
+
+  function collectActivities() {
+    return visibleActivityRows()
+      .map((row) => {
+        if (row.querySelector('input[name$="-DELETE"]')?.checked) return null;
+        const name = (row.querySelector('input[name$="-name"]')?.value || "").trim();
+        const start = parseMinutes(row.querySelector('input[name$="-start_time"]')?.value);
+        const duration = Number(row.querySelector('input[name$="-duration_minutes"]')?.value);
+        if (start === null || !duration || duration <= 0) return null;
+        return {
+          name: name || "ACTIVITY",
+          start,
+          end: start + duration,
+          duration,
+          collision: false,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.start - b.start || a.name.localeCompare(b.name));
+  }
+
+  function uniqueIssues(issues) {
+    const seen = new Set();
+    return issues.filter((issue) => {
+      if (seen.has(issue.message)) return false;
+      seen.add(issue.message);
+      return true;
+    });
+  }
+
+  function buildPreview(firstStart, lesson, activities, dayEnd) {
+    const issues = [];
+    const blocks = [];
+    const items = activities.map((item) => ({ ...item }));
+
+    items.forEach((current, index) => {
+      items.slice(index + 1).forEach((other) => {
+        if (current.start < other.end && other.start < current.end) {
+          current.collision = true;
+          other.collision = true;
+          issues.push({
+            type: "collision",
+            message: `${current.name} overlaps ${other.name} from ${formatMinutes(Math.max(current.start, other.start))} to ${formatMinutes(Math.min(current.end, other.end))}.`,
+          });
+        }
+      });
+    });
+
+    if (firstStart === null || !lesson || lesson <= 0 || dayEnd === null) {
+      return { blocks, issues: uniqueIssues(issues), ready: false };
+    }
+    if (dayEnd <= firstStart) {
+      issues.push({
+        type: "collision",
+        message: "Lesson end time must be later than first class start time.",
+      });
+      return { blocks, issues: uniqueIssues(issues), ready: false };
+    }
+
+    items.forEach((item) => {
+      if (item.start < firstStart) {
+        item.collision = true;
+        issues.push({
+          type: "collision",
+          message: `${item.name} starts before first class at ${formatMinutes(firstStart)}.`,
+        });
+      }
+    });
+
+    let cursor = firstStart;
+    let lessonNo = 1;
+
+    function addLessonsUntil(limit) {
+      while (cursor < limit) {
+        const end = cursor + lesson;
+        const overlaps = end > limit;
+        blocks.push({
+          kind: "lesson",
+          label: `Lesson ${lessonNo}`,
+          startLabel: formatMinutes(cursor),
+          endLabel: formatMinutes(end),
+          collision: overlaps,
+        });
+        if (overlaps) {
+          issues.push({
+            type: "collision",
+            message: `Lesson ${lessonNo} (${formatMinutes(cursor)}–${formatMinutes(end)}) overlaps the next period starting at ${formatMinutes(limit)}.`,
+          });
+        }
+        cursor = end;
+        lessonNo += 1;
+        if (overlaps) break;
+      }
+    }
+
+    items.forEach((item) => {
+      if (item.start > dayEnd) {
+        item.collision = true;
+        issues.push({
+          type: "collision",
+          message: `${item.name} starts after lesson end time (${formatMinutes(dayEnd)}).`,
+        });
+      }
+      if (cursor < item.start) addLessonsUntil(Math.min(item.start, dayEnd));
+      if (cursor > item.start) {
+        item.collision = true;
+        if (blocks.length) blocks[blocks.length - 1].collision = true;
+      }
+      blocks.push({
+        kind: "activity",
+        label: item.name,
+        startLabel: formatMinutes(item.start),
+        endLabel: formatMinutes(item.end),
+        collision: item.collision,
+      });
+      cursor = Math.max(cursor, item.end);
+    });
+
+    if (cursor < dayEnd) {
+      addLessonsUntil(dayEnd);
+    } else if (cursor > dayEnd) {
+      issues.push({
+        type: "collision",
+        message: `The day overruns lesson end time by ${cursor - dayEnd} minutes (${formatMinutes(dayEnd)}–${formatMinutes(cursor)}).`,
+      });
+      if (blocks.length) blocks[blocks.length - 1].collision = true;
+    }
+
+    return { blocks, issues: uniqueIssues(issues), ready: true };
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function renderPreview() {
+    if (!form || !previewTimeline) return;
+    const firstStart = parseMinutes(
+      form.querySelector("#id_first_class_start_time")?.value ||
+        form.querySelector('[name="first_class_start_time"]')?.value
+    );
+    const lesson = Number(
+      form.querySelector("#id_lesson_duration_minutes")?.value ||
+        form.querySelector('[name="lesson_duration_minutes"]')?.value
+    );
+    const dayEnd = parseMinutes(
+      form.querySelector("#id_last_class_end_time")?.value ||
+        form.querySelector('[name="last_class_end_time"]')?.value
+    );
+    const selectedDays = [...form.querySelectorAll('input[name="study_days"]:checked')]
+      .map((input) => input.value)
+      .sort((a, b) => Object.keys(DAY_LABELS).indexOf(a) - Object.keys(DAY_LABELS).indexOf(b))
+      .map((value) => DAY_LABELS[value] || value);
+    const preview = buildPreview(firstStart, lesson, collectActivities(), dayEnd);
+    const columns = selectedDays.length ? selectedDays : ["Period"];
+
+    if (previewAlerts) {
+      previewAlerts.replaceChildren();
+      preview.issues.forEach((issue) => {
+        previewAlerts.appendChild(el("p", `schedule-preview-alert is-${issue.type}`, issue.message));
+      });
+    }
+
+    previewTimeline.replaceChildren();
+    if (preview.ready && preview.blocks.length) {
+      const table = el("table", "schedule-timetable");
+      const head = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      headRow.appendChild(el("th", "", "Day"));
+      preview.blocks.forEach((block) => {
+        const cell = el("th", `is-${block.kind}${block.collision ? " is-collision" : ""}`);
+        cell.appendChild(el("span", "", block.startLabel));
+        cell.appendChild(el("span", "", block.endLabel));
+        headRow.appendChild(cell);
+      });
+      head.appendChild(headRow);
+      table.appendChild(head);
+
+      const body = document.createElement("tbody");
+      columns.forEach((day) => {
+        const row = document.createElement("tr");
+        row.appendChild(el("th", "", day)).scope = "row";
+        preview.blocks.forEach((block) => {
+          row.appendChild(
+            el("td", `is-uppercase is-${block.kind}${block.collision ? " is-collision" : ""}`, block.label)
+          );
+        });
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      previewTimeline.appendChild(table);
+    }
+
+    const showTimeline = preview.ready && preview.blocks.length > 0;
+    previewTimeline.hidden = !showTimeline;
+    if (previewEmpty) previewEmpty.hidden = showTimeline;
+  }
+
+  form?.addEventListener("input", renderPreview);
+  form?.addEventListener("change", renderPreview);
+  renderPreview();
+
+  if (modal?.classList.contains("is-open")) setOpen(true);
+})();
+</script>
+{% endblock %}

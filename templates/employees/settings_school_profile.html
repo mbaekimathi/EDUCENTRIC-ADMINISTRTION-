@@ -1,0 +1,100 @@
+{% extends "layouts/settings.html" %}
+{% block title %}School profile settings | Edu-Centric{% endblock %}
+{% block header_title %}School profile settings{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<form method="post" enctype="multipart/form-data" class="school-profile-form" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+  <section class="settings-panel school-profile-panel">
+    <div class="settings-profile-card">
+      {% if school_profile.school_logo %}
+      <img class="school-logo-preview" src="{{ school_profile.school_logo.url }}" alt="">
+      {% else %}
+      <span class="module-icon" aria-hidden="true">SP</span>
+      {% endif %}
+      <div>
+        <h3>Basic identity</h3>
+        <p>Set the official school name and logo used on exam reports and mark sheets.</p>
+      </div>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="field">
+        <label for="{{ form.official_name.id_for_label }}">Official school name <span class="required">*</span></label>
+        {{ form.official_name }}
+        {% for error in form.official_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.display_name.id_for_label }}">Short / display name <span class="required">*</span></label>
+        {{ form.display_name }}
+        {% for error in form.display_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field span-two">
+        <label for="{{ form.school_logo.id_for_label }}">School logo</label>
+        {% if school_profile.school_logo %}
+        <div class="school-logo-current">
+          <img src="{{ school_profile.school_logo.url }}" alt="Current school logo">
+          <small class="field-hint">Current logo. Upload a new file below to replace it.</small>
+        </div>
+        {% endif %}
+        {{ form.school_logo }}
+        <small class="field-hint">{{ form.school_logo.help_text }}</small>
+        {% for error in form.school_logo.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.school_type.id_for_label }}">School type <span class="required">*</span></label>
+        {{ form.school_type }}
+        {% for error in form.school_type.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.ownership.id_for_label }}">Ownership <span class="required">*</span></label>
+        {{ form.ownership }}
+        {% for error in form.ownership.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-panel school-profile-panel">
+    <div>
+      <h3 class="school-profile-section-title">Registration and curriculum</h3>
+      <p class="settings-empty">Add official registration identifiers and the curricula your school offers.</p>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="field">
+        <label for="{{ form.moe_code.id_for_label }}">MOE / Ministry of Education code</label>
+        {{ form.moe_code }}
+        {% for error in form.moe_code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.nemis_number.id_for_label }}">NEMIS number</label>
+        {{ form.nemis_number }}
+        {% for error in form.nemis_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.knec_centre_number.id_for_label }}">KNEC centre number</label>
+        {{ form.knec_centre_number }}
+        <small class="field-hint">Required only for schools registering candidates for KNEC exams.</small>
+        {% for error in form.knec_centre_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+    </div>
+
+    <fieldset class="field school-profile-curricula">
+      <legend>Curriculum offered <span class="required">*</span></legend>
+      <small class="field-hint">{{ form.curricula.help_text }}</small>
+      <div class="school-profile-checkboxes">{{ form.curricula }}</div>
+      {% for error in form.curricula.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+    </fieldset>
+  </section>
+
+  <div class="school-profile-actions">
+    <button type="submit" class="primary-button">Save school profile</button>
+  </div>
+</form>
+{% endblock %}

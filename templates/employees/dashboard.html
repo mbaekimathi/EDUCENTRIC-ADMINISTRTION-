@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Workspace | Edu-Centric{% endblock %}
+{% block content %}
+<main class="app-shell">
+  {% url 'employees:dashboard' as dash_url %}
+  {% url 'employees:logout' as logout_url %}
+  {% include "partials/app_header.html" with brand_href=dash_url user_label=request.user.display_name action_href=logout_url action_label="Sign out" only %}
+
+  <div class="page-wrap">
+    <section class="hero-panel">
+      <div class="hero-panel-top">
+        <div class="hero-identity">
+          <div class="avatar" aria-hidden="true">{{ request.user.first_name|default:"E"|slice:":1"|upper }}</div>
+          <div class="hero-copy">
+            <span class="eyebrow">Employee workspace</span>
+            <h1>Good to see you, {{ request.user.first_name }}.</h1>
+            <p>Your Edu-Centric workspace is ready. Open a module below to continue school operations.</p>
+          </div>
+        </div>
+        <a class="ghost-button" href="{% url 'admissions:admit_student' %}">Admit student</a>
+      </div>
+    </section>
+
+    <section class="module-grid" aria-label="Workspace modules">
+      <a class="module-card" href="{% url 'admissions:admit_student' %}">
+        <span class="module-icon">AD</span>
+        <h3>Admissions</h3>
+        <p>Register new students and set up parent portal access.</p>
+        <span class="module-meta">Open admissions →</span>
+      </a>
+      <div class="module-card is-static">
+        <span class="module-icon">AT</span>
+        <h3>Attendance</h3>
+        <p>Daily class attendance tools will appear here soon.</p>
+        <span class="module-meta">Coming soon</span>
+      </div>
+      <div class="module-card is-static">
+        <span class="module-icon">AC</span>
+        <h3>Academics</h3>
+        <p>Classes, results, and academic records stay organized here.</p>
+        <span class="module-meta">Coming soon</span>
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Learning management{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="{{ page.title }} overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Learning management</p>
+      <h2>{{ page.title }}</h2>
+      <p>{{ page.copy }}</p>
+    </div>
+  </section>
+
+  {% if page.slug == 'timetable-management' %}
+  <section class="module-grid" aria-label="Timetable management tools">
+    <a class="module-card" href="{% url 'employees:learning_timetable_settings' %}">
+      <span class="module-icon">LT</span>
+      <h3>Learning timetable settings</h3>
+      <p>Configure sessions and structure used for regular learning timetables.</p>
+      <span class="module-meta">Open →</span>
+    </a>
+  </section>
+  {% else %}
+  <section class="exam-tool-empty">
+    <span class="exam-tool-empty-icon" aria-hidden="true">LM</span>
+    <strong>Tools coming soon</strong>
+    <p>Tools for {{ page.title|lower }} will appear here as this module is enabled.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

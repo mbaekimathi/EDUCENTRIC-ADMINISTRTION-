@@ -1,0 +1,172 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ exam_title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam records{% endblock %}
+{% block header_title %}{{ exam_title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_exam_classes_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+{% if selected_class %}
+<section class="exam-record-sheet">
+  {% if students %}
+  <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks>
+    {% csrf_token %}
+    <header class="exam-record-bar">
+      <div class="exam-record-bar-title">
+        <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
+        <span class="student-count-chip is-quiet">
+          {{ students|length }} student{{ students|length|pluralize }}
+        </span>
+      </div>
+      <div class="exam-record-bar-tools">
+        <button type="button" class="ghost-button" data-exam-edit>Edit</button>
+        <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
+        <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
+        <a class="exam-back-link" href="{% url 'employees:teacher_exam_records' %}">Back to exam records</a>
+      </div>
+    </header>
+
+    <div class="settings-table-panel exam-record-sheet-table">
+      <table class="settings-table settings-table-responsive exam-record-students-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Admission</th>
+            {% for subject in subjects %}
+            <th title="{{ subject.name }}">{{ subject.code }}</th>
+            <th title="{{ subject.name }} percentage">%</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td>
+              <strong class="is-uppercase exam-student-name">
+                <span class="exam-student-first">{{ student.first_name }}</span>
+                <span class="exam-student-last">{{ student.last_name }}</span>
+              </strong>
+            </td>
+            <td>{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</td>
+            {% for cell in student.mark_cells %}
+            <td>
+              <label class="sr-only" for="{{ cell.field_name }}">{{ cell.subject.name }} marks for {{ student.display_name }}, out of {{ cell.out_of }}</label>
+              <input
+                id="{{ cell.field_name }}"
+                class="exam-mark-input"
+                type="number"
+                name="{{ cell.field_name }}"
+                value="{% if cell.raw != None %}{{ cell.raw }}{% endif %}"
+                min="0"
+                max="{{ cell.out_of }}"
+                step="1"
+                inputmode="numeric"
+                placeholder="—"
+                data-exam-mark
+                data-out-of="{{ cell.out_of }}"
+                data-subject-id="{{ cell.subject.id }}"
+                readonly
+              >
+            </td>
+            <td>
+              <span class="exam-mark-percent" data-converted-for="{{ cell.field_name }}">{% if cell.percent != None %}{{ cell.percent }}%{% endif %}</span>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if subject_means %}
+        <tfoot>
+          <tr class="exam-record-mean-row">
+            <td><strong>Mean</strong></td>
+            <td></td>
+            {% for mean in subject_means %}
+            <td>
+              <span class="exam-mark-mean" data-mean-raw-for="{{ mean.subject.id }}">
+                {% if mean.raw_mean != None %}{{ mean.raw_mean }}{% else %}—{% endif %}
+              </span>
+            </td>
+            <td>
+              <span class="exam-mark-mean" data-mean-percent-for="{{ mean.subject.id }}">
+                {% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}
+              </span>
+            </td>
+            {% endfor %}
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </form>
+  {% else %}
+  <div class="exam-record-sheet-empty">
+    <p class="settings-empty">No students are registered in {{ selected_class.display_label }}.</p>
+  </div>
+  {% endif %}
+</section>
+{% else %}
+<section class="settings-panel">
+  <p class="settings-empty">Select a class from the sidebar to view this exam.</p>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block workspace_scripts %}
+{% include "employees/includes/exam_record_edit_mode.html" %}
+<script>
+(function () {
+  const form = document.querySelector("[data-teacher-marks]");
+  if (!form) return;
+
+  function convertMark(input) {
+    const converted = form.querySelector(`[data-converted-for="${input.id}"]`);
+    if (!converted) return;
+    const outOf = Number(input.getAttribute("data-out-of") || "0");
+    const raw = input.value.trim();
+    if (raw === "" || !outOf) {
+      converted.textContent = "";
+    } else {
+      const marks = Number(raw);
+      converted.textContent = Number.isFinite(marks) ? `${Math.round((marks * 100) / outOf)}%` : "";
+    }
+    updateMeans();
+  }
+
+  function updateMeans() {
+    const grouped = new Map();
+    form.querySelectorAll("[data-exam-mark]").forEach((input) => {
+      const subjectId = input.getAttribute("data-subject-id");
+      if (!subjectId) return;
+      const outOf = Number(input.getAttribute("data-out-of") || "0");
+      const raw = input.value.trim();
+      if (!grouped.has(subjectId)) grouped.set(subjectId, { values: [], outOf });
+      if (raw !== "" && Number.isFinite(Number(raw))) {
+        grouped.get(subjectId).values.push(Number(raw));
+      }
+    });
+    grouped.forEach(({ values, outOf }, subjectId) => {
+      const rawTarget = form.querySelector(`[data-mean-raw-for="${subjectId}"]`);
+      const percentTarget = form.querySelector(`[data-mean-percent-for="${subjectId}"]`);
+      if (!rawTarget || !percentTarget) return;
+      if (!values.length) {
+        rawTarget.textContent = "—";
+        percentTarget.textContent = "—";
+        return;
+      }
+      const mean = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+      rawTarget.textContent = String(mean);
+      percentTarget.textContent = outOf ? `${Math.round((mean * 100) / outOf)}%` : "—";
+    });
+  }
+
+  form.querySelectorAll("[data-exam-mark]").forEach((input) => {
+    input.addEventListener("input", () => convertMark(input));
+  });
+  updateMeans();
+})();
+</script>
+{% endblock %}

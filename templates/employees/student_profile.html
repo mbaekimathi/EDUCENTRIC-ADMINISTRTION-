@@ -1,0 +1,87 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ student.display_name }} | Student profile{% endblock %}
+{% block header_eyebrow %}Student profile{% endblock %}
+{% block header_title %}{{ student.display_name }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<section class="student-profile-hero">
+  <div class="student-profile-identity">
+    <span class="student-profile-avatar" aria-hidden="true">
+      {% if student.profile_image %}
+      <img src="{{ student.profile_image.url }}" alt="">
+      {% else %}
+      {{ student.first_name|slice:":1" }}{{ student.last_name|slice:":1" }}
+      {% endif %}
+    </span>
+    <div>
+      <p class="student-hero-kicker">{{ student.class_group|default:student.get_academic_level_display }}</p>
+      <h2 class="is-uppercase">{{ student.display_name }}</h2>
+      <p>{{ student.assessment_number }}{% if student.admission_number %} · Admission {{ student.admission_number }}{% endif %}</p>
+    </div>
+  </div>
+  <div class="student-profile-hero-side">
+    <span class="status-pill is-uppercase {% if student.is_suspended %}is-inactive{% elif student.is_active %}is-active{% else %}is-inactive{% endif %}">
+      {% if student.is_suspended %}Suspended{% elif student.is_active %}Active{% else %}Inactive{% endif %}
+    </span>
+    {% if can_manage_students %}
+      <a class="ghost-button" href="{% url 'employees:it_support_module' 'student-management' %}">Back to register</a>
+    {% else %}
+      <a class="ghost-button" href="{% url 'employees:dashboard' %}">Back to dashboard</a>
+    {% endif %}
+  </div>
+</section>
+
+<div class="student-profile-grid">
+  <section class="student-profile-card">
+    <h3>Personal details</h3>
+    <dl class="student-detail-list">
+      <div><dt>First name</dt><dd class="is-uppercase">{{ student.first_name }}</dd></div>
+      <div><dt>Last name</dt><dd class="is-uppercase">{{ student.last_name }}</dd></div>
+      <div><dt>Date of birth</dt><dd>{{ student.date_of_birth|date:"j F Y" }}</dd></div>
+      <div><dt>Gender</dt><dd>{{ student.get_gender_display }}</dd></div>
+      <div class="is-wide"><dt>Home address</dt><dd>{% if student.home_address %}{{ student.home_address }}{% else %}Not provided{% endif %}</dd></div>
+      <div><dt>Emergency contact</dt><dd>{% if student.emergency_contact %}{{ student.emergency_contact }}{% else %}Not provided{% endif %}</dd></div>
+    </dl>
+  </section>
+
+  <section class="student-profile-card">
+    <h3>Enrolment</h3>
+    <dl class="student-detail-list">
+      <div><dt>Academic level</dt><dd>{{ student.get_academic_level_display }}</dd></div>
+      <div><dt>Class / stream</dt><dd>{% if student.class_group %}{{ student.class_group }}{% else %}Not assigned{% endif %}</dd></div>
+      <div><dt>Admission number</dt><dd>{% if student.admission_number %}{{ student.admission_number }}{% else %}Not provided{% endif %}</dd></div>
+      <div><dt>Assessment number</dt><dd>{{ student.assessment_number }}</dd></div>
+      <div class="is-wide"><dt>Previous school</dt><dd>{% if student.previous_school %}{{ student.previous_school }}{% else %}Not provided{% endif %}</dd></div>
+      <div><dt>Admitted</dt><dd>{{ student.admitted_at|date:"j F Y, H:i" }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="student-profile-card">
+    <h3>Parent / guardian</h3>
+    <dl class="student-detail-list">
+      <div><dt>Full name</dt><dd class="is-uppercase">{{ student.parent_guardian.full_name }}</dd></div>
+      <div><dt>Relationship</dt><dd>{{ student.parent_guardian.relationship_to_student|default:"Not provided" }}</dd></div>
+      <div><dt>Phone</dt><dd>{{ student.parent_guardian.phone_number }}</dd></div>
+      <div><dt>Email</dt><dd>{% if student.parent_guardian.email %}{{ student.parent_guardian.email }}{% else %}Not provided{% endif %}</dd></div>
+    </dl>
+  </section>
+
+  <section class="student-profile-card">
+    <h3>Sponsorship</h3>
+    <dl class="student-detail-list">
+      <div><dt>Category</dt><dd>{{ student.get_sponsorship_category_display }}</dd></div>
+      <div class="is-wide"><dt>Sponsor details</dt><dd>{% if student.sponsor_details %}{{ student.sponsor_details }}{% else %}Not provided{% endif %}</dd></div>
+    </dl>
+  </section>
+
+  <section class="student-profile-card is-full">
+    <h3>Health and support</h3>
+    <dl class="student-detail-list">
+      <div class="is-wide"><dt>Medical notes</dt><dd>{% if student.medical_notes %}{{ student.medical_notes }}{% else %}Not provided{% endif %}</dd></div>
+      <div class="is-wide"><dt>Special needs</dt><dd>{% if student.special_needs %}{{ student.special_needs }}{% else %}Not provided{% endif %}</dd></div>
+    </dl>
+  </section>
+</div>
+{% endblock %}

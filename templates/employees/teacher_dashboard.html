@@ -1,0 +1,106 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Teacher workspace | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Teacher{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="teacher-dashboard-page">
+  <section class="teacher-dash-hero" aria-label="Teacher overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">Teaching workspace</p>
+      <h2>{% if teacher_employee %}{{ teacher_employee.display_name }}{% else %}Teacher{% endif %}</h2>
+      <p>Open your timetable, mark subject attendance, or continue with exam records and admissions.</p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ teacher_class_count }}</strong>
+        <span>Class{{ teacher_class_count|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ teacher_lesson_count }}</strong>
+        <span>Lesson{{ teacher_lesson_count|pluralize }}</span>
+      </div>
+      {% if teacher_has_elearning %}
+      <div class="teacher-dash-stat">
+        <strong>{{ teacher_elearning_lesson_count }}</strong>
+        <span>E-learning</span>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="teacher-dash-actions" aria-label="Teacher modules">
+    <a class="teacher-dash-action" href="#session-timetable" data-dashboard-jump>
+      <span class="teacher-dash-action-icon" aria-hidden="true">TT</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Session timetable</strong>
+        <span>Your weekly teaching grid</span>
+      </span>
+    </a>
+    {% if teacher_has_elearning %}
+    <a class="teacher-dash-action" href="{% url 'employees:teacher_elearning' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">EL</span>
+      <span class="teacher-dash-action-copy">
+        <strong>E-learning</strong>
+        <span>Subjects and online sessions</span>
+      </span>
+    </a>
+    {% endif %}
+    <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">SA</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Subject attendance</strong>
+        <span>Plans, roll, and outcomes</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_records' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">ER</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Exam records</strong>
+        <span>Marks for your classes</span>
+      </span>
+    </a>
+    <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Admissions</strong>
+        <span>Admit new learners</span>
+      </span>
+    </a>
+  </section>
+
+  <section id="session-timetable" class="teacher-dashboard-scroll" aria-label="This week’s timetables">
+    <header class="teacher-tt-section-head">
+      <h2 class="is-uppercase">This week</h2>
+      <p class="subtle">Your learning and e-learning sessions for the week</p>
+    </header>
+    {% include "employees/includes/teacher_session_timetable.html" %}
+    {% include "employees/includes/teacher_elearning_timetable.html" %}
+  </section>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  if (history.scrollRestoration) history.scrollRestoration = "manual";
+  window.scrollTo(0, 0);
+  const content = document.querySelector(".workspace-content");
+  if (content) content.scrollTop = 0;
+
+  document.querySelectorAll("[data-dashboard-jump]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const scroller = document.querySelector(".teacher-dashboard-scroll");
+      if (!scroller) return;
+      event.preventDefault();
+      scroller.scrollTop = 0;
+      history.replaceState(null, "", "#session-timetable");
+    });
+  });
+})();
+</script>
+{% endblock %}

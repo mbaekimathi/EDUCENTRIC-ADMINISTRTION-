@@ -1,0 +1,317 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Generate exam timetable | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam management{% endblock %}
+{% block header_title %}Generate exam timetable{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Generate exam timetable overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Exam management</p>
+      <h2>Generate exam timetable</h2>
+      <p>Select academic levels, then choose the academic year, term, and when exams start. The end date is calculated from the exam sessions so every subject gets one session.</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <div class="exam-tool-stats" aria-label="Quick stats">
+        <div class="exam-tool-stat">
+          <strong>{{ viable_count }}</strong>
+          <span>Viable</span>
+        </div>
+      </div>
+      <a
+        class="ghost-button exam-tool-cta"
+        href="{% url 'employees:exam_manual_supervisor_allocation' %}"
+      >
+        Manual allocation
+      </a>
+      <a
+        class="ghost-button exam-tool-cta"
+        href="{% url 'employees:it_support_exam_page' 'exam-records' %}"
+      >
+        All exams
+      </a>
+      <button type="button" class="primary-button exam-tool-cta" data-open-modal="exam-timetable-generation">
+        Generate exam timetable
+      </button>
+    </div>
+  </section>
+
+  {% include "employees/includes/exam_generated_timetable.html" %}
+</div>
+
+<div
+  class="app-modal{% if open_generate_modal %} is-open{% endif %}"
+  id="exam-timetable-generation-modal"
+  data-modal="exam-timetable-generation"
+  data-generate-step="{{ generate_step|default:1 }}"
+  {% if not open_generate_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="exam-timetable-generation-title">
+    <div class="app-modal-header">
+      <h2 id="exam-timetable-generation-title">Generate exam timetable</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" novalidate data-exam-generate-form>
+      {% csrf_token %}
+      <div class="generation-step" data-generate-panel="1">
+        <p class="subtle">1. Select academic levels with a green background. Those levels have every active subject allocated to an active supervisor, and they use the matching exam timetable profile for sessions.</p>
+
+        {% if level_groups %}
+        <div class="generation-level-list">
+          {% for group in level_groups %}
+          <section class="generation-level-group" aria-label="{{ group.category }}">
+            <h3 class="settings-category-title is-uppercase">{{ group.category }}</h3>
+            {% for level in group.levels %}
+            <label class="generation-level {% if level.is_viable %}is-viable{% else %}is-blocked{% endif %}" data-subjects="{{ level.generation_subjects|length }}" data-sessions="{{ level.schedule_periods }}">
+              <input
+                type="checkbox"
+                name="level_id"
+                value="{{ level.id }}"
+                {% if not level.is_viable %}disabled{% endif %}
+              >
+              <span>
+                <strong class="is-uppercase">{{ level.name }}</strong>
+                <span class="subtle">{{ level.code }} · {{ level.generation_classes|length }} class{{ level.generation_classes|length|pluralize }} · {{ level.generation_subjects|length }} subject{{ level.generation_subjects|length|pluralize }}{% if level.schedule_profile %} · {{ level.schedule_periods }} session{{ level.schedule_periods|pluralize }}{% endif %}</span>
+                <span class="generation-level-reason">{{ level.viability_reason }}</span>
+              </span>
+            </label>
+            {% endfor %}
+          </section>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="settings-empty">No active academic levels are registered yet.</p>
+        {% endif %}
+
+        <div class="app-modal-actions">
+          <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+          <button type="button" class="primary-button" data-generate-next {% if not viable_count %}disabled{% endif %}>Next: exam dates</button>
+        </div>
+      </div>
+
+      <div class="generation-step" data-generate-panel="2" hidden>
+        <p class="subtle">2. Choose the academic year and term, then the exam start date. The end date is set automatically from the exam profile sessions so each subject is placed once, with no repeats.</p>
+
+        {% if calendar_ready %}
+        <div class="generation-calendar">
+          <div class="field">
+            <label for="exam_name">Exam name <span class="required">*</span></label>
+            <input
+              type="text"
+              id="exam_name"
+              name="exam_name"
+              class="uppercase-input"
+              value="{{ exam_name }}"
+              placeholder="E.G. END EXAM"
+              maxlength="120"
+              required
+              autocomplete="off"
+            >
+          </div>
+          <div class="field">
+            <label for="academic_year_id">Academic year <span class="required">*</span></label>
+            <select id="academic_year_id" name="academic_year_id" class="uppercase-input" data-exam-year required>
+              {% for year in academic_years %}
+              <option value="{{ year.id }}" {% if selected_year_id == year.id|stringformat:"s" %}selected{% endif %}>
+                {{ year.name }}{% if year.is_current %} (CURRENT){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="academic_term_id">Academic term <span class="required">*</span></label>
+            <select id="academic_term_id" name="academic_term_id" data-exam-term required>
+              {% for term in academic_terms %}
+              <option
+                value="{{ term.id }}"
+                data-start="{{ term.start_date|date:'Y-m-d' }}"
+                data-end="{{ term.end_date|date:'Y-m-d' }}"
+                {% if selected_term_id == term.id|stringformat:"s" %}selected{% endif %}
+              >
+                {{ term.name }}{% if term.is_current %} (CURRENT){% endif %}
+                ({{ term.start_date|date:"d M Y" }} – {{ term.end_date|date:"d M Y" }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="exam_start_date">Exam starts on <span class="required">*</span></label>
+            <input type="date" id="exam_start_date" name="exam_start_date" value="{{ exam_start_date }}" data-exam-start required>
+          </div>
+          <div class="field">
+            <span class="field-label">Exam ends on</span>
+            <output class="uppercase-input" data-exam-end-label>—</output>
+            <small class="subtle">Calculated from the number of subjects and sessions per day. Dates stay inside the selected term.</small>
+          </div>
+        </div>
+        <script type="application/json" data-exam-terms-by-year>{{ terms_by_year_json|safe }}</script>
+        {% else %}
+        <p class="notice">Register academic years and terms in <a href="{{ calendar_settings_url }}">academic calendar settings</a> before generating an exam timetable.</p>
+        {% endif %}
+
+        <div class="app-modal-actions">
+          <button type="button" class="ghost-button" data-generate-back>Back</button>
+          <button type="submit" class="primary-button" {% if not viable_count or not calendar_ready %}disabled{% endif %}>Generate</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector('[data-modal="exam-timetable-generation"]');
+  if (!modal) return;
+  const openers = document.querySelectorAll('[data-open-modal="exam-timetable-generation"]');
+  const closers = modal.querySelectorAll("[data-modal-close]");
+  const form = modal.querySelector("[data-exam-generate-form]");
+  const nextButton = modal.querySelector("[data-generate-next]");
+  const backButton = modal.querySelector("[data-generate-back]");
+  const yearSelect = modal.querySelector("[data-exam-year]");
+  const termSelect = modal.querySelector("[data-exam-term]");
+  const startInput = modal.querySelector("[data-exam-start]");
+  const endLabel = modal.querySelector("[data-exam-end-label]");
+  const initialStep = Number(modal.getAttribute("data-generate-step") || "1");
+  const initialTermId = "{{ selected_term_id|escapejs }}";
+  let termsByYear = {};
+  try {
+    const termsNode = modal.querySelector("[data-exam-terms-by-year]");
+    termsByYear = termsNode ? JSON.parse(termsNode.textContent || "{}") : {};
+  } catch (error) {
+    termsByYear = {};
+  }
+
+  function setOpen(open) {
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) setStep(initialStep > 1 ? initialStep : 1);
+  }
+
+  function setStep(step) {
+    modal.querySelectorAll("[data-generate-panel]").forEach((panel) => {
+      panel.hidden = Number(panel.getAttribute("data-generate-panel")) !== step;
+    });
+    if (step === 2) {
+      populateTerms(initialTermId);
+      applyTermBounds();
+    }
+  }
+
+  function selectedLevels() {
+    return [...form.querySelectorAll('input[name="level_id"]:checked:not(:disabled)')];
+  }
+
+  function daysNeeded() {
+    return selectedLevels().reduce((maxDays, input) => {
+      const label = input.closest("label");
+      const subjects = Number(label?.getAttribute("data-subjects") || "0");
+      const sessions = Number(label?.getAttribute("data-sessions") || "0");
+      const days = subjects > 0 && sessions > 0 ? Math.ceil(subjects / sessions) : 1;
+      return Math.max(maxDays, days);
+    }, 1);
+  }
+
+  function addDays(isoDate, extraDays) {
+    const value = new Date(`${isoDate}T00:00:00`);
+    value.setDate(value.getDate() + extraDays);
+    return value.toISOString().slice(0, 10);
+  }
+
+  function formatDate(isoDate) {
+    const value = new Date(`${isoDate}T00:00:00`);
+    return value.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function populateTerms(preferredTermId) {
+    if (!yearSelect || !termSelect) return;
+    const yearId = yearSelect.value;
+    const terms = termsByYear[yearId] || [];
+    const keepId = preferredTermId || termSelect.value;
+    termSelect.innerHTML = "";
+    terms.forEach((term) => {
+      const option = document.createElement("option");
+      option.value = String(term.id);
+      option.textContent = term.label;
+      option.setAttribute("data-start", term.start);
+      option.setAttribute("data-end", term.end);
+      if (String(term.id) === String(keepId)) option.selected = true;
+      termSelect.appendChild(option);
+    });
+    if (!termSelect.value && terms.length) termSelect.selectedIndex = 0;
+  }
+
+  function applyTermBounds() {
+    if (!termSelect || !startInput) return;
+    const option = termSelect.selectedOptions[0];
+    if (!option) {
+      startInput.removeAttribute("min");
+      startInput.removeAttribute("max");
+      updateEndDate();
+      return;
+    }
+    const start = option.getAttribute("data-start");
+    const end = option.getAttribute("data-end");
+    startInput.min = start;
+    startInput.max = end;
+    if (startInput.value && (startInput.value < start || startInput.value > end)) startInput.value = start;
+    updateEndDate();
+  }
+
+  function updateEndDate() {
+    if (!endLabel || !termSelect || !startInput) return;
+    const option = termSelect.selectedOptions[0];
+    const termEnd = option?.getAttribute("data-end");
+    if (!startInput.value) {
+      endLabel.value = "Select a start date";
+      return;
+    }
+    const end = addDays(startInput.value, daysNeeded() - 1);
+    if (termEnd && end > termEnd) {
+      endLabel.value = "Does not fit in this term";
+      return;
+    }
+    endLabel.value = formatDate(end);
+  }
+
+  openers.forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+  nextButton?.addEventListener("click", () => {
+    if (!selectedLevels().length) {
+      window.alert("Select at least one viable academic level.");
+      return;
+    }
+    setStep(2);
+  });
+  backButton?.addEventListener("click", () => setStep(1));
+  yearSelect?.addEventListener("change", () => {
+    populateTerms("");
+    if (startInput) startInput.value = "";
+    applyTermBounds();
+  });
+  termSelect?.addEventListener("change", applyTermBounds);
+  startInput?.addEventListener("change", applyTermBounds);
+  form?.querySelectorAll('input[name="level_id"]').forEach((input) => {
+    input.addEventListener("change", updateEndDate);
+  });
+  populateTerms(initialTermId);
+  applyTermBounds();
+  if (modal.classList.contains("is-open")) setStep(initialStep > 1 ? initialStep : 1);
+})();
+</script>
+{% endblock %}

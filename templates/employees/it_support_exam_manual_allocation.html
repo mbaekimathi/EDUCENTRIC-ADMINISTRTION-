@@ -1,0 +1,108 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Manual exam allocation | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam management{% endblock %}
+{% block header_title %}Manual allocation{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Manual allocation overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Exam management</p>
+      <h2>Manual allocation</h2>
+      <p>Subjects stay as generated. Change the supervisor for a session. Available teachers are green; busy teachers are red with the class they are supervising.</p>
+    </div>
+    <div class="exam-tool-hero-aside">
+      <a class="ghost-button exam-tool-cta" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}">
+        Back to generation
+      </a>
+    </div>
+  </section>
+
+  {% include "employees/includes/exam_generated_timetable.html" with manual_allocation=True %}
+</div>
+
+{{ supervisor_choices|json_script:"exam-supervisor-choices" }}
+{{ sitting_meta|json_script:"exam-sitting-meta" }}
+
+<div class="app-modal" id="exam-supervisor-modal" data-modal="exam-supervisor" hidden>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="exam-supervisor-title">
+    <div class="app-modal-header">
+      <h2 id="exam-supervisor-title">Change supervisor</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="sitting_id" data-sitting-id-field>
+      <p class="subtle" data-sitting-summary></p>
+      <p class="subtle">The subject cannot be changed. Select an available teacher for this session.</p>
+      <div class="supervisor-choice-list" data-supervisor-options></div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">Save supervisor</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector('[data-modal="exam-supervisor"]');
+  if (!modal) return;
+  const choices = JSON.parse(document.getElementById("exam-supervisor-choices").textContent || "{}");
+  const meta = JSON.parse(document.getElementById("exam-sitting-meta").textContent || "{}");
+  const openers = document.querySelectorAll("[data-change-supervisor]");
+  const closers = modal.querySelectorAll("[data-modal-close]");
+  const optionsBox = modal.querySelector("[data-supervisor-options]");
+  const sittingField = modal.querySelector("[data-sitting-id-field]");
+  const summary = modal.querySelector("[data-sitting-summary]");
+
+  function setOpen(open) {
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+  }
+
+  function renderOptions(sittingId) {
+    const details = meta[sittingId] || {};
+    const options = choices[sittingId] || [];
+    sittingField.value = sittingId;
+    summary.textContent = `${details.subject_code || ""} · ${details.subject || ""} · ${details.class_name || ""} · ${details.date_label || ""} · ${details.session || ""} ${details.time || ""}`;
+    optionsBox.innerHTML = "";
+    options.forEach((option) => {
+      const label = document.createElement("label");
+      label.className = `supervisor-choice ${option.available ? "is-free" : "is-busy"}`;
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "supervisor_id";
+      input.value = String(option.id);
+      input.checked = Boolean(option.selected);
+      input.disabled = !option.available;
+      const copy = document.createElement("span");
+      copy.innerHTML = option.available
+        ? `<strong>${option.name}</strong><span class="subtle">Available</span>`
+        : `<strong>${option.name}</strong><span class="subtle">Busy at ${option.busy_class}</span>`;
+      label.append(input, copy);
+      optionsBox.append(label);
+    });
+  }
+
+  openers.forEach((button) => {
+    button.addEventListener("click", () => {
+      renderOptions(button.getAttribute("data-sitting-id"));
+      setOpen(true);
+    });
+  });
+  closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+})();
+</script>
+{% endblock %}

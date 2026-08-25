@@ -1,0 +1,32 @@
+<div class="term-editor-row">
+  <input type="hidden" name="term_id" value="{{ row.id|default:'' }}">
+  <div class="term-editor-top">
+    <div class="field class-editor-field">
+      <label>Term name</label>
+      <input type="text" class="uppercase-input" name="term_name" value="{{ row.name|default:default_name }}" placeholder="E.G. TERM 1" maxlength="80">
+    </div>
+    <button type="button" class="record-action is-danger class-editor-remove" data-remove-term-row>Remove</button>
+  </div>
+  <div class="term-editor-dates">
+    <div class="field class-editor-field">
+      <label>Start date</label>
+      <input type="date" name="term_start" value="{{ row.start_date|date:'Y-m-d' }}">
+    </div>
+    <div class="field class-editor-field">
+      <label>End date</label>
+      <input type="date" name="term_end" value="{{ row.end_date|date:'Y-m-d' }}">
+    </div>
+    <div class="field class-editor-field">
+      <label>Opening date</label>
+      <input type="date" name="term_opening" value="{{ row.opening_date|date:'Y-m-d' }}">
+    </div>
+    <div class="field class-editor-field">
+      <label>Midterm date</label>
+      <input type="date" name="term_midterm" value="{{ row.midterm_date|date:'Y-m-d' }}">
+    </div>
+    <div class="field class-editor-field">
+      <label>Closing date</label>
+      <input type="date" name="term_closing" value="{{ row.closing_date|date:'Y-m-d' }}">
+    </div>
+  </div>
+</div>

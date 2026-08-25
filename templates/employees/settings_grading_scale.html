@@ -1,0 +1,189 @@
+{% extends "layouts/settings.html" %}
+{% block title %}{{ page_title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Academic grading system{% endblock %}
+{% block header_title %}{{ page_title }}{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<p class="exam-back-row">
+  <a class="exam-back-link" href="{{ back_url }}">← Grading system</a>
+</p>
+
+<div class="settings-toolbar">
+  <div class="settings-toolbar-copy">
+    <h2>{{ page_title }}</h2>
+    <p class="subtle">{{ page_subtitle }}</p>
+  </div>
+  <div class="settings-toolbar-actions">
+    {% if not is_default_scale and academic_level %}
+    <form method="post" action="{% url 'employees:reset_level_grading' academic_level.id %}" onsubmit="return confirm('Reset {{ academic_level.name|escapejs }} grades to the default system? Current custom grades will be replaced.');">
+      {% csrf_token %}
+      <button type="submit" class="ghost-button settings-toolbar-action">Reset to default</button>
+    </form>
+    {% endif %}
+    <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-grade">
+      Register grade
+    </button>
+  </div>
+</div>
+
+{% if grade_bands %}
+<section class="grading-scale-section" aria-label="Registered grades">
+  <header class="grading-scale-header">
+    <h3>Registered grades <span class="settings-category-count">{{ grade_bands|length }}</span></h3>
+  </header>
+  <div class="settings-table-panel grading-table-panel">
+    <table class="settings-table grading-table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Mark level</th>
+          <th>Meaning</th>
+          <th>Pts</th>
+          <th>Start %</th>
+          <th>End %</th>
+          <th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for band in grade_bands %}
+        <tr>
+          <td data-label="Code"><span class="grade-chip">{{ band.code }}</span></td>
+          <td data-label="Mark level" class="is-uppercase">{{ band.mark_level }}</td>
+          <td data-label="Meaning">{{ band.meaning }}</td>
+          <td data-label="Pts">{{ band.points }}</td>
+          <td data-label="Start %">{{ band.start_percent }}</td>
+          <td data-label="End %">{{ band.end_percent }}</td>
+          <td data-label="Actions">
+            <div class="record-actions">
+              {% if is_default_scale %}
+              <a class="record-action" href="{% url 'employees:grading_system_default' %}?edit={{ band.id }}">Edit</a>
+              {% else %}
+              <a class="record-action" href="{% url 'employees:grading_level_settings' academic_level.id %}?edit={{ band.id }}">Edit</a>
+              {% endif %}
+              <form method="post" action="{% url 'employees:delete_grade_band' band.id %}" onsubmit="return confirm('Delete grade {{ band.code|escapejs }}?');">
+                {% csrf_token %}
+                <button type="submit" class="record-action is-danger">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+<p class="settings-empty">No grades registered yet. Use <strong>Register grade</strong> to add one.</p>
+{% endif %}
+
+<div
+  class="app-modal{% if open_grade_modal %} is-open{% endif %}"
+  id="register-grade-modal"
+  data-modal="register-grade"
+  {% if not open_grade_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="register-grade-title">
+    <div class="app-modal-header">
+      <h2 id="register-grade-title">{% if edit_band %}Edit grade{% else %}Register grade{% endif %}</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" novalidate>
+      {% csrf_token %}
+      {% if edit_band %}
+      <input type="hidden" name="grade_band_id" value="{{ edit_band.id }}">
+      {% endif %}
+      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="{{ form.code.id_for_label }}">Code <span class="required">*</span></label>
+          {{ form.code }}
+          {% for error in form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.points.id_for_label }}">Points <span class="required">*</span></label>
+          {{ form.points }}
+          {% for error in form.points.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        <label for="{{ form.mark_level.id_for_label }}">Mark level <span class="required">*</span></label>
+        {{ form.mark_level }}
+        {% for error in form.mark_level.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.meaning.id_for_label }}">Meaning <span class="required">*</span></label>
+        {{ form.meaning }}
+        {% for error in form.meaning.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="{{ form.start_percent.id_for_label }}">Start % <span class="required">*</span></label>
+          {{ form.start_percent }}
+          {% for error in form.start_percent.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.end_percent.id_for_label }}">End % <span class="required">*</span></label>
+          {{ form.end_percent }}
+          {% for error in form.end_percent.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">{% if edit_band %}Save changes{% else %}Register grade{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const modal = document.querySelector('[data-modal="register-grade"]');
+  if (!modal) return;
+  const openers = document.querySelectorAll('[data-open-modal="register-grade"]');
+  const closers = modal.querySelectorAll("[data-modal-close]");
+  const firstField = modal.querySelector("input, select, textarea");
+  const listUrl = "{% if is_default_scale %}{% url 'employees:grading_system_default' %}{% else %}{% url 'employees:grading_level_settings' academic_level.id %}{% endif %}";
+
+  function setOpen(open) {
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) firstField?.focus();
+  }
+
+  openers.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((el) => {
+    el.addEventListener("click", () => {
+      setOpen(false);
+      if (window.location.search.includes("edit=")) {
+        window.location.href = listUrl;
+      }
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal.classList.contains("is-open")) {
+      setOpen(false);
+      if (window.location.search.includes("edit=")) {
+        window.location.href = listUrl;
+      }
+    }
+  });
+
+  if (modal.classList.contains("is-open")) setOpen(true);
+})();
+</script>
+{% endblock %}

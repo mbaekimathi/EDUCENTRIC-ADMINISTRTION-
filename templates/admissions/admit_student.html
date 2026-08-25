@@ -1,0 +1,155 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Admit student | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Admissions{% endblock %}
+{% block header_title %}Admit a student{% endblock %}
+
+{% block sidebar_modules %}
+<p class="workspace-nav-label">Admissions</p>
+<a
+  class="workspace-nav-link {% if active_nav == 'admissions' %}is-active{% endif %}"
+  href="{% url 'admissions:admit_student' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M8 7h8M8 12h8M8 17h5M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Admit student
+</a>
+{% endblock %}
+
+{% block workspace_content %}
+<section class="admit-panel workspace-panel">
+  {% for message in messages %}<div class="notice success">{{ message }}</div>{% endfor %}
+
+  <form method="post" class="admit-form" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+    <div class="admit-group">
+      <h2 class="admit-group-title">Student</h2>
+      <div class="form-grid">
+        <div class="field span-two">
+          <label for="{{ form.profile_image.id_for_label }}">Profile photo</label>
+          {{ form.profile_image }}
+          <small class="hint">Optional. Used on report cards and the student profile.</small>
+          {% for error in form.profile_image.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.first_name.id_for_label }}">First name <span class="required">*</span></label>
+          {{ form.first_name }}
+          {% for error in form.first_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.last_name.id_for_label }}">Last name <span class="required">*</span></label>
+          {{ form.last_name }}
+          {% for error in form.last_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.date_of_birth.id_for_label }}">Date of birth <span class="required">*</span></label>
+          {{ form.date_of_birth }}
+          {% for error in form.date_of_birth.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.gender.id_for_label }}">Gender <span class="required">*</span></label>
+          {{ form.gender }}
+          {% for error in form.gender.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.academic_level.id_for_label }}">Class / level <span class="required">*</span></label>
+          {{ form.academic_level }}
+          {% for error in form.academic_level.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.assessment_number.id_for_label }}">Assessment number <span class="required">*</span></label>
+          {{ form.assessment_number }}
+          {% for error in form.assessment_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.sponsorship_category.id_for_label }}">Sponsorship <span class="required">*</span></label>
+          {{ form.sponsorship_category }}
+          {% for error in form.sponsorship_category.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field span-two" id="sponsor-details-field"{% if not form.sponsor_details.errors and form.sponsorship_category.value != "GOVERNMENT" and form.sponsorship_category.value != "BOTH" %} hidden{% endif %}>
+          <label for="{{ form.sponsor_details.id_for_label }}">Sponsor details <span class="required">*</span></label>
+          {{ form.sponsor_details }}
+          {% for error in form.sponsor_details.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field span-two">
+          <label for="{{ form.previous_school.id_for_label }}">Previous school</label>
+          {{ form.previous_school }}
+          {% for error in form.previous_school.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="admit-group">
+      <h2 class="admit-group-title">Parent / guardian</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.parent_guardian_name.id_for_label }}">Full name <span class="required">*</span></label>
+          {{ form.parent_guardian_name }}
+          {% for error in form.parent_guardian_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.relationship_to_student.id_for_label }}">Relationship <span class="required">*</span></label>
+          {{ form.relationship_to_student }}
+          {% for error in form.relationship_to_student.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.parent_phone.id_for_label }}">Phone <span class="required">*</span></label>
+          {{ form.parent_phone }}
+          {% for error in form.parent_phone.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.parent_email.id_for_label }}">Email</label>
+          {{ form.parent_email }}
+          {% for error in form.parent_email.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <details class="admit-optional"{% if form.home_address.value or form.medical_notes.value or form.special_needs.value or form.emergency_contact.value or form.home_address.errors or form.medical_notes.errors or form.special_needs.errors or form.emergency_contact.errors %} open{% endif %}>
+      <summary>Optional details</summary>
+      <div class="form-grid">
+        <div class="field span-two">
+          <label for="{{ form.home_address.id_for_label }}">Home address</label>
+          {{ form.home_address }}
+          {% for error in form.home_address.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field span-two">
+          <label for="{{ form.medical_notes.id_for_label }}">Medical notes</label>
+          {{ form.medical_notes }}
+          {% for error in form.medical_notes.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field span-two">
+          <label for="{{ form.special_needs.id_for_label }}">Special needs</label>
+          {{ form.special_needs }}
+          {% for error in form.special_needs.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field span-two">
+          <label for="{{ form.emergency_contact.id_for_label }}">Emergency contact</label>
+          {{ form.emergency_contact }}
+          <small class="hint">Leave blank to use the parent phone number.</small>
+          {% for error in form.emergency_contact.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+      </div>
+    </details>
+
+    <div class="admit-actions">
+      <button class="primary-button" type="submit">Admit student</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+  const category = document.getElementById("id_sponsorship_category");
+  const sponsorDetails = document.getElementById("sponsor-details-field");
+  const toggleSponsorDetails = () => {
+    const required = category.value === "GOVERNMENT" || category.value === "BOTH";
+    sponsorDetails.hidden = !required;
+  };
+  category.addEventListener("change", toggleSponsorDetails);
+  toggleSponsorDetails();
+</script>
+{% endblock %}

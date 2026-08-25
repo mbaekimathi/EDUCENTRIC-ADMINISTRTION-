@@ -1,0 +1,50 @@
+{% extends "layouts/settings.html" %}
+{% block title %}System settings | Edu-Centric{% endblock %}
+{% block header_title %}System settings{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="System settings overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Administration</p>
+      <h2>System settings</h2>
+      <p>Configure school profile, curriculum, finance, HR, and the academic calendar.</p>
+    </div>
+  </section>
+
+<section class="module-grid" aria-label="Settings areas">
+  <a class="module-card" href="{% url 'employees:school_profile_settings' %}">
+    <span class="module-icon">SP</span>
+    <h3>School profile settings</h3>
+    <p>School identity, contact details, and campus information.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:curriculum_settings' %}">
+    <span class="module-icon">CU</span>
+    <h3>Curriculum settings</h3>
+    <p>Academic structure, levels, subjects, and programme defaults.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:finance_settings' %}">
+    <span class="module-icon">FN</span>
+    <h3>Finance settings</h3>
+    <p>Fees, billing rules, and financial configuration.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:hr_settings' %}">
+    <span class="module-icon">HR</span>
+    <h3>HR settings</h3>
+    <p>Staff roles, employment defaults, and people policies.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+  <a class="module-card" href="{% url 'employees:academic_calendar_settings' %}">
+    <span class="module-icon">AC</span>
+    <h3>Academic calendar settings</h3>
+    <p>Register academic years, terms, and opening, midterm, and closing dates.</p>
+    <span class="module-meta">Open →</span>
+  </a>
+</section>
+</div>
+{% endblock %}

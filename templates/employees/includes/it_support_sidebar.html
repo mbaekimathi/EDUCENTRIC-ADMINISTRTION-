@@ -1,0 +1,55 @@
+<p class="workspace-nav-label">Modules</p>
+<a
+  class="workspace-nav-link {% if active_module == 'human-resource-management' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'human-resource-management' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M16 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM5 19a5.5 5.5 0 0 1 11 0M18 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm1 8a4.5 4.5 0 0 0-2.5-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Human resource management
+</a>
+<a
+  class="workspace-nav-link {% if active_module == 'student-management' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'student-management' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 12a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 12 12zm-7 8a6.2 6.2 0 0 1 14 0M17 8.5a2.5 2.5 0 1 0-1.2-4.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Student management
+</a>
+<a
+  class="workspace-nav-link {% if active_module == 'curriculum-management' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'curriculum-management' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5V5zm3 3h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Curriculum management
+</a>
+<a
+  class="workspace-nav-link {% if active_module == 'financial-management' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'financial-management' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4V7zm4 4h8M8 14h5M12 4v3m0 10v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Financial management
+</a>
+<a
+  class="workspace-nav-link {% if active_module == 'stock-management' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'stock-management' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 8.5 12 4l8 4.5V20H4V8.5zm0 0h16M12 8.5V20M8 12h.01M8 16h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Stock management
+</a>
+<a
+  class="workspace-nav-link {% if active_module == 'reports' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'reports' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M6 20V10m6 10V4m6 16v-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Reports
+</a>

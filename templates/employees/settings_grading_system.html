@@ -1,0 +1,66 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Academic grading system | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam settings{% endblock %}
+{% block header_title %}Academic grading system{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="exam-tool-page">
+  <section class="exam-tool-hero" aria-label="Grading system overview">
+    <div class="exam-tool-hero-copy">
+      <p class="exam-tool-kicker">Exam settings</p>
+      <h2>Grading configuration</h2>
+      <p>Manage the default grading system, then customize grades for each academic level as needed.</p>
+    </div>
+  </section>
+
+<section class="module-grid exam-tools-grid" aria-label="Default grading system">
+  <a class="module-card" href="{% url 'employees:grading_system_default' %}">
+    <span class="module-icon">DF</span>
+    <h3>Default grading system</h3>
+    <p>{{ default_grade_count }} grade{{ default_grade_count|pluralize }} · Baseline scale copied into levels when first opened.</p>
+    <span class="module-meta">Edit default →</span>
+  </a>
+</section>
+
+{% if levels %}
+{% regroup levels by category as level_groups %}
+<div class="exam-hub-list" aria-label="Grading by academic level">
+  <header class="settings-category-header">
+    <h3 class="settings-category-title">Academic levels</h3>
+    <span class="settings-category-count">{{ levels|length }} level{{ levels|length|pluralize }}</span>
+  </header>
+  {% for category in level_groups %}
+  <section class="settings-category" aria-label="{{ category.grouper }}">
+    <header class="settings-category-header">
+      <h3 class="settings-category-title is-uppercase">{{ category.grouper }}</h3>
+      <span class="settings-category-count">{{ category.list|length }} level{{ category.list|length|pluralize }}</span>
+    </header>
+    <section class="module-grid">
+      {% for level in category.list %}
+      <a class="module-card" href="{% url 'employees:grading_level_settings' level.id %}">
+        <span class="module-icon">{{ level.code|slice:":2" }}</span>
+        <h3 class="is-uppercase">{{ level.name }}</h3>
+        <p>
+          {{ level.code }} ·
+          {% if level.grade_count %}
+            {{ level.grade_count }} customized grade{{ level.grade_count|pluralize }}
+          {% else %}
+            Uses default until opened
+          {% endif %}
+        </p>
+        <span class="module-meta">Edit grades →</span>
+      </a>
+      {% endfor %}
+    </section>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">No active academic levels yet. Register levels first.</p>
+{% endif %}
+</div>
+{% endblock %}

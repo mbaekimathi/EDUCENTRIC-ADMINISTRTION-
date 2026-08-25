@@ -1,0 +1,37 @@
+<p class="workspace-nav-label">Timetable</p>
+<a
+  class="workspace-nav-link {% if active_timetable_tool == 'class-and-subject-allocation' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_timetable_page' 'class-and-subject-allocation' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5V5zm3 3h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Class and subject allocation
+</a>
+<a
+  class="workspace-nav-link {% if active_timetable_tool == 'timetable-generation' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_timetable_page' 'timetable-generation' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM8 13h3M13 13h3M8 17h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Timetable generation
+</a>
+<a
+  class="workspace-nav-link {% if active_timetable_tool == 'learning-manual-allocation' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_timetable_page' 'manual-allocation' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 14l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Manual allocation
+</a>
+<a
+  class="workspace-nav-link {% if active_timetable_tool == 'timetable-analytics' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_timetable_page' 'timetable-analytics' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M6 20V10m6 10V4m6 16v-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Timetable analytics
+</a>

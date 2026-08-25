@@ -1,0 +1,499 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Academic calendar | Edu-Centric{% endblock %}
+{% block header_eyebrow %}System settings{% endblock %}
+{% block header_title %}Academic calendar settings{% endblock %}
+
+{% block sidebar_modules %}
+<p class="workspace-nav-label">Academic calendar</p>
+<a class="workspace-nav-link is-active" href="{% url 'employees:academic_calendar_settings' %}" aria-current="page">
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM8 13h3M13 13h3M8 17h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Academic years
+</a>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="register-year"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Register academic year
+</button>
+<a class="workspace-nav-link" href="{% url 'employees:system_settings' %}">
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  All settings
+</a>
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="settings-toolbar">
+  <div class="settings-toolbar-copy">
+    <h2>Academic years and terms</h2>
+    <p class="subtle">The year name is generated from the start and end dates. Each term then has opening, midterm, and closing dates.</p>
+  </div>
+  <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-year">
+    Register academic year
+  </button>
+</div>
+
+{% if years %}
+<form method="post" action="{% url 'employees:set_current_academic_calendar' %}" class="calendar-current-select" data-current-calendar>
+  {% csrf_token %}
+  <label for="current-year-select">Current year</label>
+  <select id="current-year-select" name="year_id" required data-current-year>
+    {% for year in years %}
+    <option value="{{ year.id }}" {% if current_year and current_year.id == year.id %}selected{% endif %}>
+      {{ year.name }}
+    </option>
+    {% endfor %}
+  </select>
+  <label for="current-term-select">Current term</label>
+  <select id="current-term-select" name="term_id" required data-current-term>
+    {% for year in years %}
+      {% for term in year.terms.all %}
+      <option
+        value="{{ term.id }}"
+        data-year-id="{{ year.id }}"
+        {% if current_term and current_term.id == term.id %}selected{% endif %}
+      >
+        {{ term.name }}
+      </option>
+      {% endfor %}
+    {% endfor %}
+  </select>
+  <button type="submit" class="primary-button">Save</button>
+</form>
+{% endif %}
+
+{% if years %}
+<div class="calendar-year-list">
+  {% for year in years %}
+  <section class="calendar-year-card{% if year.is_current %} is-current{% endif %}" aria-label="{{ year.name }}">
+    <header class="calendar-year-header">
+      <div>
+        <p class="calendar-year-kicker">{% if year.is_current %}Current academic year{% else %}Academic year{% endif %}</p>
+        <h3 class="calendar-year-title">{{ year.name }}</h3>
+        <p class="subtle">{{ year.start_date|date:"j M Y" }} – {{ year.end_date|date:"j M Y" }}</p>
+      </div>
+      <div class="calendar-year-tools">
+        <span class="status-pill is-uppercase {% if year.status == 'ACTIVE' %}is-active{% else %}is-inactive{% endif %}">
+          {{ year.get_status_display }}
+        </span>
+        <div class="record-actions">
+          <button
+            type="button"
+            class="record-action"
+            data-edit-year
+            data-name="{{ year.name }}"
+            data-start="{{ year.start_date|date:'Y-m-d' }}"
+            data-end="{{ year.end_date|date:'Y-m-d' }}"
+            data-current="{% if year.is_current %}1{% endif %}"
+            data-status="{{ year.status }}"
+            data-update-url="{% url 'employees:update_academic_year' year.id %}"
+            data-terms='[{% for term in year.terms.all %}{"id":{{ term.id }},"name":"{{ term.name|escapejs }}","start_date":"{{ term.start_date|date:'Y-m-d' }}","end_date":"{{ term.end_date|date:'Y-m-d' }}","opening_date":"{{ term.opening_date|date:'Y-m-d' }}","midterm_date":"{{ term.midterm_date|date:'Y-m-d' }}","closing_date":"{{ term.closing_date|date:'Y-m-d' }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
+          >Edit</button>
+          <form method="post" action="{% url 'employees:delete_academic_year' year.id %}">
+            {% csrf_token %}
+            <button type="submit" class="record-action is-danger" onclick="return confirm('Delete academic year {{ year.name|escapejs }} and its terms?');">Delete</button>
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <div class="calendar-year-summary">
+      <div>
+        <span class="subtle">Year dates</span>
+        <strong>{{ year.start_date|date:"j M Y" }} – {{ year.end_date|date:"j M Y" }}</strong>
+      </div>
+      <div>
+        <span class="subtle">Terms</span>
+        <strong>{{ year.terms.all|length }} term{{ year.terms.all|length|pluralize }}</strong>
+      </div>
+      <div>
+        <span class="subtle">Status</span>
+        <strong class="is-uppercase">{{ year.get_status_display }}{% if year.is_current %} · Current{% endif %}</strong>
+      </div>
+    </div>
+
+    {% with terms=year.terms.all %}
+    {% if terms %}
+    <div class="calendar-term-grid">
+      {% for term in terms %}
+      <article class="calendar-term-card{% if term.is_current %} is-current{% endif %}">
+        <header class="calendar-term-card-header">
+          <h4 class="is-uppercase">{{ term.name }}{% if term.is_current %} · Current{% endif %}</h4>
+          <p class="subtle">{{ term.start_date|date:"j M Y" }} – {{ term.end_date|date:"j M Y" }}</p>
+        </header>
+        <dl class="calendar-term-milestones">
+          <div>
+            <dt>Opening</dt>
+            <dd>{{ term.opening_date|date:"j M Y" }}</dd>
+          </div>
+          <div>
+            <dt>Midterm</dt>
+            <dd>{{ term.midterm_date|date:"j M Y" }}</dd>
+          </div>
+          <div>
+            <dt>Closing</dt>
+            <dd>{{ term.closing_date|date:"j M Y" }}</dd>
+          </div>
+        </dl>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="calendar-term-empty">No terms yet. Use Edit to add term dates.</p>
+    {% endif %}
+    {% endwith %}
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<section class="calendar-empty">
+  <h3>No academic years yet</h3>
+  <p>Register a year from its start and end dates. The name is generated automatically, then you can set term opening, midterm, and closing dates.</p>
+  <button type="button" class="primary-button" data-open-modal="register-year">Register academic year</button>
+</section>
+{% endif %}
+
+<template id="term-row-template">
+  {% include "employees/includes/academic_term_row.html" with row=None default_name="" %}
+</template>
+
+<div
+  class="app-modal{% if open_register_modal %} is-open{% endif %}"
+  id="register-year-modal"
+  data-modal="register-year"
+  {% if not open_register_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog app-modal-dialog-calendar"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="register-year-title"
+  >
+    <div class="app-modal-header">
+      <div>
+        <p class="calendar-modal-kicker">Academic calendar</p>
+        <h2 id="register-year-title">Register academic year</h2>
+      </div>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form calendar-modal-form" novalidate data-year-form>
+      {% csrf_token %}
+      <div class="calendar-modal-body">
+        {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+        {% if term_errors %}<div class="notice error">{% for err in term_errors %}{{ err }} {% endfor %}</div>{% endif %}
+
+        <section class="calendar-section">
+          <div class="calendar-year-name">
+            <span class="calendar-year-name-label">Academic year name</span>
+            <strong data-year-name>Set the dates to generate the name</strong>
+          </div>
+          <div class="term-year-dates">
+            <div class="field">
+              <label for="{{ form.start_date.id_for_label }}">Start date <span class="required">*</span></label>
+              {{ form.start_date }}
+              {% for error in form.start_date.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field">
+              <label for="{{ form.end_date.id_for_label }}">End date <span class="required">*</span></label>
+              {{ form.end_date }}
+              {% for error in form.end_date.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+          </div>
+          <div class="calendar-year-meta">
+            <label class="calendar-toggle">
+              {{ form.is_current }}
+              <span>
+                <strong>Current academic year</strong>
+                <small>Mark this as the year currently in use.</small>
+              </span>
+            </label>
+            <div class="field">
+              <label for="{{ form.status.id_for_label }}">Status <span class="required">*</span></label>
+              {{ form.status }}
+              {% for error in form.status.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+          </div>
+        </section>
+
+        <section class="calendar-section" data-term-editor>
+          <div class="class-editor-header">
+            <div>
+              <h3 class="calendar-section-title">Academic terms</h3>
+              <p class="subtle">Add each term’s dates, then opening, midterm, and closing dates.</p>
+            </div>
+            <button type="button" class="ghost-button" data-add-term-row>Add term</button>
+          </div>
+          <div class="class-editor-list" data-term-list>
+            {% if term_rows %}
+              {% for row in term_rows %}
+                {% include "employees/includes/academic_term_row.html" with row=row default_name="" %}
+              {% endfor %}
+            {% else %}
+              {% include "employees/includes/academic_term_row.html" with row=None default_name="TERM 1" %}
+              {% include "employees/includes/academic_term_row.html" with row=None default_name="TERM 2" %}
+              {% include "employees/includes/academic_term_row.html" with row=None default_name="TERM 3" %}
+            {% endif %}
+          </div>
+        </section>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">Save academic year</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="app-modal" id="edit-year-modal" data-edit-year-modal hidden>
+  <div class="app-modal-backdrop" data-edit-year-close></div>
+  <div class="app-modal-dialog app-modal-dialog-calendar" role="dialog" aria-modal="true" aria-labelledby="edit-year-title">
+    <div class="app-modal-header">
+      <div>
+        <p class="calendar-modal-kicker">Academic calendar</p>
+        <h2 id="edit-year-title">Edit academic year</h2>
+      </div>
+      <button type="button" class="app-modal-close" data-edit-year-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form calendar-modal-form" data-edit-year-form data-year-form>
+      {% csrf_token %}
+      <div class="calendar-modal-body">
+        <section class="calendar-section">
+          <div class="calendar-year-name">
+            <span class="calendar-year-name-label">Academic year name</span>
+            <strong data-year-name>—</strong>
+          </div>
+          <div class="term-year-dates">
+            <div class="field">
+              <label for="edit-year-start">Start date <span class="required">*</span></label>
+              <input id="edit-year-start" type="date" name="start_date" required>
+            </div>
+            <div class="field">
+              <label for="edit-year-end">End date <span class="required">*</span></label>
+              <input id="edit-year-end" type="date" name="end_date" required>
+            </div>
+          </div>
+          <div class="calendar-year-meta">
+            <label class="calendar-toggle">
+              <input id="edit-year-current" class="calendar-check" type="checkbox" name="is_current">
+              <span>
+                <strong>Current academic year</strong>
+                <small>Mark this as the year currently in use.</small>
+              </span>
+            </label>
+            <div class="field">
+              <label for="edit-year-status">Status <span class="required">*</span></label>
+              <select id="edit-year-status" class="uppercase-input" name="status" required>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="calendar-section" data-term-editor>
+          <div class="class-editor-header">
+            <div>
+              <h3 class="calendar-section-title">Academic terms</h3>
+              <p class="subtle">Add each term’s dates, then opening, midterm, and closing dates.</p>
+            </div>
+            <button type="button" class="ghost-button" data-add-term-row>Add term</button>
+          </div>
+          <div class="class-editor-list" data-term-list data-edit-term-list></div>
+        </section>
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-edit-year-close>Cancel</button>
+        <button type="submit" class="primary-button">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const termRowTemplate = document.querySelector("#term-row-template");
+  const defaultTerms = [
+    { name: "TERM 1" },
+    { name: "TERM 2" },
+    { name: "TERM 3" },
+  ];
+
+  function yearNameFromDates(start, end) {
+    if (!start || !end) return "Set the dates to generate the name";
+    const startYear = start.slice(0, 4);
+    const endYear = end.slice(0, 4);
+    return startYear === endYear ? startYear : `${startYear}/${endYear}`;
+  }
+
+  function updateYearName(form) {
+    const preview = form?.querySelector("[data-year-name]");
+    if (!preview) return;
+    const start = form.querySelector('[name="start_date"]')?.value;
+    const end = form.querySelector('[name="end_date"]')?.value;
+    preview.textContent = yearNameFromDates(start, end);
+  }
+
+  function bindYearNamePreview(form) {
+    if (!form || form.dataset.yearBound === "true") {
+      updateYearName(form);
+      return;
+    }
+    form.dataset.yearBound = "true";
+    form.querySelector('[name="start_date"]')?.addEventListener("input", () => updateYearName(form));
+    form.querySelector('[name="start_date"]')?.addEventListener("change", () => updateYearName(form));
+    form.querySelector('[name="end_date"]')?.addEventListener("input", () => updateYearName(form));
+    form.querySelector('[name="end_date"]')?.addEventListener("change", () => updateYearName(form));
+    updateYearName(form);
+  }
+
+  function createTermRow(data = {}) {
+    const node = termRowTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector('[name="term_id"]').value = data.id || "";
+    node.querySelector('[name="term_name"]').value = data.name || "";
+    node.querySelector('[name="term_start"]').value = data.start_date || "";
+    node.querySelector('[name="term_end"]').value = data.end_date || "";
+    node.querySelector('[name="term_opening"]').value = data.opening_date || "";
+    node.querySelector('[name="term_midterm"]').value = data.midterm_date || "";
+    node.querySelector('[name="term_closing"]').value = data.closing_date || "";
+    return node;
+  }
+
+  function bindTermEditor(root) {
+    if (!root || root.dataset.bound === "true") return;
+    root.dataset.bound = "true";
+    const list = root.querySelector("[data-term-list]");
+    root.querySelector("[data-add-term-row]")?.addEventListener("click", () => {
+      const nextNumber = list.querySelectorAll(".term-editor-row").length + 1;
+      list.appendChild(createTermRow({ name: `TERM ${nextNumber}` }));
+    });
+    root.addEventListener("click", (event) => {
+      const removeBtn = event.target.closest("[data-remove-term-row]");
+      if (!removeBtn) return;
+      removeBtn.closest(".term-editor-row")?.remove();
+    });
+  }
+
+  document.querySelectorAll("[data-term-editor]").forEach(bindTermEditor);
+  document.querySelectorAll("[data-year-form]").forEach(bindYearNamePreview);
+
+  const modal = document.querySelector('[data-modal="register-year"]');
+  const openers = document.querySelectorAll('[data-open-modal="register-year"]');
+  const closers = modal?.querySelectorAll("[data-modal-close]") || [];
+  const firstField = modal?.querySelector('input[type="date"]');
+  const registerList = modal?.querySelector("[data-term-list]");
+
+  function setOpen(open) {
+    if (!modal) return;
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) {
+      if (registerList && !registerList.children.length) {
+        defaultTerms.forEach((row) => registerList.appendChild(createTermRow(row)));
+      }
+      firstField?.focus();
+    }
+  }
+
+  openers.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((el) => el.addEventListener("click", () => setOpen(false)));
+
+  const editModal = document.querySelector("[data-edit-year-modal]");
+  const editForm = document.querySelector("[data-edit-year-form]");
+  const editTermList = document.querySelector("[data-edit-term-list]");
+  const editFields = {
+    start: document.querySelector("#edit-year-start"),
+    end: document.querySelector("#edit-year-end"),
+    current: document.querySelector("#edit-year-current"),
+    status: document.querySelector("#edit-year-status"),
+  };
+
+  function setEditOpen(open) {
+    if (!editModal) return;
+    editModal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) {
+      updateYearName(editForm);
+      editFields.start?.focus();
+    }
+  }
+
+  document.querySelectorAll("[data-edit-year]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editForm.action = button.dataset.updateUrl;
+      editFields.start.value = button.dataset.start || "";
+      editFields.end.value = button.dataset.end || "";
+      editFields.current.checked = button.dataset.current === "1";
+      editFields.status.value = button.dataset.status || "ACTIVE";
+      if (editTermList) {
+        editTermList.innerHTML = "";
+        let terms = [];
+        try {
+          terms = JSON.parse(button.dataset.terms || "[]");
+        } catch (error) {
+          terms = [];
+        }
+        if (!terms.length) {
+          defaultTerms.forEach((row) => editTermList.appendChild(createTermRow(row)));
+        } else {
+          terms.forEach((row) => editTermList.appendChild(createTermRow(row)));
+        }
+      }
+      setEditOpen(true);
+    });
+  });
+  editModal?.querySelectorAll("[data-edit-year-close]").forEach((button) => {
+    button.addEventListener("click", () => setEditOpen(false));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (modal?.classList.contains("is-open")) setOpen(false);
+    if (editModal && !editModal.hidden) setEditOpen(false);
+  });
+
+  const currentForm = document.querySelector("[data-current-calendar]");
+  const yearSelect = currentForm?.querySelector("[data-current-year]");
+  const termSelect = currentForm?.querySelector("[data-current-term]");
+
+  function syncCurrentTermOptions() {
+    if (!yearSelect || !termSelect) return;
+    const yearId = yearSelect.value;
+    let firstVisible = null;
+    let selectedVisible = false;
+    Array.from(termSelect.options).forEach((option) => {
+      const match = option.dataset.yearId === yearId;
+      option.hidden = !match;
+      option.disabled = !match;
+      if (match && !firstVisible) firstVisible = option;
+      if (match && option.selected) selectedVisible = true;
+    });
+    if (!selectedVisible && firstVisible) {
+      termSelect.value = firstVisible.value;
+    }
+  }
+
+  yearSelect?.addEventListener("change", syncCurrentTermOptions);
+  syncCurrentTermOptions();
+
+  if (modal?.classList.contains("is-open")) setOpen(true);
+})();
+</script>
+{% endblock %}

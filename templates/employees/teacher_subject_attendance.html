@@ -1,0 +1,61 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Subject attendance | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Teacher{% endblock %}
+{% block header_title %}Subject attendance{% endblock %}
+
+{% block sidebar_modules %}{% endblock %}
+
+{% block workspace_content %}
+<div class="sa-hub-page">
+  <section class="teacher-dash-hero" aria-label="Subject attendance overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">Teaching workflow</p>
+      <h2>Subject attendance</h2>
+      <p>Select a class, open a subject, then record the lesson plan, attendance, and class outcome.</p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ class_count }}</strong>
+        <span>Class{{ class_count|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ level_groups|length }}</strong>
+        <span>Level{{ level_groups|length|pluralize }}</span>
+      </div>
+    </div>
+  </section>
+
+  {% if level_groups %}
+  <div class="sa-hub-scroll">
+    {% for group in level_groups %}
+    <section class="sa-level-block" aria-label="{{ group.level.name }}">
+      <header class="sa-level-head">
+        <div>
+          <h3 class="is-uppercase">{{ group.level.name }}</h3>
+          <p class="subtle">{{ group.level.code }} · choose a class to open its subjects</p>
+        </div>
+        <span class="teacher-tt-badge">{{ group.classes|length }} class{{ group.classes|length|pluralize }}</span>
+      </header>
+      <div class="sa-class-grid">
+        {% for academic_class in group.classes %}
+        <a class="sa-class-card" href="{% url 'employees:teacher_subject_attendance_class' academic_class.id %}">
+          <span class="sa-class-mark" aria-hidden="true">{{ academic_class.display_label|slice:":2" }}</span>
+          <span class="sa-class-copy">
+            <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
+            <span>{{ academic_class.code }} · {{ group.level.name }}</span>
+          </span>
+          <span class="sa-class-go">Open subjects →</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No classes allocated</strong>
+    <p class="settings-empty">Ask IT Support to assign your class subjects, then return here to open them.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

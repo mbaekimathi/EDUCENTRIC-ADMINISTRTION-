@@ -1,0 +1,27 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ workspace_role_label }} workspace | Edu-Centric{% endblock %}
+{% block header_eyebrow %}{{ workspace_role_label }}{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block workspace_content %}
+<section class="module-grid" aria-label="Role modules">
+  <a class="module-card" href="{% url 'admissions:admit_student' %}">
+    <span class="module-icon">AD</span>
+    <h3>Admissions</h3>
+    <p>Admit students and prepare parent portal credentials.</p>
+    <span class="module-meta">Open admissions →</span>
+  </a>
+  <div class="module-card is-static">
+    <span class="module-icon">RL</span>
+    <h3>{{ workspace_role_label }} tools</h3>
+    <p>Dedicated workflows for your role will land in this space.</p>
+    <span class="module-meta">Coming soon</span>
+  </div>
+  <div class="module-card is-static">
+    <span class="module-icon">RP</span>
+    <h3>Reports</h3>
+    <p>Operational summaries and school insights will appear here.</p>
+    <span class="module-meta">Coming soon</span>
+  </div>
+</section>
+{% endblock %}

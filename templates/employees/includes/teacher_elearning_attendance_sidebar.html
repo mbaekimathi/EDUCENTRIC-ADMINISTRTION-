@@ -1,0 +1,41 @@
+<a
+  class="workspace-nav-link"
+  href="{{ teacher_elearning_attendance_home_url }}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  All levels
+</a>
+
+<p class="workspace-nav-label">Levels</p>
+{% for level in allocated_levels %}
+<a
+  class="workspace-nav-link {% if selected_level and selected_level.id == level.id %}is-active{% endif %}"
+  href="{% url 'employees:teacher_elearning_attendance_level' level.id %}"
+  {% if selected_level and selected_level.id == level.id %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 19V9l7-4 7 4v10H5zm3-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
+  </span>
+  {{ level.name }}
+</a>
+{% empty %}
+<p class="subtle workspace-nav-empty">No allocated levels.</p>
+{% endfor %}
+
+{% if selected_level and allocations %}
+<p class="workspace-nav-label">Subjects · {{ selected_level.name }}</p>
+{% for item in allocations %}
+<a
+  class="workspace-nav-link {% if subject and subject.id == item.learning_area_id %}is-active{% endif %}"
+  href="{% url 'employees:teacher_elearning_attendance_profile' selected_level.id item.learning_area_id %}"
+  {% if subject and subject.id == item.learning_area_id %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6V4zm9 0v3h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  {{ item.learning_area.code }}
+</a>
+{% endfor %}
+{% endif %}

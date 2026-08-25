@@ -1,0 +1,90 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}E-learning | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Teacher{% endblock %}
+{% block header_title %}E-learning{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_elearning_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="teacher-dashboard-page">
+  <section class="teacher-dash-hero" aria-label="E-learning overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">E-learning</p>
+      <h2>Your e-learning subjects</h2>
+      <p>Subjects allocated to you for e-learning delivery, with this week’s e-learning sessions.</p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ allocation_count }}</strong>
+        <span>Subject{{ allocation_count|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{% if elearning_timetable %}{{ elearning_timetable.lesson_count }}{% else %}0{% endif %}</strong>
+        <span>Session{% if elearning_timetable %}{{ elearning_timetable.lesson_count|pluralize }}{% else %}s{% endif %}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="module-grid" aria-label="E-learning modules">
+    {% for tool in elearning_pages %}
+    <a class="module-card" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
+      <span class="module-icon">{{ tool.icon }}</span>
+      <h3>{{ tool.title }}</h3>
+      <p>{{ tool.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+
+  <section class="module-grid" aria-label="E-learning reports">
+    {% for tool in elearning_report_pages %}
+    <a class="module-card" href="{% url 'employees:teacher_elearning_page' tool.slug %}">
+      <span class="module-icon">{{ tool.icon }}</span>
+      <h3>{{ tool.title }}</h3>
+      <p>{{ tool.summary }}</p>
+      <span class="module-meta">Open →</span>
+    </a>
+    {% endfor %}
+  </section>
+
+  {% if elearning_allocations %}
+  <section class="exam-tool-panel" aria-label="Allocated e-learning subjects">
+    <header class="exam-tool-panel-head">
+      <div>
+        <h3>Allocated subjects</h3>
+        <p>Academic levels and subjects assigned to you for e-learning</p>
+      </div>
+      <span class="exam-tool-panel-count">{{ allocation_count }}</span>
+    </header>
+    <div class="schedule-timetable-wrap">
+      <table class="schedule-timetable">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Subject</th>
+            <th>Code</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in elearning_allocations %}
+          <tr>
+            <td class="is-uppercase">{{ item.academic_level.name }}</td>
+            <td class="is-uppercase">{{ item.learning_area.name }}</td>
+            <td>{{ item.learning_area.code }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="elearning-timetable" class="teacher-dashboard-scroll" aria-label="E-learning timetable">
+    {% include "employees/includes/teacher_elearning_timetable.html" %}
+  </section>
+</div>
+{% endblock %}

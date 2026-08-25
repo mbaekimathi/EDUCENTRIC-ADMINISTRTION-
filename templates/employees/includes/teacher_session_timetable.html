@@ -1,0 +1,50 @@
+{% if session_timetable %}
+<article class="teacher-tt-card" aria-label="Your session timetable">
+  <header class="teacher-tt-header">
+    <div>
+      <h3 class="is-uppercase">Learning this week</h3>
+      <p class="subtle">Subject code and class for each teaching session</p>
+    </div>
+    <span class="teacher-tt-badge">{{ session_timetable.lesson_count }} lesson{{ session_timetable.lesson_count|pluralize }}</span>
+  </header>
+  <div class="schedule-timetable-wrap teacher-tt-wrap">
+    <table class="schedule-timetable generated-timetable teacher-tt-table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          {% for period in session_timetable.periods %}
+          <th>
+            <span>{{ period.name }}</span>
+            <span>{{ period.start_label }}–{{ period.end_label }}</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in session_timetable.rows %}
+        <tr>
+          <th scope="row">{{ row.day_label }}</th>
+          {% for cell in row.cells %}
+          {% if cell.lessons %}
+          <td class="teacher-tt-busy">
+            {% for lesson in cell.lessons %}
+            <span class="tt-subject">{{ lesson.learning_area.code }}</span>
+            <span class="tt-teacher">{{ lesson.academic_class.display_label }}</span>
+            {% endfor %}
+          </td>
+          {% else %}
+          <td class="is-blank">Free</td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% else %}
+<div class="teacher-tt-empty">
+  <strong>No timetable yet</strong>
+  <p class="settings-empty">Your session timetable will appear here once IT Support generates the learning timetable for your classes.</p>
+</div>
+{% endif %}

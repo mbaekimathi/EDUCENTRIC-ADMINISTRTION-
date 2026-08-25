@@ -1,0 +1,402 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Academic levels | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Curriculum settings{% endblock %}
+{% block header_title %}Academic levels{% endblock %}
+
+{% block sidebar_modules %}
+<p class="workspace-nav-label">Academic levels</p>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="register-level"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  Register level
+</button>
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+<div class="settings-toolbar">
+  <div class="settings-toolbar-copy">
+    <h2>Registered levels</h2>
+    <p class="subtle">Create academic levels and manage classes inside the register or edit popup.</p>
+  </div>
+  <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-level">
+    Register level
+  </button>
+</div>
+
+{% if level_groups %}
+<div class="settings-category-list">
+  {% for group in level_groups %}
+  <section class="settings-category" aria-label="{{ group.category }}">
+    <header class="settings-category-header">
+      <h3 class="settings-category-title is-uppercase">{{ group.category }}</h3>
+      <span class="settings-category-count">{{ group.levels|length }} level{{ group.levels|length|pluralize }}</span>
+    </header>
+    <div class="settings-table-panel">
+      <table class="settings-table settings-table-responsive">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Level code</th>
+            <th>Classes</th>
+            <th>Level order</th>
+            <th>Status</th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for level in group.levels %}
+          <tr>
+            <td data-label="Level">
+              <div class="settings-stack">
+                <strong class="is-uppercase">{{ level.name }}</strong>
+                <span class="subtle">{{ level.description|default:"No description" }}</span>
+              </div>
+            </td>
+            <td data-label="Level code"><code class="is-uppercase">{{ level.code }}</code></td>
+            <td data-label="Classes">
+              {% with classes=level.classes.all %}
+              {% if classes %}
+              <span class="level-class-chips">
+                {% for academic_class in classes %}
+                <code class="is-uppercase">{{ academic_class.name }}</code>{% if not forloop.last %} {% endif %}
+                {% endfor %}
+              </span>
+              {% else %}
+              <span class="subtle">No classes</span>
+              {% endif %}
+              {% endwith %}
+            </td>
+            <td data-label="Level order">{{ level.order }}</td>
+            <td data-label="Status">
+              <span class="status-pill is-uppercase {% if level.status == 'ACTIVE' %}is-active{% else %}is-inactive{% endif %}">
+                {{ level.get_status_display }}
+              </span>
+            </td>
+            <td data-label="Actions">
+              <div class="record-actions">
+                <button
+                  type="button"
+                  class="record-action"
+                  data-edit-level
+                  data-name="{{ level.name }}"
+                  data-code="{{ level.code }}"
+                  data-category="{{ level.category }}"
+                  data-description="{{ level.description }}"
+                  data-status="{{ level.status }}"
+                  data-update-url="{% url 'employees:update_academic_level' level.id %}"
+                  data-classes='[{% for academic_class in level.classes.all %}{"id":{{ academic_class.id }},"name":"{{ academic_class.name|escapejs }}","code":"{{ academic_class.code|escapejs }}","status":"{{ academic_class.status }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
+                >Edit</button>
+                <form method="post" action="{% url 'employees:toggle_academic_level_status' level.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="record-action">
+                    {% if level.status == 'ACTIVE' %}Suspend{% else %}Unsuspend{% endif %}
+                  </button>
+                </form>
+                <form method="post" action="{% url 'employees:delete_academic_level' level.id %}" onsubmit="return confirm('Delete {{ level.name|escapejs }}? This cannot be undone.');">
+                  {% csrf_token %}
+                  <button type="submit" class="record-action is-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">No academic levels yet. Use <strong>Register level</strong> to add one.</p>
+{% endif %}
+
+<template id="class-row-template">
+  <div class="class-editor-row">
+    <input type="hidden" name="class_id" value="">
+    <div class="field class-editor-field">
+      <label>Class name</label>
+      <input type="text" class="uppercase-input" name="class_name" placeholder="E.G. X" maxlength="120">
+    </div>
+    <div class="field class-editor-field">
+      <label>Class code</label>
+      <input type="text" class="uppercase-input" name="class_code" placeholder="E.G. G1X" maxlength="40">
+    </div>
+    <div class="field class-editor-field">
+      <label>Status</label>
+      <select class="uppercase-input" name="class_status">
+        <option value="ACTIVE">ACTIVE</option>
+        <option value="INACTIVE">INACTIVE</option>
+      </select>
+    </div>
+    <button type="button" class="record-action is-danger class-editor-remove" data-remove-class-row>Remove</button>
+  </div>
+</template>
+
+<div
+  class="app-modal{% if open_register_modal %} is-open{% endif %}"
+  id="register-level-modal"
+  data-modal="register-level"
+  {% if not open_register_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog app-modal-dialog-wide"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="register-level-title"
+  >
+    <div class="app-modal-header">
+      <h2 id="register-level-title">Register academic level</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+      {% if class_errors %}<div class="notice error">{% for err in class_errors %}{{ err }} {% endfor %}</div>{% endif %}
+
+      <div class="field">
+        <label for="{{ form.name.id_for_label }}">Level name <span class="required">*</span></label>
+        {{ form.name }}
+        {% for error in form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.code.id_for_label }}">Level code <span class="required">*</span></label>
+        {{ form.code }}
+        {% for error in form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.category.id_for_label }}">Level category <span class="required">*</span></label>
+        {{ form.category }}
+        <datalist id="level-category-suggestions">
+          {% for suggestion in category_suggestions %}
+            <option value="{{ suggestion }}"></option>
+          {% endfor %}
+        </datalist>
+        <small class="field-hint">Start typing to pick a saved category, or enter a new one.</small>
+        {% for error in form.category.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.description.id_for_label }}">Description</label>
+        {{ form.description }}
+        {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.status.id_for_label }}">Status <span class="required">*</span></label>
+        {{ form.status }}
+        {% for error in form.status.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+
+      <div class="class-editor" data-class-editor>
+        <div class="class-editor-header">
+          <div>
+            <h3 class="class-editor-title">Classes</h3>
+            <p class="subtle">Add or remove classes for this level (e.g. X and Y).</p>
+          </div>
+          <button type="button" class="ghost-button" data-add-class-row>Add class</button>
+        </div>
+        <div class="class-editor-list" data-class-list>
+          {% if class_rows %}
+            {% for row in class_rows %}
+            <div class="class-editor-row">
+              <input type="hidden" name="class_id" value="{{ row.id|default:'' }}">
+              <div class="field class-editor-field">
+                <label>Class name</label>
+                <input type="text" class="uppercase-input" name="class_name" value="{{ row.name }}" placeholder="E.G. X" maxlength="120">
+              </div>
+              <div class="field class-editor-field">
+                <label>Class code</label>
+                <input type="text" class="uppercase-input" name="class_code" value="{{ row.code }}" placeholder="E.G. G1X" maxlength="40">
+              </div>
+              <div class="field class-editor-field">
+                <label>Status</label>
+                <select class="uppercase-input" name="class_status">
+                  <option value="ACTIVE" {% if row.status == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+                  <option value="INACTIVE" {% if row.status == 'INACTIVE' %}selected{% endif %}>INACTIVE</option>
+                </select>
+              </div>
+              <button type="button" class="record-action is-danger class-editor-remove" data-remove-class-row>Remove</button>
+            </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">Save level</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="app-modal" id="edit-level-modal" data-edit-level-modal hidden>
+  <div class="app-modal-backdrop" data-edit-level-close></div>
+  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="edit-level-title">
+    <div class="app-modal-header">
+      <h2 id="edit-level-title">Edit academic level</h2>
+      <button type="button" class="app-modal-close" data-edit-level-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form" data-edit-level-form>
+      {% csrf_token %}
+      <div class="field">
+        <label for="edit-level-name">Level name <span class="required">*</span></label>
+        <input id="edit-level-name" class="uppercase-input" name="name" required>
+      </div>
+      <div class="field">
+        <label for="edit-level-code">Level code <span class="required">*</span></label>
+        <input id="edit-level-code" class="uppercase-input" name="code" required>
+      </div>
+      <div class="field">
+        <label for="edit-level-category">Level category <span class="required">*</span></label>
+        <input id="edit-level-category" class="uppercase-input" name="category" list="level-category-suggestions" required>
+      </div>
+      <div class="field">
+        <label for="edit-level-description">Description</label>
+        <textarea id="edit-level-description" name="description" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label for="edit-level-status">Status <span class="required">*</span></label>
+        <select id="edit-level-status" class="uppercase-input" name="status" required>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+
+      <div class="class-editor" data-class-editor>
+        <div class="class-editor-header">
+          <div>
+            <h3 class="class-editor-title">Classes</h3>
+            <p class="subtle">Add or remove classes for this level (e.g. X and Y).</p>
+          </div>
+          <button type="button" class="ghost-button" data-add-class-row>Add class</button>
+        </div>
+        <div class="class-editor-list" data-class-list data-edit-class-list></div>
+      </div>
+
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-edit-level-close>Cancel</button>
+        <button type="submit" class="primary-button">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(function () {
+  const classRowTemplate = document.querySelector("#class-row-template");
+
+  function createClassRow(data = {}) {
+    const node = classRowTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector('[name="class_id"]').value = data.id || "";
+    node.querySelector('[name="class_name"]').value = data.name || "";
+    node.querySelector('[name="class_code"]').value = data.code || "";
+    node.querySelector('[name="class_status"]').value = data.status || "ACTIVE";
+    return node;
+  }
+
+  function bindClassEditor(root) {
+    if (!root || root.dataset.bound === "true") return;
+    root.dataset.bound = "true";
+    const list = root.querySelector("[data-class-list]");
+    root.querySelector("[data-add-class-row]")?.addEventListener("click", () => {
+      list.appendChild(createClassRow());
+    });
+    root.addEventListener("click", (event) => {
+      const removeBtn = event.target.closest("[data-remove-class-row]");
+      if (!removeBtn) return;
+      removeBtn.closest(".class-editor-row")?.remove();
+    });
+  }
+
+  document.querySelectorAll("[data-class-editor]").forEach(bindClassEditor);
+
+  const modal = document.querySelector('[data-modal="register-level"]');
+  const openers = document.querySelectorAll('[data-open-modal="register-level"]');
+  const closers = modal?.querySelectorAll("[data-modal-close]") || [];
+  const firstField = modal?.querySelector("input, select, textarea");
+  const registerList = modal?.querySelector("[data-class-list]");
+
+  function setOpen(open) {
+    if (!modal) return;
+    modal.classList.toggle("is-open", open);
+    modal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) {
+      if (registerList && !registerList.children.length) {
+        registerList.appendChild(createClassRow({ name: "X", code: "", status: "ACTIVE" }));
+        registerList.appendChild(createClassRow({ name: "Y", code: "", status: "ACTIVE" }));
+      }
+      firstField?.focus();
+    }
+  }
+
+  openers.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+      setOpen(true);
+    });
+  });
+  closers.forEach((el) => el.addEventListener("click", () => setOpen(false)));
+
+  const editModal = document.querySelector("[data-edit-level-modal]");
+  const editForm = document.querySelector("[data-edit-level-form]");
+  const editClassList = document.querySelector("[data-edit-class-list]");
+  const editFields = {
+    name: document.querySelector("#edit-level-name"),
+    code: document.querySelector("#edit-level-code"),
+    category: document.querySelector("#edit-level-category"),
+    description: document.querySelector("#edit-level-description"),
+    status: document.querySelector("#edit-level-status"),
+  };
+
+  function setEditOpen(open) {
+    if (!editModal) return;
+    editModal.hidden = !open;
+    document.body.classList.toggle("modal-open", open);
+    if (open) editFields.name?.focus();
+  }
+
+  document.querySelectorAll("[data-edit-level]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editForm.action = button.dataset.updateUrl;
+      Object.entries(editFields).forEach(([key, field]) => { field.value = button.dataset[key] || ""; });
+      if (editClassList) {
+        editClassList.innerHTML = "";
+        let classes = [];
+        try {
+          classes = JSON.parse(button.dataset.classes || "[]");
+        } catch (error) {
+          classes = [];
+        }
+        if (!classes.length) {
+          editClassList.appendChild(createClassRow());
+        } else {
+          classes.forEach((row) => editClassList.appendChild(createClassRow(row)));
+        }
+      }
+      setEditOpen(true);
+    });
+  });
+  editModal?.querySelectorAll("[data-edit-level-close]").forEach((button) => {
+    button.addEventListener("click", () => setEditOpen(false));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (modal?.classList.contains("is-open")) setOpen(false);
+    if (editModal && !editModal.hidden) setEditOpen(false);
+  });
+
+  if (modal?.classList.contains("is-open")) setOpen(true);
+})();
+</script>
+{% endblock %}

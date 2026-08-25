@@ -1,0 +1,88 @@
+<p class="workspace-nav-label">Modules</p>
+<a
+  class="workspace-nav-link {% if active_nav == 'dashboard' %}is-active{% endif %}"
+  href="{% url 'employees:role_dashboard' role='teacher' %}"
+  {% if active_nav == 'dashboard' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h10M4 19h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Session timetable
+</a>
+{% if teacher_is_class_teacher %}
+<a
+  class="workspace-nav-link {% if active_nav == 'my-class' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_my_class' %}"
+  {% if active_nav == 'my-class' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM4 19a7 7 0 0 1 16 0M4 9h3M17 9h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  My class
+</a>
+{% else %}
+<span
+  class="workspace-nav-link is-disabled"
+  title="Unlocked when this teacher is allocated as a class teacher"
+  aria-disabled="true"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM4 19a7 7 0 0 1 16 0M4 9h3M17 9h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  My class
+  <span class="workspace-nav-badge">Locked</span>
+</span>
+{% endif %}
+{% if teacher_has_elearning %}
+{% if active_nav != 'e-learning' %}
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:teacher_elearning' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16v4H4V5zm0 7h7v7H4v-7zm10 0h6v7h-6v-7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  E-learning
+</a>
+{% endif %}
+{% else %}
+<span
+  class="workspace-nav-link is-disabled"
+  title="Unlocked when this teacher is allocated an e-learning subject"
+  aria-disabled="true"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16v4H4V5zm0 7h7v7H4v-7zm10 0h6v7h-6v-7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  E-learning
+  <span class="workspace-nav-badge">Locked</span>
+</span>
+{% endif %}
+<a
+  class="workspace-nav-link {% if active_nav == 'subject-attendance' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_subject_attendance' %}"
+  {% if active_nav == 'subject-attendance' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M8 6h11M8 12h11M8 18h11M5 6h.01M5 12h.01M5 18h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Subject attendance
+</a>
+<a
+  class="workspace-nav-link {% if active_nav == 'learning-reports' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_learning_reports' %}"
+  {% if active_nav == 'learning-reports' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">LR</span>
+  Learning reports
+</a>
+<a
+  class="workspace-nav-link {% if active_nav == 'exam-records' %}is-active{% endif %}"
+  href="{% if teacher_exam_home_url %}{{ teacher_exam_home_url }}{% else %}{% url 'employees:teacher_exam_records' %}{% endif %}"
+  {% if active_nav == 'exam-records' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 4h10v16H7V4zm3 4h4M10 12h4M10 16h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Exam records
+</a>

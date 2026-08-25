@@ -1,0 +1,24 @@
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:it_support_exam_page' 'exam-records' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M15 18 9 12l6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  All exams
+</a>
+<p class="workspace-nav-label">Academic levels</p>
+{% for level in academic_levels %}
+<a
+  class="workspace-nav-link {% if selected_level and selected_level.id == level.id %}is-active{% endif %}"
+  href="{% url 'employees:exam_record_level' exam.id level.id %}"
+  {% if selected_level and selected_level.id == level.id %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 19V9l7-4 7 4v10H5zm3-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
+  </span>
+  {{ level.name }}
+</a>
+{% empty %}
+<p class="subtle workspace-nav-empty">No academic levels are linked to this exam.</p>
+{% endfor %}

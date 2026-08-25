@@ -1,0 +1,154 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}E-learning assessments | Edu-Centric{% endblock %}
+{% block header_eyebrow %}E-learning{% endblock %}
+{% block header_title %}E-learning assessments{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_elearning_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="sa-hub-page exam-hub-page">
+  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+  <section class="teacher-dash-hero" aria-label="E-learning assessments overview">
+    <div class="teacher-dash-hero-copy">
+      <p class="teacher-dash-kicker">E-learning assessment</p>
+      <h2>E-learning assessments</h2>
+      <p>Register an assessment, open a level, then enter marks using the same out-of totals as exam settings.</p>
+    </div>
+    <div class="teacher-dash-stats" aria-label="Quick stats">
+      <div class="teacher-dash-stat">
+        <strong>{{ assessment_count }}</strong>
+        <span>Assessment{{ assessment_count|pluralize }}</span>
+      </div>
+      <div class="teacher-dash-stat">
+        <strong>{{ assessment_groups|length }}</strong>
+        <span>Year{{ assessment_groups|length|pluralize }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="exam-tool-panel" aria-label="Register e-learning assessment">
+    <header class="exam-tool-panel-head">
+      <div>
+        <h3>Register assessment</h3>
+        <p>Create a new e-learning assessment for the selected year and term</p>
+      </div>
+    </header>
+    <form method="post" class="subject-profile-form" data-elearning-assessment-create>
+      {% csrf_token %}
+      <div class="lesson-plan-fields lesson-plan-fields-2" style="padding: 0 1rem 1rem;">
+        <label class="lesson-plan-field">
+          <span class="lesson-plan-label">Assessment name</span>
+          <input type="text" name="name" maxlength="120" required placeholder="e.g. Mid-term e-learning quiz">
+        </label>
+        <label class="lesson-plan-field">
+          <span class="lesson-plan-label">Academic year</span>
+          <select name="academic_year_id" required data-assessment-year>
+            {% for year in academic_years %}
+            <option value="{{ year.id }}" {% if default_year and year.id == default_year.id %}selected{% endif %}>{{ year.name }}</option>
+            {% empty %}
+            <option value="">No academic years</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="lesson-plan-field">
+          <span class="lesson-plan-label">Academic term</span>
+          <select name="academic_term_id" required data-assessment-term>
+            {% for term in default_terms %}
+            <option value="{{ term.id }}" {% if default_term and term.id == default_term.id %}selected{% endif %}>{{ term.name }}</option>
+            {% empty %}
+            <option value="">No terms</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="lesson-plan-field" style="display:flex;align-items:flex-end;">
+          <button type="submit" class="primary-button"{% if not academic_years %} disabled{% endif %}>Register assessment</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  {% if assessment_groups %}
+  <div class="sa-hub-scroll">
+    {% for group in assessment_groups %}
+    <section class="sa-level-block" aria-label="{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}">
+      <header class="sa-level-head">
+        <div>
+          <h3 class="is-uppercase">{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}</h3>
+          <p class="subtle">Registered e-learning assessments for this academic year</p>
+        </div>
+        <span class="teacher-tt-badge">{{ group.assessments|length }} assessment{{ group.assessments|length|pluralize }}</span>
+      </header>
+      <div class="exam-hub-grid">
+        {% for item in group.assessments %}
+        <a class="exam-hub-card" href="{% url 'employees:teacher_elearning_assessment_detail' item.id %}">
+          <span class="exam-hub-card-icon" aria-hidden="true">EA</span>
+          <span class="exam-hub-card-copy">
+            <strong class="is-uppercase">{{ item.display_name }}</strong>
+            <span>
+              {% if item.academic_term %}{{ item.academic_term.name }}{% else %}No term{% endif %}
+              · Registered {{ item.created_at|date:"j M Y" }}
+            </span>
+            <span class="exam-hub-card-meta">
+              {{ item.mark_count }} mark{{ item.mark_count|pluralize }} recorded
+            </span>
+          </span>
+          <span class="exam-hub-card-go">Open records →</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="sa-hub-empty">
+    <strong>No assessments registered</strong>
+    <p class="settings-empty">Register an assessment above, then open a level to enter marks.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+{{ year_terms|json_script:"elearning-assessment-years" }}
+<script>
+(function () {
+  const form = document.querySelector("[data-elearning-assessment-create]");
+  if (!form) return;
+  const yearSelect = form.querySelector("[data-assessment-year]");
+  const termSelect = form.querySelector("[data-assessment-term]");
+  const yearsNode = document.getElementById("elearning-assessment-years");
+  if (!yearSelect || !termSelect || !yearsNode) return;
+  const years = JSON.parse(yearsNode.textContent || "[]");
+
+  function fillTerms(yearId, preferredTermId) {
+    const year = years.find((item) => String(item.id) === String(yearId));
+    const terms = (year && year.terms) || [];
+    termSelect.innerHTML = "";
+    if (!terms.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No terms";
+      termSelect.appendChild(option);
+      return;
+    }
+    let selected = preferredTermId;
+    if (!selected) {
+      const current = terms.find((term) => term.is_current);
+      selected = current ? current.id : terms[0].id;
+    }
+    terms.forEach((term) => {
+      const option = document.createElement("option");
+      option.value = term.id;
+      option.textContent = term.name;
+      if (String(term.id) === String(selected)) option.selected = true;
+      termSelect.appendChild(option);
+    });
+  }
+
+  yearSelect.addEventListener("change", () => fillTerms(yearSelect.value));
+})();
+</script>
+{% endblock %}

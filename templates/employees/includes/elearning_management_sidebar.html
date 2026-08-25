@@ -1,0 +1,46 @@
+<p class="workspace-nav-label">E-learning</p>
+<a
+  class="workspace-nav-link {% if active_elearning_tool == 'allocate-subjects' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_elearning_page' 'allocate-subjects' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5V5zm3 3h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Allocate subjects
+</a>
+<a
+  class="workspace-nav-link {% if active_elearning_tool == 'timetable-generation' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_elearning_page' 'timetable-generation' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM8 13h3M13 13h3M8 17h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Generate e-learning timetable
+</a>
+<a
+  class="workspace-nav-link {% if active_elearning_tool == 'attendance' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_elearning_page' 'attendance' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 7l1 1 2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  E-learning attendance
+</a>
+<a
+  class="workspace-nav-link {% if active_elearning_tool == 'assessments' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_elearning_page' 'assessments' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M8 4h8v4H8V4zm-3 6h14v12H5V10zm4 3h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  E-learning assessments
+</a>
+<a
+  class="workspace-nav-link {% if active_elearning_tool == 'learning-materials' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_elearning_page' 'learning-materials' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4V5zm16 0h-7a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h8V5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  Public learning materials
+</a>

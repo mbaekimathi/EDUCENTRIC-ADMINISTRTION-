@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Parent portal | Edu-Centric{% endblock %}
+{% block content %}
+<main class="app-shell">
+  {% url 'admissions:parent_portal' as portal_url %}
+  {% url 'admissions:portal_logout' as logout_url %}
+  {% include "partials/app_header.html" with brand_href=portal_url user_label=parent.full_name action_href=logout_url action_label="Sign out" only %}
+
+  <div class="page-wrap">
+    <section class="hero-panel">
+      <div class="hero-panel-top">
+        <div class="hero-identity">
+          <div class="avatar" aria-hidden="true">{{ parent.full_name|default:"P"|slice:":1"|upper }}</div>
+          <div class="hero-copy">
+            <span class="eyebrow">Parent / guardian portal</span>
+            <h1>Welcome, {{ parent.full_name }}.</h1>
+            <p>Review linked students and download e-learning materials shared by their teachers.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="hero-panel" aria-label="Linked students">
+      <div class="form-page-heading">
+        <span class="eyebrow">Linked students</span>
+        <h2>Your children</h2>
+        <p class="subtle">Students connected to this parent or guardian account.</p>
+      </div>
+      <ul class="student-list">
+        {% for student in linked_students %}
+          <li>
+            <strong>{{ student.display_name }}</strong>
+            <span>{{ student.get_academic_level_display }}</span>
+          </li>
+        {% empty %}
+          <li>No students are linked to this account yet.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="hero-panel portal-materials-panel" aria-label="E-learning materials">
+      <div class="form-page-heading">
+        <span class="eyebrow">E-learning</span>
+        <h2>Learning materials</h2>
+        <p class="subtle">Fast downloads for notes, slides, videos, audio, and interactive packages at your children’s levels.</p>
+      </div>
+      {% if learning_materials %}
+      <div class="portal-materials-list">
+        {% for item in learning_materials %}
+        <article class="portal-material-card">
+          <div class="portal-material-cover" aria-hidden="true">
+            {% if item.cover_image %}
+            <img src="{{ item.cover_image.url }}" alt="">
+            {% else %}
+            <span>{{ item.file_extension|default:"LM"|cut:"."|upper }}</span>
+            {% endif %}
+          </div>
+          <div class="portal-material-body">
+            <p class="portal-material-meta">
+              {{ item.allocation.academic_level.code }} · {{ item.allocation.learning_area.code }} · {{ item.category }}
+            </p>
+            <h3>{{ item.name }}</h3>
+            {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+            <p class="subtle">{{ item.get_content_format_display }} · {{ item.human_file_size }}</p>
+            <div class="portal-material-actions">
+              <a class="ghost-button" href="{% url 'admissions:parent_portal_material_view' item.id %}" target="_blank" rel="noopener">View</a>
+              <a class="primary-button" href="{% url 'admissions:parent_portal_material_download' item.id %}">Download</a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="subtle">No published e-learning materials for linked students yet.</p>
+      {% endif %}
+    </section>
+  </div>
+</main>
+{% endblock %}
