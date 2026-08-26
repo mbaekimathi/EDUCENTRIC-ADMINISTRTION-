@@ -976,7 +976,8 @@ class EmployeeManagementTests(TestCase):
         self.assertContains(response, "GRACE FINANCE")
         self.assertContains(response, "135790")
         self.assertContains(response, self.teacher.employment_number)
-        self.assertContains(response, "Emp. no.")
+        self.assertContains(response, "Employment no.")
+        self.assertContains(response, "Employee code")
         self.assertNotContains(response, "employees in this role")
         self.assertNotContains(response, "Jump to role")
 

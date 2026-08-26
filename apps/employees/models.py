@@ -123,6 +123,7 @@ class Employee(AbstractUser):
         MRS = "MRS", "Mrs."
         MISS = "MISS", "Miss"
         MS = "MS", "Ms."
+        TR = "TR", "Tr."
         DR = "DR", "Dr."
         PROF = "PROF", "Prof."
 

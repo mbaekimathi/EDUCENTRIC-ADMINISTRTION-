@@ -74,8 +74,8 @@
           <thead>
             <tr>
               <th>Employee</th>
-              <th>Emp. no.</th>
-              <th>Code</th>
+              <th>Employment no.</th>
+              <th>Employee code</th>
               <th>Contact</th>
               <th>Approval</th>
               <th>Access</th>
@@ -107,8 +107,8 @@
                   </div>
                 </div>
               </td>
-              <td data-label="Emp. no."><code class="employee-code is-uppercase">{{ employee.employee_code }}</code></td>
-              <td data-label="Code"><code class="employee-code">{{ employee.employment_number }}</code></td>
+              <td data-label="Employment no."><code class="employee-code">{{ employee.employment_number }}</code></td>
+              <td data-label="Employee code"><code class="employee-code is-uppercase">{{ employee.employee_code }}</code></td>
               <td data-label="Contact">
                 <div class="employee-contact-cell">
                   <span>{{ employee.email }}</span>
@@ -202,12 +202,12 @@
               </select>
             </div>
             <div class="field">
-              <label for="edit-employee-code">Employee code <span class="required">*</span></label>
-              <input id="edit-employee-code" class="uppercase-input" name="employee_code" required maxlength="6" inputmode="numeric">
-            </div>
-            <div class="field">
               <label for="edit-employment-number">Employment number <span class="required">*</span></label>
               <input id="edit-employment-number" name="employment_number" type="number" min="1" step="1" required>
+            </div>
+            <div class="field">
+              <label for="edit-employee-code">Employee code <span class="required">*</span></label>
+              <input id="edit-employee-code" class="uppercase-input" name="employee_code" required maxlength="6" inputmode="numeric">
             </div>
             <div class="field">
               <label for="edit-employee-first-name">First name <span class="required">*</span></label>
