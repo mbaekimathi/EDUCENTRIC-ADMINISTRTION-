@@ -45,6 +45,16 @@ urlpatterns = [
         name="update_exam_record",
     ),
     path(
+        "workspace/it_support/curriculum-management/exam-management/exam-records/<int:exam_id>/status/",
+        views.update_exam_record_status,
+        name="update_exam_record_status",
+    ),
+    path(
+        "workspace/it_support/curriculum-management/exam-management/exam-records/<int:exam_id>/deadline/",
+        views.update_exam_record_deadline,
+        name="update_exam_record_deadline",
+    ),
+    path(
         "workspace/it_support/curriculum-management/exam-management/exam-records/<int:exam_id>/delete/",
         views.delete_exam_record,
         name="delete_exam_record",
@@ -352,6 +362,16 @@ urlpatterns = [
         "settings/curriculum/exam-settings/timetable/<int:profile_id>/delete/",
         views.delete_exam_timetable_profile,
         name="delete_exam_timetable_profile",
+    ),
+    path(
+        "settings/curriculum/exam-settings/subject-combinations/",
+        views.exam_subject_combination_settings,
+        name="exam_subject_combination_settings",
+    ),
+    path(
+        "settings/curriculum/exam-settings/subject-combinations/<int:level_id>/",
+        views.exam_subject_combination_level,
+        name="exam_subject_combination_level",
     ),
     path(
         "settings/curriculum/exam-settings/<int:level_id>/",

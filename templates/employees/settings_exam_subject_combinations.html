@@ -1,0 +1,52 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Exam subject combinations | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Exam settings{% endblock %}
+{% block header_title %}Exam subject combinations{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/exam_settings_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+
+{% include "employees/includes/nav/exam_settings.html" %}
+
+<div class="exam-tool-page">
+<p class="subtle exam-combine-intro-copy">Set each subject&apos;s out-of marks, then combine two or more into a single graded subject. Combined totals are the sum of component marks.</p>
+
+{% if levels %}
+{% regroup levels by category as level_groups %}
+<div class="exam-hub-list" aria-label="Subject combinations by academic level">
+  <header class="settings-category-header">
+    <h3 class="settings-category-title">Academic levels</h3>
+    <span class="settings-category-count">{{ levels|length }} level{{ levels|length|pluralize }}</span>
+  </header>
+  {% for category in level_groups %}
+  <section class="settings-category" aria-label="{{ category.grouper }}">
+    <header class="settings-category-header">
+      <h3 class="settings-category-title is-uppercase">{{ category.grouper }}</h3>
+      <span class="settings-category-count">{{ category.list|length }} level{{ category.list|length|pluralize }}</span>
+    </header>
+    <section class="teacher-dash-actions">
+      {% for level in category.list %}
+      <a class="teacher-dash-action" href="{% url 'employees:exam_subject_combination_level' level.id %}">
+        <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|slice:":2" }}</span>
+        <span class="teacher-dash-action-copy">
+          <strong class="is-uppercase">{{ level.name }}</strong>
+          <span>
+            {{ level.code }} · {{ level.subject_count }} subject{{ level.subject_count|pluralize }}
+            {% if level.combined_count %}· {{ level.combined_count }} combined{% endif %}
+          </span>
+        </span>
+      </a>
+      {% endfor %}
+    </section>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">No active academic levels yet. Register levels and learning areas first.</p>
+{% endif %}
+</div>
+{% endblock %}

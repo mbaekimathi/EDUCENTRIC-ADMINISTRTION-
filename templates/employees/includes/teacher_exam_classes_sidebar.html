@@ -1,4 +1,14 @@
 <a
+  class="workspace-nav-link {% if not selected_class and active_teacher_exam_nav != 'analytics' %}is-active{% endif %}"
+  href="{% url 'employees:teacher_exam_record_detail' exam.id %}"
+  {% if not selected_class and active_teacher_exam_nav != 'analytics' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6V4zm9 0v3h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  Your subjects
+</a>
+<a
   class="workspace-nav-link {% if active_teacher_exam_nav == 'analytics' %}is-active{% endif %}"
   href="{% url 'employees:teacher_exam_analytics' exam.id %}"
   {% if active_teacher_exam_nav == 'analytics' %}aria-current="page"{% endif %}
@@ -8,3 +18,19 @@
   </span>
   Exam analytics
 </a>
+
+<p class="workspace-nav-label">Subjects to teach</p>
+{% for item in exam_subject_allocations %}
+<a
+  class="workspace-nav-link {% if selected_class and selected_class.id == item.academic_class.id %}is-active{% endif %}"
+  href="{% url 'employees:teacher_exam_record_class' exam.id item.academic_class.id %}"
+  {% if selected_class and selected_class.id == item.academic_class.id %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6V4zm9 0v3h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </span>
+  {{ item.subject.code }} · {{ item.academic_class.display_label }}
+</a>
+{% empty %}
+<p class="subtle workspace-nav-empty">No subjects allocated to you for this exam.</p>
+{% endfor %}

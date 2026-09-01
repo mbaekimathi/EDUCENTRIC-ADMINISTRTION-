@@ -18,7 +18,7 @@
 <div class="settings-toolbar" data-exam-settings-toolbar>
   <div class="settings-toolbar-copy">
     <h2 class="is-uppercase">{{ level.name }}</h2>
-    <p class="subtle" data-order-hint>{{ level.code }} · {{ level.category }} · Set marks, rearrange subjects, or combine two or more. Changing out-of values does not rewrite marks already saved.</p>
+    <p class="subtle" data-order-hint>{{ level.code }} · {{ level.category }} · Set marks and rearrange subjects. Changing out-of values does not rewrite marks already saved.</p>
     <p class="subtle" data-order-active-hint hidden>Drag subjects to rearrange, then save the new display order.</p>
   </div>
   <div class="settings-toolbar-actions">
@@ -45,7 +45,7 @@
   <div data-reorder-inputs></div>
 </form>
 
-<article class="exam-level-workspace" data-exam-level data-level-id="{{ level.id }}" data-combine-url="{% url 'employees:create_combined_exam_subject' level.id %}" data-exam-settings-board>
+<article class="exam-level-workspace" data-exam-level data-level-id="{{ level.id }}" data-exam-settings-board>
   {% if exam_subjects %}
   <section class="exam-subjects-panel">
   <form method="post" action="{% url 'employees:save_exam_subject_marks' level.id %}" data-marks-form>
@@ -55,7 +55,6 @@
         <thead>
           <tr>
             <th class="reorder-handle-col" data-reorder-only hidden><span class="sr-only">Move</span></th>
-            <th class="exam-select-col" data-normal-only>Combine</th>
             <th>Subject</th>
             <th>Code</th>
             <th>Out of marks</th>
@@ -67,19 +66,6 @@
           <tr data-subject-row data-area-id="{{ subject.area.id }}">
             <td class="reorder-handle-col" data-reorder-only data-label="Move" hidden>
               <span class="reorder-handle" aria-hidden="true" title="Drag to reorder">⋮⋮</span>
-            </td>
-            <td data-label="Combine" class="exam-select-col" data-normal-only>
-              <label class="exam-combine-check">
-                <input
-                  type="checkbox"
-                  data-combine-subject
-                  value="{{ subject.area.id }}"
-                  data-subject-name="{{ subject.area.name }}"
-                  data-subject-code="{{ subject.area.code }}"
-                  data-out-of="{{ subject.out_of_marks }}"
-                >
-                <span class="sr-only">Select {{ subject.area.name }}</span>
-              </label>
             </td>
             <td data-label="Subject">
               <strong class="is-uppercase">{{ subject.area.name }}</strong>
@@ -105,181 +91,21 @@
       </table>
     </div>
     <div class="exam-card-actions" data-normal-only>
-      <p class="subtle exam-combine-hint" data-combine-hint>Select two or more subjects, then combine them.</p>
       <div class="exam-card-action-buttons">
-        <button type="button" class="ghost-button" data-combine-selected disabled>
-          Combine selected
-        </button>
         <button type="submit" class="primary-button">Save subject marks</button>
       </div>
     </div>
   </form>
   </section>
-
-  <section class="exam-combine-panel" data-normal-only>
-    <div class="exam-combine-intro">
-      <h3>Combined subjects</h3>
-      <p class="subtle">Component out-of totals are added, then the combined score is converted to a percentage.</p>
-    </div>
-
-    {% if combined_subjects %}
-    <div class="settings-table-panel">
-      <table class="settings-table exam-combined-table">
-        <thead>
-          <tr>
-            <th>Combined subject</th>
-            <th>Components</th>
-            <th>Total out of</th>
-            <th>Conversion</th>
-            <th><span class="sr-only">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for combined in combined_subjects %}
-          <tr>
-            <td>
-              <strong class="is-uppercase">{{ combined.name }}</strong>
-              <span class="subtle">({{ combined.code }})</span>
-            </td>
-            <td>{{ combined.component_codes }}</td>
-            <td>{{ combined.out_of_marks }}</td>
-            <td class="subtle">Combined score ÷ {{ combined.out_of_marks }} × 100</td>
-            <td>
-              <form method="post" action="{% url 'employees:delete_combined_exam_subject' combined.id %}" onsubmit="return confirm('Remove {{ combined.name|escapejs }}?');">
-                {% csrf_token %}
-                <button type="submit" class="record-action is-danger">Remove</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="settings-empty">No combined subjects for this level yet.</p>
-    {% endif %}
-  </section>
   {% else %}
   <p class="settings-empty">No active subjects are linked to this academic level.</p>
   {% endif %}
 </article>
-
-<div class="app-modal" id="combine-subject-modal" data-combine-modal hidden>
-  <div class="app-modal-backdrop" data-combine-close></div>
-  <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="combine-subject-title">
-    <div class="app-modal-header">
-      <h2 id="combine-subject-title">Create combined subject</h2>
-      <button type="button" class="app-modal-close" data-combine-close aria-label="Close">×</button>
-    </div>
-    <form method="post" class="app-modal-form" data-combine-form>
-      {% csrf_token %}
-      <div data-combine-subject-inputs></div>
-      <p class="subtle" data-combine-summary></p>
-      <div class="field">
-        <label for="combine-subject-name">Combined subject name <span class="required">*</span></label>
-        <input id="combine-subject-name" class="uppercase-input" name="name" placeholder="E.G. CREATIVE ARTS" required>
-      </div>
-      <div class="field">
-        <label for="combine-subject-code">New code <span class="required">*</span></label>
-        <input id="combine-subject-code" class="uppercase-input" name="code" placeholder="E.G. CA-COMB" required>
-      </div>
-      <div class="app-modal-actions">
-        <button type="button" class="ghost-button" data-combine-close>Cancel</button>
-        <button type="submit" class="primary-button">Save combined subject</button>
-      </div>
-    </form>
-  </div>
-</div>
 {% endblock %}
 
 {% block workspace_scripts %}
 <script>
 (function () {
-  const modal = document.querySelector("[data-combine-modal]");
-  const form = document.querySelector("[data-combine-form]");
-  const subjectInputs = document.querySelector("[data-combine-subject-inputs]");
-  const summary = document.querySelector("[data-combine-summary]");
-  const nameInput = document.querySelector("#combine-subject-name");
-  const codeInput = document.querySelector("#combine-subject-code");
-  const levelCard = document.querySelector("[data-exam-level]");
-  let reorderActive = false;
-
-  function setModalOpen(open) {
-    if (!modal) return;
-    modal.hidden = !open;
-    modal.classList.toggle("is-open", open);
-    document.body.classList.toggle("modal-open", open);
-    if (open) nameInput?.focus();
-  }
-
-  function clearLevelSelection() {
-    levelCard?.querySelectorAll("[data-combine-subject]").forEach((input) => {
-      input.checked = false;
-    });
-    updateCombineButton();
-  }
-
-  function selectedSubjects() {
-    if (!levelCard) return [];
-    return Array.from(levelCard.querySelectorAll("[data-combine-subject]:checked"));
-  }
-
-  function updateCombineButton() {
-    const button = levelCard?.querySelector("[data-combine-selected]");
-    if (!button) return;
-    const count = selectedSubjects().length;
-    button.disabled = count < 2;
-    button.textContent = count >= 2 ? `Combine selected (${count})` : "Combine selected";
-  }
-
-  function openCombineModal(subjects) {
-    if (!form || !subjectInputs || !levelCard || subjects.length < 2) return;
-    form.action = levelCard.dataset.combineUrl;
-    subjectInputs.innerHTML = "";
-    subjects.forEach((subject) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = "subject_ids";
-      input.value = subject.value;
-      subjectInputs.appendChild(input);
-    });
-    const total = subjects.reduce(
-      (sum, subject) => sum + Number(subject.dataset.outOf || 0),
-      0
-    );
-    summary.textContent =
-      subjects
-        .map((subject) => `${subject.dataset.subjectName} (${subject.dataset.subjectCode})`)
-        .join(" + ") + ` · Total out of ${total}`;
-    nameInput.value = "";
-    codeInput.value = "";
-    setModalOpen(true);
-  }
-
-  if (levelCard) {
-    levelCard.addEventListener("change", (event) => {
-      if (reorderActive) return;
-      if (!event.target.closest("[data-combine-subject]")) return;
-      updateCombineButton();
-    });
-
-    levelCard.querySelector("[data-combine-selected]")?.addEventListener("click", () => {
-      if (reorderActive) return;
-      const selected = selectedSubjects();
-      if (selected.length < 2) return;
-      openCombineModal(selected);
-    });
-
-    updateCombineButton();
-  }
-
-  modal?.querySelectorAll("[data-combine-close]").forEach((button) => {
-    button.addEventListener("click", () => {
-      setModalOpen(false);
-      clearLevelSelection();
-    });
-  });
-
   const board = document.querySelector("[data-exam-settings-board]");
   const reorderForm = document.querySelector("[data-reorder-form]");
   const reorderInputs = document.querySelector("[data-reorder-inputs]");
@@ -288,6 +114,8 @@
   const saveReorderBtn = document.querySelector("[data-save-reorder]");
   const orderHint = document.querySelector("[data-order-hint]");
   const orderActiveHint = document.querySelector("[data-order-active-hint]");
+  const levelCard = document.querySelector("[data-exam-level]");
+  let reorderActive = false;
   let draggedRow = null;
 
   function setReorderMode(active) {
@@ -373,11 +201,6 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    if (modal && !modal.hidden) {
-      setModalOpen(false);
-      clearLevelSelection();
-      return;
-    }
     if (reorderActive) window.location.reload();
   });
 })();

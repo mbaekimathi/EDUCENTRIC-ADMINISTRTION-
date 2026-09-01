@@ -1,12 +1,44 @@
-<a
-  class="workspace-nav-link"
-  href="{% url 'employees:it_support_exam_page' 'exam-records' %}"
+<p class="workspace-nav-label">Exam</p>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="exam-edit"
 >
   <span class="workspace-nav-icon" aria-hidden="true">
-    <svg viewBox="0 0 24 24"><path d="M15 18 9 12l6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3zM14 6l3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
-  All exams
-</a>
+  Edit exam
+</button>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="exam-status"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 3v3M6.2 5.8 8.3 7.9M4 12H1M6.2 18.2l2.1-2.1M12 21v-3M17.8 18.2l-2.1-2.1M23 12h-3M17.8 5.8 15.7 7.9M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Set status
+</button>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action"
+  data-open-modal="exam-deadline"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM8 13h3M13 13h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Set deadline
+</button>
+<button
+  type="button"
+  class="workspace-nav-link workspace-nav-action workspace-nav-action-danger"
+  data-open-modal="exam-delete"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Delete exam
+</button>
 <p class="workspace-nav-label">Academic levels</p>
 {% for level in academic_levels %}
 <a

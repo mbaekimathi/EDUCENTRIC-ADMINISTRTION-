@@ -1,0 +1,15 @@
+<div class="workspace-nav-drawer{% if collapsed %} is-collapsed{% endif %}" data-nav-drawer>
+  <button
+    type="button"
+    class="workspace-nav-drawer-toggle ghost-button"
+    data-nav-drawer-toggle
+    aria-expanded="{% if collapsed %}false{% else %}true{% endif %}"
+    aria-controls="{{ panel_id }}"
+  >
+    <span class="workspace-nav-drawer-toggle-label">{{ label }}</span>
+    <span class="workspace-nav-drawer-toggle-icon" aria-hidden="true"></span>
+  </button>
+  <div class="workspace-nav-drawer-panel" id="{{ panel_id }}"{% if collapsed %} hidden{% endif %}>
+    {% include nav_template %}
+  </div>
+</div>

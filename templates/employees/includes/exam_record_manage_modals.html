@@ -1,0 +1,385 @@
+<div class="app-modal exam-manage-modal" id="exam-edit-modal" data-modal="exam-edit" hidden>
+  <div class="app-modal-backdrop exam-manage-backdrop" data-modal-close="exam-edit"></div>
+  <div class="app-modal-dialog exam-manage-dialog exam-manage-dialog-edit app-modal-dialog-wide app-modal-dialog-generation" role="dialog" aria-modal="true" aria-labelledby="exam-edit-title">
+    <div class="exam-manage-dialog-accent is-edit" aria-hidden="true"></div>
+    <div class="exam-manage-dialog-header">
+      <div class="exam-manage-dialog-icon is-edit" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3zM14 6l3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="exam-manage-dialog-heading">
+        <p class="exam-manage-dialog-kicker">Exam details</p>
+        <h2 id="exam-edit-title">Edit exam</h2>
+        <p class="exam-manage-dialog-lead">Update the registered exam name, calendar dates, and linked academic levels.</p>
+      </div>
+      <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-edit" aria-label="Close">×</button>
+    </div>
+    <form method="post" action="{% url 'employees:update_exam_record' exam.id %}" class="app-modal-form exam-manage-dialog-form" data-exam-edit-form>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ manage_next_url }}">
+      {% if selected_level %}<input type="hidden" name="level_id" value="{{ selected_level.id }}">{% endif %}
+      <div class="generation-step">
+        <div class="generation-calendar exam-manage-dialog-body">
+          <section class="exam-manage-section">
+            <h3 class="exam-manage-section-title">Identity</h3>
+            <div class="field">
+              <label for="edit-exam-name">Exam name <span class="required">*</span></label>
+              <input
+                id="edit-exam-name"
+                class="uppercase-input"
+                name="exam_name"
+                maxlength="120"
+                value="{{ exam.name }}"
+                required
+                autocomplete="off"
+              >
+            </div>
+          </section>
+          <section class="exam-manage-section">
+            <h3 class="exam-manage-section-title">Academic calendar</h3>
+            <div class="exam-manage-field-grid">
+              <div class="field">
+                <label for="edit-exam-year">Academic year <span class="required">*</span></label>
+                <select id="edit-exam-year" class="uppercase-input" name="academic_year_id" data-exam-edit-year required>
+                  {% for year in academic_years %}
+                  <option value="{{ year.id }}" {% if exam.academic_year_id == year.id %}selected{% endif %}>
+                    {{ year.name }}{% if year.is_current %} (CURRENT){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="edit-exam-term">Academic term <span class="required">*</span></label>
+                <select id="edit-exam-term" class="uppercase-input" name="academic_term_id" data-exam-edit-term required></select>
+              </div>
+            </div>
+            <div class="exam-manage-field-grid">
+              <div class="field">
+                <label for="edit-exam-start">Start date <span class="required">*</span></label>
+                <input
+                  id="edit-exam-start"
+                  type="date"
+                  name="start_date"
+                  data-exam-edit-start
+                  value="{% if exam.start_date %}{{ exam.start_date|date:'Y-m-d' }}{% endif %}"
+                  required
+                >
+              </div>
+              <div class="field">
+                <label for="edit-exam-end">End date <span class="required">*</span></label>
+                <input
+                  id="edit-exam-end"
+                  type="date"
+                  name="end_date"
+                  data-exam-edit-end
+                  value="{% if exam.end_date %}{{ exam.end_date|date:'Y-m-d' }}{% endif %}"
+                  required
+                >
+              </div>
+            </div>
+          </section>
+          <section class="exam-manage-section">
+            <h3 class="exam-manage-section-title">Academic levels <span class="required">*</span></h3>
+            <div class="exam-level-chip-grid is-uppercase">
+              {% for level in academic_levels_for_exam %}
+              <label class="exam-level-chip">
+                <input
+                  type="checkbox"
+                  name="academic_levels"
+                  value="{{ level.id }}"
+                  {% if level in exam.academic_levels.all %}checked{% endif %}
+                >
+                <span>{{ level.name }}</span>
+                <small>{{ level.code }}</small>
+              </label>
+              {% empty %}
+              <p class="field-hint">Register an academic level first.</p>
+              {% endfor %}
+            </div>
+          </section>
+        </div>
+        <div class="app-modal-actions exam-manage-dialog-actions">
+          <button type="button" class="ghost-button" data-modal-close="exam-edit">Cancel</button>
+          <button type="submit" class="primary-button">Save changes</button>
+        </div>
+      </div>
+    </form>
+    <script type="application/json" data-exam-edit-terms-by-year>{{ terms_by_year_json|safe }}</script>
+  </div>
+</div>
+
+<div class="app-modal exam-manage-modal" id="exam-status-modal" data-modal="exam-status" hidden>
+  <div class="app-modal-backdrop exam-manage-backdrop" data-modal-close="exam-status"></div>
+  <div class="app-modal-dialog exam-manage-dialog exam-manage-dialog-status" role="dialog" aria-modal="true" aria-labelledby="exam-status-title">
+    <div class="exam-manage-dialog-accent is-status" aria-hidden="true"></div>
+    <div class="exam-manage-dialog-header">
+      <div class="exam-manage-dialog-icon is-status" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3v3M6.2 5.8 8.3 7.9M4 12H1M6.2 18.2l2.1-2.1M12 21v-3M17.8 18.2l-2.1-2.1M23 12h-3M17.8 5.8 15.7 7.9M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="exam-manage-dialog-heading">
+        <p class="exam-manage-dialog-kicker">Exam workflow</p>
+        <h2 id="exam-status-title">Set exam status</h2>
+        <p class="exam-manage-dialog-lead">Move this exam through each stage as sittings, marking, and publishing progress.</p>
+      </div>
+      <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-status" aria-label="Close">×</button>
+    </div>
+    <form method="post" action="{% url 'employees:update_exam_record_status' exam.id %}" class="app-modal-form exam-manage-dialog-form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ manage_next_url }}">
+      {% if selected_level %}<input type="hidden" name="level_id" value="{{ selected_level.id }}">{% endif %}
+      <div class="exam-manage-dialog-body">
+        <div class="exam-manage-current-pill">
+          <span>Current</span>
+          <strong>{{ exam.get_status_display }}</strong>
+        </div>
+        <div class="exam-status-grid" role="radiogroup" aria-label="Exam status">
+          <label class="exam-status-card is-in-session{% if exam.status == 'IN_SESSION' %} is-selected{% endif %}">
+            <input type="radio" name="status" value="IN_SESSION" {% if exam.status == "IN_SESSION" %}checked{% endif %} required>
+            <span class="exam-status-card-icon" aria-hidden="true">IN</span>
+            <span class="exam-status-card-copy">
+              <strong>In session</strong>
+              <span>Exams are currently running in classes.</span>
+            </span>
+            <span class="exam-status-card-indicator" aria-hidden="true"></span>
+          </label>
+          <label class="exam-status-card is-marking{% if exam.status == 'MARKING' %} is-selected{% endif %}">
+            <input type="radio" name="status" value="MARKING" {% if exam.status == "MARKING" %}checked{% endif %}>
+            <span class="exam-status-card-icon" aria-hidden="true">MK</span>
+            <span class="exam-status-card-copy">
+              <strong>Marking</strong>
+              <span>Teachers are entering student marks.</span>
+            </span>
+            <span class="exam-status-card-indicator" aria-hidden="true"></span>
+          </label>
+          <label class="exam-status-card is-analysing{% if exam.status == 'ANALYSING' %} is-selected{% endif %}">
+            <input type="radio" name="status" value="ANALYSING" {% if exam.status == "ANALYSING" %}checked{% endif %}>
+            <span class="exam-status-card-icon" aria-hidden="true">AN</span>
+            <span class="exam-status-card-copy">
+              <strong>Analysing</strong>
+              <span>Results are being reviewed internally.</span>
+            </span>
+            <span class="exam-status-card-indicator" aria-hidden="true"></span>
+          </label>
+          <label class="exam-status-card is-published{% if exam.status == 'PUBLISHED' %} is-selected{% endif %}">
+            <input type="radio" name="status" value="PUBLISHED" {% if exam.status == "PUBLISHED" %}checked{% endif %}>
+            <span class="exam-status-card-icon" aria-hidden="true">PB</span>
+            <span class="exam-status-card-copy">
+              <strong>Published</strong>
+              <span>Results are ready to share.</span>
+            </span>
+            <span class="exam-status-card-indicator" aria-hidden="true"></span>
+          </label>
+        </div>
+      </div>
+      <div class="app-modal-actions exam-manage-dialog-actions">
+        <button type="button" class="ghost-button" data-modal-close="exam-status">Cancel</button>
+        <button type="submit" class="primary-button">Save status</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="app-modal exam-manage-modal" id="exam-deadline-modal" data-modal="exam-deadline" hidden>
+  <div class="app-modal-backdrop exam-manage-backdrop" data-modal-close="exam-deadline"></div>
+  <div class="app-modal-dialog exam-manage-dialog exam-manage-dialog-deadline" role="dialog" aria-modal="true" aria-labelledby="exam-deadline-title">
+    <div class="exam-manage-dialog-accent is-deadline" aria-hidden="true"></div>
+    <div class="exam-manage-dialog-header">
+      <div class="exam-manage-dialog-icon is-deadline" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM12 13v4M12 11h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="exam-manage-dialog-heading">
+        <p class="exam-manage-dialog-kicker">Marking window</p>
+        <h2 id="exam-deadline-title">Set deadline</h2>
+        <p class="exam-manage-dialog-lead">Choose when marking for this exam should close.</p>
+      </div>
+      <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-deadline" aria-label="Close">×</button>
+    </div>
+    <form method="post" action="{% url 'employees:update_exam_record_deadline' exam.id %}" class="app-modal-form exam-manage-dialog-form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ manage_next_url }}">
+      {% if selected_level %}<input type="hidden" name="level_id" value="{{ selected_level.id }}">{% endif %}
+      <div class="exam-manage-dialog-body">
+        <div class="exam-deadline-panel">
+          <div class="exam-deadline-panel-copy">
+            <span class="exam-deadline-label">Current deadline</span>
+            {% if exam.deadline %}
+            <strong>{{ exam.deadline|date:"l, j M Y" }}</strong>
+            <span>{{ exam.deadline|date:"g:i A" }}</span>
+            {% else %}
+            <strong>Not set</strong>
+            <span>Teachers can mark until you set a closing time.</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="field exam-deadline-field">
+          <label for="exam-deadline-input">New deadline</label>
+          <div class="exam-deadline-input-wrap">
+            <span class="exam-deadline-input-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <input
+              id="exam-deadline-input"
+              type="datetime-local"
+              name="deadline"
+              value="{% if exam.deadline %}{{ exam.deadline|date:'Y-m-d' }}T{{ exam.deadline|date:'H:i' }}{% endif %}"
+            >
+          </div>
+        </div>
+        <label class="exam-manage-toggle">
+          <input type="checkbox" name="clear_deadline" value="1">
+          <span class="exam-manage-toggle-track" aria-hidden="true"></span>
+          <span class="exam-manage-toggle-copy">
+            <strong>Clear deadline</strong>
+            <span>Remove the closing time for this exam.</span>
+          </span>
+        </label>
+      </div>
+      <div class="app-modal-actions exam-manage-dialog-actions">
+        <button type="button" class="ghost-button" data-modal-close="exam-deadline">Cancel</button>
+        <button type="submit" class="primary-button">Save deadline</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="app-modal exam-manage-modal" id="exam-delete-modal" data-modal="exam-delete" hidden>
+  <div class="app-modal-backdrop exam-manage-backdrop" data-modal-close="exam-delete"></div>
+  <div class="app-modal-dialog exam-manage-dialog exam-manage-dialog-delete" role="dialog" aria-modal="true" aria-labelledby="exam-delete-title">
+    <div class="exam-manage-dialog-accent is-delete" aria-hidden="true"></div>
+    <div class="exam-manage-dialog-header">
+      <div class="exam-manage-dialog-icon is-delete" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.6 9.7 5H5v2h14V5h-4.7l-.6-1.4a1 1 0 0 0-.9-.6H11.2a1 1 0 0 0-.9.6zM7 9v10a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="exam-manage-dialog-heading">
+        <p class="exam-manage-dialog-kicker">Danger zone</p>
+        <h2 id="exam-delete-title">Delete exam</h2>
+        <p class="exam-manage-dialog-lead">This permanently removes the exam timetable, sittings, and all recorded marks.</p>
+      </div>
+      <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-delete" aria-label="Close">×</button>
+    </div>
+    <form method="post" action="{% url 'employees:delete_exam_record' exam.id %}" class="app-modal-form exam-manage-dialog-form">
+      {% csrf_token %}
+      <div class="exam-manage-dialog-body">
+        <div class="exam-delete-warning">
+          <span class="exam-delete-warning-badge" aria-hidden="true">!</span>
+          <p>
+            You are about to delete
+            <strong class="is-uppercase">{{ exam.display_name }}</strong>.
+            This action cannot be undone.
+          </p>
+        </div>
+      </div>
+      <div class="app-modal-actions exam-manage-dialog-actions">
+        <button type="button" class="ghost-button" data-modal-close="exam-delete">Keep exam</button>
+        <button type="submit" class="primary-button is-danger">Delete exam</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  function bindModal(name) {
+    const modal = document.querySelector(`[data-modal="${name}"]`);
+    if (!modal) return;
+    const openers = document.querySelectorAll(`[data-open-modal="${name}"]`);
+    const closers = modal.querySelectorAll(`[data-modal-close="${name}"]`);
+
+    function setOpen(open) {
+      modal.classList.toggle("is-open", open);
+      modal.hidden = !open;
+      document.body.classList.toggle("modal-open", open);
+    }
+
+    openers.forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+        setOpen(true);
+      });
+    });
+    closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
+  }
+
+  ["exam-edit", "exam-status", "exam-deadline", "exam-delete"].forEach(bindModal);
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    document.querySelectorAll(".app-modal.is-open").forEach((modal) => {
+      modal.classList.remove("is-open");
+      modal.hidden = true;
+    });
+    document.body.classList.remove("modal-open");
+  });
+
+  function syncExamStatusCards(grid) {
+    if (!grid) return;
+    grid.querySelectorAll(".exam-status-card").forEach((card) => {
+      const checked = Boolean(card.querySelector("input")?.checked);
+      card.classList.toggle("is-selected", checked);
+      card.setAttribute("aria-checked", checked ? "true" : "false");
+    });
+  }
+
+  document.querySelectorAll(".exam-status-grid").forEach((grid) => {
+    syncExamStatusCards(grid);
+    grid.querySelectorAll(".exam-status-card input").forEach((input) => {
+      input.addEventListener("change", () => syncExamStatusCards(grid));
+    });
+    grid.querySelectorAll(".exam-status-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        window.requestAnimationFrame(() => syncExamStatusCards(grid));
+      });
+    });
+  });
+
+  const editModal = document.querySelector('[data-modal="exam-edit"]');
+  const editForm = editModal?.querySelector("[data-exam-edit-form]");
+  if (!editForm) return;
+
+  const yearSelect = editForm.querySelector("[data-exam-edit-year]");
+  const termSelect = editForm.querySelector("[data-exam-edit-term]");
+  const startInput = editForm.querySelector("[data-exam-edit-start]");
+  const endInput = editForm.querySelector("[data-exam-edit-end]");
+  const selectedTermId = "{{ exam.academic_term_id|default:'' }}";
+  let termsByYear = {};
+  try {
+    const termsNode = editModal.querySelector("[data-exam-edit-terms-by-year]");
+    termsByYear = termsNode ? JSON.parse(termsNode.textContent || "{}") : {};
+  } catch (error) {
+    termsByYear = {};
+  }
+
+  function fillTerms(yearId, preferredTermId) {
+    if (!termSelect) return;
+    const terms = termsByYear[String(yearId)] || [];
+    termSelect.innerHTML = "";
+    terms.forEach((term) => {
+      const option = document.createElement("option");
+      option.value = String(term.id);
+      option.textContent = term.label || term.name;
+      option.dataset.start = term.start || "";
+      option.dataset.end = term.end || "";
+      if (String(term.id) === String(preferredTermId || "")) option.selected = true;
+      termSelect.appendChild(option);
+    });
+    if (!termSelect.value && terms.length) termSelect.selectedIndex = 0;
+    constrainDates();
+  }
+
+  function constrainDates() {
+    const option = termSelect?.selectedOptions[0];
+    const min = option?.dataset.start || "";
+    const max = option?.dataset.end || "";
+    if (startInput) {
+      startInput.min = min;
+      startInput.max = max;
+    }
+    if (endInput) {
+      endInput.min = min;
+      endInput.max = max;
+    }
+  }
+
+  yearSelect?.addEventListener("change", () => fillTerms(yearSelect.value, ""));
+  termSelect?.addEventListener("change", constrainDates);
+  fillTerms(yearSelect?.value || "", selectedTermId);
+})();
+</script>

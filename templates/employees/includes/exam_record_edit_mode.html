@@ -46,20 +46,65 @@
 
     setEditing(false);
 
-    const scrollPanel = form.querySelector(".exam-record-sheet-table");
-    const nameTable = form.querySelector(".exam-record-students-table");
+    const scrollPanel = form.querySelector(".teacher-marks-table-scroll")
+      || form.querySelector(".it-marks-table-scroll")
+      || form.querySelector(".exam-record-sheet-table");
+    const meanScroll = form.querySelector(".teacher-marks-mean-scroll")
+      || form.querySelector(".it-marks-mean-scroll");
+    const tablePanel = form.querySelector(".teacher-marks-table-panel")
+      || form.querySelector(".it-marks-table-panel");
+    const nameTables = form.querySelectorAll(".exam-record-students-table");
+    const mainTable = scrollPanel?.querySelector(".exam-record-students-table");
+    const meanTable = form.querySelector(".teacher-marks-mean-table")
+      || form.querySelector(".it-marks-mean-table");
     let nameCollapsed = false;
-    function syncNameCollapse() {
-      if (!scrollPanel || !nameTable) return;
-      const x = scrollPanel.scrollLeft;
-      // Hysteresis avoids flicker when collapsing shrinks scrollWidth.
-      if (!nameCollapsed && x > 28) nameCollapsed = true;
-      else if (nameCollapsed && x < 6) nameCollapsed = false;
-      nameTable.classList.toggle("is-name-collapsed", nameCollapsed);
-      scrollPanel.classList.toggle("is-scrolled-x", x > 2);
+
+    function syncMeanBarWidth() {
+      if (!mainTable || !meanTable) return;
+      meanTable.style.width = `${mainTable.offsetWidth}px`;
+      meanTable.style.minWidth = `${mainTable.scrollWidth}px`;
     }
-    if (scrollPanel && nameTable) {
+
+    function syncMeanBarScroll() {
+      if (!meanScroll || !scrollPanel) return;
+      meanScroll.scrollLeft = scrollPanel.scrollLeft;
+    }
+
+    function syncNameCollapse() {
+      if (!scrollPanel || !nameTables.length) return;
+      const x = scrollPanel.scrollLeft;
+      const canScrollX = scrollPanel.scrollWidth > scrollPanel.clientWidth + 1;
+      if (!canScrollX) {
+        nameCollapsed = false;
+      } else if (!nameCollapsed && x > 28) {
+        nameCollapsed = true;
+      } else if (nameCollapsed && x < 6) {
+        nameCollapsed = false;
+      }
+      nameTables.forEach(function (table) {
+        table.classList.toggle("is-name-collapsed", nameCollapsed);
+      });
+      if (tablePanel) {
+        tablePanel.classList.toggle("is-scrolled-x", x > 2);
+      } else {
+        scrollPanel.classList.toggle("is-scrolled-x", x > 2);
+      }
+      syncMeanBarScroll();
+    }
+
+    if (scrollPanel && nameTables.length) {
       scrollPanel.addEventListener("scroll", syncNameCollapse, { passive: true });
+      window.addEventListener("resize", function () {
+        syncMeanBarWidth();
+        syncNameCollapse();
+      });
+      if (typeof ResizeObserver === "function" && mainTable) {
+        new ResizeObserver(function () {
+          syncMeanBarWidth();
+          syncNameCollapse();
+        }).observe(mainTable);
+      }
+      syncMeanBarWidth();
       syncNameCollapse();
     }
 

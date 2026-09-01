@@ -855,6 +855,44 @@ button.workspace-nav-action {
   font: inherit;
 }
 
+button.workspace-nav-action.workspace-nav-action-danger {
+  color: #ffb4ab;
+}
+
+button.workspace-nav-action.workspace-nav-action-danger:hover {
+  color: #fff;
+  background: #ff5a5a33;
+}
+
+.primary-button.is-danger {
+  color: #fff;
+  background: #b42318;
+  border-color: #b42318;
+}
+
+.primary-button.is-danger:hover {
+  background: #912018;
+  border-color: #912018;
+}
+
+.teacher-dash-action.is-danger {
+  color: #b42318;
+  background: #fef3f2;
+}
+
+.teacher-dash-action.is-danger:hover {
+  background: #fee4e2;
+}
+
+.checkbox-field {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0.35rem 0 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
 .settings-panel {
   display: grid;
   gap: 1rem;
@@ -1186,6 +1224,692 @@ button.workspace-nav-action {
 }
 .generation-step[hidden] {
   display: none;
+}
+
+.app-modal-dialog-generation {
+  display: flex;
+  flex-direction: column;
+  width: min(42rem, calc(100vw - 1.5rem));
+  max-height: min(92dvh, 54rem);
+  overflow: hidden;
+}
+
+.app-modal-dialog-generation .app-modal-header {
+  flex: 0 0 auto;
+  padding: 1.1rem 1.25rem 0.85rem;
+  border-bottom: 1px solid #e8eef8;
+}
+
+.app-modal-dialog-generation .app-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.app-modal-dialog-generation .generation-step:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-modal-dialog-generation .generation-step > .subtle,
+.app-modal-dialog-generation .generation-step > .notice,
+.app-modal-dialog-generation .generation-step > .settings-empty {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.85rem 1.25rem 0.5rem;
+}
+
+.app-modal-dialog-generation .generation-level-list,
+.app-modal-dialog-generation .generation-calendar {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 0.35rem 1.25rem;
+  max-height: none;
+}
+
+.app-modal-dialog-generation .generation-step .app-modal-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.9rem 1.25rem calc(0.9rem + env(safe-area-inset-bottom));
+  border-top: 1px solid #e8eef8;
+  background: #fff;
+}
+
+.exam-timetable-generation-page .exam-tool-block-head > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.exam-timetable-generation-page .exam-tool-block-head p {
+  overflow-wrap: anywhere;
+}
+
+.exam-timetable-generation-page .exam-tool-panel-head > div {
+  min-width: 0;
+}
+
+.exam-timetable-generation-page .schedule-timetable-wrap.is-scrollable-x {
+  max-width: 100%;
+}
+
+/* Exam record management modals */
+.exam-manage-modal .exam-manage-backdrop {
+  background: linear-gradient(160deg, #0b1b36b8 0%, #1f5cf066 48%, #0b1b36cc 100%);
+  backdrop-filter: blur(8px);
+}
+
+.exam-manage-modal.is-open .exam-manage-dialog {
+  animation: exam-manage-dialog-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes exam-manage-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.exam-manage-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 34rem);
+  max-height: min(92dvh, 44rem);
+  overflow: hidden;
+  border: 1px solid #ffffffcc;
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(circle at 100% 0%, #dce8ff 0, transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  box-shadow:
+    0 1px 2px #15233f0a,
+    0 22px 50px #15233f24,
+    0 0 0 1px #1f5cf00f inset;
+}
+
+.exam-manage-dialog-edit {
+  width: min(100%, 40rem);
+  max-height: min(92dvh, 52rem);
+}
+
+.exam-manage-dialog-accent {
+  height: 0.28rem;
+  flex: 0 0 auto;
+}
+
+.exam-manage-dialog-accent.is-edit {
+  background: linear-gradient(90deg, #1f5cf0, #5b8dff, #7dffd2);
+}
+
+.exam-manage-dialog-accent.is-status {
+  background: linear-gradient(90deg, #7c3aed, #1f5cf0, #22c55e);
+}
+
+.exam-manage-dialog-accent.is-deadline {
+  background: linear-gradient(90deg, #0ea5e9, #1f5cf0, #6366f1);
+}
+
+.exam-manage-dialog-accent.is-delete {
+  background: linear-gradient(90deg, #f97316, #ef4444, #b42318);
+}
+
+.exam-manage-dialog-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.85rem 1rem;
+  align-items: start;
+  padding: 1.15rem 1.25rem 0.9rem;
+  border-bottom: 1px solid #e7eef8;
+}
+
+.exam-manage-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 1rem;
+  box-shadow: inset 0 1px 0 #ffffffaa;
+}
+
+.exam-manage-dialog-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.exam-manage-dialog-icon.is-edit {
+  color: #1f5cf0;
+  background: linear-gradient(145deg, #eef4ff, #dce8ff);
+}
+
+.exam-manage-dialog-icon.is-status {
+  color: #6d28d9;
+  background: linear-gradient(145deg, #f5f3ff, #ede9fe);
+}
+
+.exam-manage-dialog-icon.is-deadline {
+  color: #0369a1;
+  background: linear-gradient(145deg, #ecfeff, #dbeafe);
+}
+
+.exam-manage-dialog-icon.is-delete {
+  color: #b42318;
+  background: linear-gradient(145deg, #fff1f0, #fee4e2);
+}
+
+.exam-manage-dialog-heading {
+  min-width: 0;
+}
+
+.exam-manage-dialog-kicker {
+  margin: 0 0 0.2rem;
+  color: #5d7399;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.exam-manage-dialog-heading h2 {
+  margin: 0 0 0.3rem;
+  font: 800 1.18rem/1.2 var(--display);
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.exam-manage-dialog-lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.exam-manage-dialog-close {
+  margin-top: 0.1rem;
+  border: 1px solid #e4ebf7;
+  background: #ffffffb8;
+}
+
+.exam-manage-dialog-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.exam-manage-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 1rem 1.25rem 0.35rem;
+}
+
+.exam-manage-dialog-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.95rem 1.25rem calc(0.95rem + env(safe-area-inset-bottom));
+  border-top: 1px solid #e7eef8;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.exam-manage-section + .exam-manage-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #dbe5f4;
+}
+
+.exam-manage-section-title {
+  margin: 0 0 0.75rem;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.exam-manage-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.exam-level-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+.exam-level-chip {
+  display: grid;
+  gap: 0.12rem;
+  min-height: 3.4rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #d7e3f5;
+  border-radius: 0.9rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.exam-level-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.exam-level-chip span {
+  font: 750 0.82rem/1.2 var(--display);
+  color: var(--ink);
+}
+
+.exam-level-chip small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.exam-level-chip:has(input:checked) {
+  border-color: #9db4e0;
+  background: linear-gradient(145deg, #f7faff, #eef4ff);
+  box-shadow: 0 8px 18px #1f5cf014;
+  transform: translateY(-1px);
+}
+
+.exam-manage-current-pill {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #dce6f5;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.exam-manage-current-pill strong {
+  color: var(--blue-dark);
+  font-size: 0.76rem;
+}
+
+.exam-status-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.exam-status-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 0.95rem;
+  border: 2px solid #dde6f4;
+  border-radius: 1rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.exam-status-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.exam-status-card-indicator {
+  position: relative;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 auto;
+  border: 2px solid #c5d2e6;
+  border-radius: 50%;
+  background: #fff;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.exam-status-card-indicator::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.42rem;
+  height: 0.72rem;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: translate(-50%, -58%) rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+}
+
+.exam-status-card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.8rem;
+  font: 800 0.62rem/1 var(--display);
+  letter-spacing: 0.04em;
+}
+
+.exam-status-card-copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.exam-status-card-copy strong {
+  font: 750 0.9rem/1.2 var(--display);
+  color: var(--ink);
+}
+
+.exam-status-card-copy span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.exam-status-card.is-in-session .exam-status-card-icon {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.exam-status-card.is-marking .exam-status-card-icon {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.exam-status-card.is-analysing .exam-status-card-icon {
+  color: #6d28d9;
+  background: #f5f3ff;
+}
+
+.exam-status-card.is-published .exam-status-card-icon {
+  color: #067647;
+  background: #ecfdf3;
+}
+
+.exam-status-card.is-selected,
+.exam-status-card:has(input:checked) {
+  border-color: #1f5cf0;
+  box-shadow: 0 12px 28px #1f5cf020;
+  transform: translateY(-1px);
+}
+
+.exam-status-card.is-selected .exam-status-card-indicator,
+.exam-status-card:has(input:checked) .exam-status-card-indicator {
+  border-color: #1f5cf0;
+  background: #1f5cf0;
+  box-shadow: 0 0 0 3px #1f5cf022;
+}
+
+.exam-status-card.is-selected .exam-status-card-indicator::after,
+.exam-status-card:has(input:checked) .exam-status-card-indicator::after {
+  transform: translate(-50%, -58%) rotate(45deg) scale(1);
+}
+
+.exam-status-card.is-in-session.is-selected,
+.exam-status-card.is-in-session:has(input:checked) {
+  border-color: #1d4ed8;
+  background: linear-gradient(145deg, #f7faff, #eef4ff);
+  box-shadow: 0 12px 28px #1f5cf018;
+}
+
+.exam-status-card.is-in-session.is-selected .exam-status-card-indicator,
+.exam-status-card.is-in-session:has(input:checked) .exam-status-card-indicator {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.exam-status-card.is-marking.is-selected,
+.exam-status-card.is-marking:has(input:checked) {
+  border-color: #d97706;
+  background: linear-gradient(145deg, #fffdf5, #fff7e6);
+  box-shadow: 0 12px 28px #f59e0b18;
+}
+
+.exam-status-card.is-marking.is-selected .exam-status-card-indicator,
+.exam-status-card.is-marking:has(input:checked) .exam-status-card-indicator {
+  border-color: #d97706;
+  background: #d97706;
+}
+
+.exam-status-card.is-analysing.is-selected,
+.exam-status-card.is-analysing:has(input:checked) {
+  border-color: #7c3aed;
+  background: linear-gradient(145deg, #faf5ff, #f3e8ff);
+  box-shadow: 0 12px 28px #7c3aed18;
+}
+
+.exam-status-card.is-analysing.is-selected .exam-status-card-indicator,
+.exam-status-card.is-analysing:has(input:checked) .exam-status-card-indicator {
+  border-color: #7c3aed;
+  background: #7c3aed;
+}
+
+.exam-status-card.is-published.is-selected,
+.exam-status-card.is-published:has(input:checked) {
+  border-color: #16a34a;
+  background: linear-gradient(145deg, #f3fcf7, #ecfdf3);
+  box-shadow: 0 12px 28px #16a34a18;
+}
+
+.exam-status-card.is-published.is-selected .exam-status-card-indicator,
+.exam-status-card.is-published:has(input:checked) .exam-status-card-indicator {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.exam-deadline-panel {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid #d7e3f5;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 0% 0%, #dbeafe 0, transparent 42%),
+    linear-gradient(145deg, #ffffff, #f5f9ff);
+}
+
+.exam-deadline-panel-copy {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.exam-deadline-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.exam-deadline-panel-copy strong {
+  font: 800 1rem/1.25 var(--display);
+  color: var(--ink);
+}
+
+.exam-deadline-panel-copy span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.exam-deadline-input-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.2rem 0.85rem 0.2rem 0.2rem;
+  border: 1px solid #d5deec;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: inset 0 1px 0 #ffffffcc;
+}
+
+.exam-deadline-input-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  color: #0369a1;
+  background: #ecfeff;
+}
+
+.exam-deadline-input-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.exam-deadline-input-wrap input {
+  width: 100%;
+  min-height: 2.6rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.exam-manage-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e4ebf7;
+  border-radius: 0.95rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.exam-manage-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.exam-manage-toggle-track {
+  position: relative;
+  width: 2.5rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  background: #d7e2f3;
+  transition: background 0.15s ease;
+}
+
+.exam-manage-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px #15233f22;
+  transition: transform 0.15s ease;
+}
+
+.exam-manage-toggle:has(input:checked) .exam-manage-toggle-track {
+  background: #1f5cf0;
+}
+
+.exam-manage-toggle:has(input:checked) .exam-manage-toggle-track::after {
+  transform: translateX(1.05rem);
+}
+
+.exam-manage-toggle-copy {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.exam-manage-toggle-copy strong {
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.exam-manage-toggle-copy span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.exam-delete-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  padding: 1rem 1.05rem;
+  border: 1px solid #fecdca;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #fff7f6, #fff1f0);
+}
+
+.exam-delete-warning-badge {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.75rem;
+  color: #b42318;
+  background: #fee4e2;
+  font: 800 1rem/1 var(--display);
+}
+
+.exam-delete-warning p {
+  margin: 0;
+  color: #7a271a;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.exam-delete-warning strong {
+  color: #912018;
+}
+
+.exam-manage-dialog-edit .generation-step:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.exam-manage-dialog-edit .generation-calendar {
+  padding-top: 0.15rem;
+}
+
+.exam-manage-dialog-edit .generation-step .app-modal-actions {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
 }
 
 .settings-table code {
@@ -1780,9 +2504,34 @@ button.workspace-nav-action {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding-top: 0.85rem;
   padding-bottom: 0.85rem;
+}
+
+.workspace-content:has(> .teacher-marks-sheet),
+.workspace-content:has(> .it-marks-sheet) {
+  height: 100%;
+  max-height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.workspace-content:has(> .teacher-marks-sheet) > .teacher-dash-actions,
+.workspace-content:has(> .teacher-marks-sheet) > .workspace-nav-drawer,
+.workspace-content:has(> .teacher-marks-sheet) > .notice,
+.workspace-content:has(> .it-marks-sheet) > .teacher-dash-actions,
+.workspace-content:has(> .it-marks-sheet) > .workspace-nav-drawer,
+.workspace-content:has(> .it-marks-sheet) > .notice {
+  flex: 0 0 auto;
+}
+
+.teacher-marks-sheet,
+.it-marks-sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .workspace-content:has(> .exam-record-sheet) .notice {
@@ -2067,6 +2816,16 @@ button.workspace-nav-action {
 .student-count-chip.is-quiet {
   color: var(--ink-soft);
   background: #eef2f8;
+}
+
+.exam-marks-lock-chip {
+  color: #8a4b12;
+  background: #fff4e8;
+  border: 1px solid #f0d4b0;
+}
+
+.exam-marks-lock-notice {
+  margin: 0 0 0.75rem;
 }
 
 .student-stream-grid {
@@ -4556,6 +5315,25 @@ body.modal-open {
   font: 800 0.72rem/1 var(--display);
 }
 
+.exam-detail-sheet .exam-subject-combined-note {
+  display: block;
+  margin-top: 0.2rem;
+  color: #8a97ad;
+  font: 650 0.62rem/1.2 var(--font);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.exam-detail-sheet .exam-mark-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  min-height: 2rem;
+  color: var(--ink);
+  font: 750 0.84rem/1 var(--display);
+}
+
 .exam-detail-sheet .exam-record-students-table tbody tr:nth-child(even) td {
   background: #fbfcfe;
 }
@@ -5164,6 +5942,11 @@ body.modal-open {
   box-shadow: 10px 0 14px -10px rgba(21, 35, 63, 0.35);
 }
 
+.teacher-marks-sheet .teacher-marks-table-panel.is-scrolled-x .teacher-marks-table-scroll .exam-record-students-table th:first-child,
+.teacher-marks-sheet .teacher-marks-table-panel.is-scrolled-x .teacher-marks-table-scroll .exam-record-students-table td:first-child {
+  box-shadow: 10px 0 14px -10px rgba(21, 35, 63, 0.35);
+}
+
 .exam-record-students-table .exam-student-name {
   display: flex;
   width: 100%;
@@ -5354,6 +6137,548 @@ body.modal-open {
 
 .exam-record-bar .primary-button {
   min-width: 8.5rem;
+}
+
+/* Teacher marks sheet — modern class marks entry */
+.teacher-marks-sheet {
+  border-radius: 1.1rem;
+  border-color: #d5e1f2;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(21, 35, 63, 0.04),
+    0 14px 34px rgba(21, 35, 63, 0.07);
+  animation: rise-in 0.35s ease both;
+}
+
+.teacher-marks-bar {
+  gap: 0.85rem 1.1rem;
+  padding: 1rem 1.15rem;
+  border-bottom-color: #e3ebf7;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 92, 240, 0.1) 0, transparent 42%),
+    linear-gradient(180deg, #f9fbff 0%, #f3f7fd 100%);
+}
+
+.teacher-marks-bar-main {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.teacher-marks-bar .exam-record-bar-title {
+  align-items: flex-start;
+  gap: 0.55rem 0.75rem;
+}
+
+.teacher-marks-title-block h2 {
+  margin: 0;
+  font: 800 1.05rem/1.2 var(--display);
+  letter-spacing: 0.03em;
+  color: var(--ink);
+}
+
+.teacher-marks-meta {
+  margin: 0.2rem 0 0;
+  color: #6b7c97;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.teacher-marks-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  align-items: center;
+}
+
+.teacher-marks-subject-chip {
+  display: inline-flex;
+  gap: 0.2rem;
+  align-items: center;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid rgba(31, 92, 240, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--blue-dark);
+  font: 800 0.68rem/1 var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.teacher-marks-out-of {
+  color: #7a8ca8;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.teacher-marks-subject-head {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.teacher-marks-out-of-head {
+  color: #8a97ad;
+  font: 700 0.62rem/1 var(--font);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.exam-mark-out-of-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  white-space: nowrap;
+}
+
+.exam-mark-out-of-suffix {
+  color: #8a97ad;
+  font: 700 0.72rem/1 var(--font);
+}
+
+.teacher-marks-tools {
+  gap: 0.5rem;
+}
+
+.teacher-marks-tools .ghost-button,
+.teacher-marks-tools .primary-button {
+  min-height: 2.35rem;
+  border-radius: 0.75rem;
+  padding-inline: 0.95rem;
+}
+
+.teacher-marks-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #d5e1f2;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.teacher-marks-back:hover {
+  border-color: #b8ccee;
+  background: #fff;
+  color: var(--blue);
+}
+
+.teacher-marks-notice {
+  margin: 0;
+  border-inline: 0;
+  border-radius: 0;
+  border-bottom: 1px solid #f0e2cf;
+  font-size: 0.82rem;
+}
+
+.teacher-marks-sheet .exam-record-students-table thead th {
+  padding: 0.72rem 0.55rem;
+  background: #f6f9fd;
+  color: #6b7c97;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e4ecf7;
+}
+
+.teacher-marks-sheet .exam-subject-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  padding: 0.18rem 0.42rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, #eef3ff 0%, #e4ecff 100%);
+  color: var(--blue-dark);
+  font: 800 0.68rem/1 var(--display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.teacher-marks-pct-head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  color: #8a97ad;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.teacher-marks-sheet .exam-record-students-table tbody tr:nth-child(even) td {
+  background: #fbfcfe;
+}
+
+.teacher-marks-sheet .exam-record-students-table tbody tr:hover td {
+  background: #f2f7ff;
+}
+
+.teacher-marks-sheet .exam-record-students-table td {
+  padding: 0.55rem 0.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #eef3fa;
+}
+
+.teacher-marks-sheet .exam-record-students-table tbody tr:last-child td {
+  border-bottom-color: transparent;
+}
+
+.teacher-marks-sheet .exam-record-students-table td:first-child strong,
+.teacher-marks-sheet .exam-student-name {
+  font: 750 0.86rem/1.3 var(--display);
+  color: var(--ink);
+}
+
+.teacher-marks-sheet .exam-admission {
+  display: inline-block;
+  padding: 0.12rem 0.42rem;
+  border-radius: 0.45rem;
+  background: #f1f5fb;
+  color: #6b7c97;
+  font: 650 0.74rem/1.2 var(--font);
+  letter-spacing: 0.02em;
+}
+
+.teacher-marks-sheet .exam-mark-input {
+  width: 2.85rem;
+  min-height: 2rem;
+  border: 1px solid #d7e2f3;
+  border-radius: 0.6rem;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  font: 750 0.84rem/1 var(--display);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.teacher-marks-sheet .exam-record-marks-form:not(.is-editing) .exam-mark-input {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.teacher-marks-sheet .exam-record-marks-form.is-editing .exam-mark-input {
+  border-color: #c5d4ee;
+  background: #fff;
+}
+
+.teacher-marks-sheet .exam-record-marks-form.is-editing .exam-mark-input:focus {
+  outline: 2px solid #c5d6f7;
+  border-color: var(--blue);
+  background: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.12);
+}
+
+.teacher-marks-sheet .exam-mark-percent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  padding: 0.14rem 0.35rem;
+  border-radius: 0.45rem;
+  background: rgba(31, 92, 240, 0.08);
+  color: var(--blue-dark);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.teacher-marks-sheet .exam-mark-percent:empty {
+  display: none;
+  padding: 0;
+  background: transparent;
+}
+
+.teacher-marks-sheet .exam-record-mean-row td {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
+  border-top: 1px solid #d5e3f8;
+}
+
+.teacher-marks-sheet .exam-record-mean-row td:first-child {
+  color: var(--blue-dark);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.teacher-marks-sheet .exam-mark-mean {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  padding: 0.12rem 0.3rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.teacher-marks-sheet .exam-mark-mean-percent {
+  background: rgba(31, 92, 240, 0.12);
+  color: var(--blue-dark);
+}
+
+.teacher-marks-sheet .exam-record-students-table th:first-child,
+.teacher-marks-sheet .exam-record-students-table td:first-child {
+  min-width: 11rem;
+  max-width: none;
+}
+
+.teacher-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
+.teacher-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
+  min-width: 5.5rem;
+  max-width: 5.5rem;
+}
+
+.teacher-marks-sheet .exam-record-students-table thead th:first-child {
+  background: #f6f9fd;
+}
+
+.teacher-marks-sheet .exam-record-students-table tbody tr:nth-child(even) td:first-child {
+  background: #fbfcfe;
+}
+
+.teacher-marks-sheet .exam-record-students-table tbody tr:hover td:first-child {
+  background: #f2f7ff;
+}
+
+.teacher-marks-sheet .exam-record-students-table tfoot td:first-child {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
+}
+
+.teacher-marks-empty {
+  display: grid;
+  gap: 0.45rem;
+  place-content: center;
+  min-height: 12rem;
+  padding: 2rem 1.25rem;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(31, 92, 240, 0.06) 0, transparent 55%),
+    #fff;
+}
+
+.teacher-marks-empty strong {
+  font: 750 1rem/1.3 var(--display);
+  color: var(--ink);
+}
+
+.teacher-marks-empty .settings-empty {
+  margin: 0;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+/* IT support level marks sheet */
+.it-marks-sheet .exam-record-marks-form,
+.teacher-marks-sheet .exam-record-marks-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.it-marks-sheet {
+  animation: rise-in 0.35s ease both;
+}
+
+.it-marks-title-block h2 {
+  margin: 0;
+}
+
+.it-marks-meta {
+  margin: 0.2rem 0 0;
+  color: #6b7c97;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.it-marks-notice {
+  margin: 0;
+  border-inline: 0;
+  border-radius: 0;
+  border-bottom: 1px solid #f0e2cf;
+  font-size: 0.82rem;
+}
+
+.it-marks-sheet .exam-subject-code.is-combined {
+  background: linear-gradient(180deg, #f3efff 0%, #e8e4ff 100%);
+  color: #4a3f8f;
+}
+
+.it-marks-sheet .exam-mark-percent-readonly {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  padding: 0.14rem 0.35rem;
+  border-radius: 0.45rem;
+  background: rgba(74, 63, 143, 0.1);
+  color: #4a3f8f;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.it-marks-sheet .exam-mark-percent-readonly:empty {
+  display: none;
+}
+
+.it-marks-sheet .exam-record-students-table th:first-child,
+.it-marks-sheet .exam-record-students-table td:first-child {
+  min-width: 11rem;
+  max-width: none;
+}
+
+.it-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
+.it-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
+  min-width: 5.5rem;
+  max-width: 5.5rem;
+}
+
+.it-marks-sheet .exam-mark-input {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.it-marks-sheet .exam-record-marks-form.is-editing .exam-mark-input:focus {
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.12);
+}
+
+.it-marks-sheet .exam-mark-mean-percent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  padding: 0.12rem 0.3rem;
+  border-radius: 0.45rem;
+  background: rgba(31, 92, 240, 0.12);
+  color: var(--blue-dark);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.it-marks-sheet .exam-record-mean-row td {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
+  border-top: 1px solid #d5e3f8;
+}
+
+.it-marks-sheet .exam-record-mean-row td:first-child {
+  color: var(--blue-dark);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.it-marks-sheet .it-marks-table-panel,
+.teacher-marks-sheet .teacher-marks-table-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.it-marks-sheet .exam-record-sheet-table.it-marks-table-panel,
+.teacher-marks-sheet .exam-record-sheet-table.teacher-marks-table-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.it-marks-sheet .it-marks-table-scroll,
+.teacher-marks-sheet .teacher-marks-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-inline-start: 0.5rem;
+  touch-action: pan-x pan-y;
+}
+
+.it-marks-sheet .it-marks-table-scroll::-webkit-scrollbar,
+.teacher-marks-sheet .teacher-marks-table-scroll::-webkit-scrollbar {
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+.it-marks-sheet .it-marks-table-scroll::-webkit-scrollbar-thumb,
+.teacher-marks-sheet .teacher-marks-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #c5d2e8;
+}
+
+.it-marks-sheet .it-marks-table-scroll::-webkit-scrollbar-thumb:hover,
+.teacher-marks-sheet .teacher-marks-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9fb4d6;
+}
+
+.it-marks-sheet .it-marks-table-scroll::-webkit-scrollbar-track,
+.teacher-marks-sheet .teacher-marks-table-scroll::-webkit-scrollbar-track {
+  background: #eef3fa;
+}
+
+.it-marks-sheet .it-marks-mean-bar,
+.teacher-marks-sheet .teacher-marks-mean-bar {
+  position: relative;
+  z-index: 6;
+  flex-shrink: 0;
+  border-top: 1px solid #c5d8f2;
+  background:
+    linear-gradient(180deg, rgba(244, 248, 255, 0.98) 0%, rgba(234, 242, 255, 0.98) 100%);
+  box-shadow:
+    0 -1px 0 #d5e3f8,
+    0 -10px 24px rgba(21, 35, 63, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.it-marks-sheet .it-marks-mean-scroll,
+.teacher-marks-sheet .teacher-marks-mean-scroll {
+  overflow: hidden;
+  overscroll-behavior-x: contain;
+}
+
+.it-marks-sheet .it-marks-mean-table,
+.teacher-marks-sheet .teacher-marks-mean-table {
+  margin: 0;
+}
+
+.it-marks-sheet .it-marks-mean-table .exam-record-mean-row td,
+.teacher-marks-sheet .teacher-marks-mean-table .exam-record-mean-row td {
+  padding-top: 0.62rem;
+  padding-bottom: 0.62rem;
+  border-bottom: 0;
+}
+
+.it-marks-sheet .it-marks-table-panel.is-scrolled-x .it-marks-table-scroll .exam-record-students-table th:first-child,
+.it-marks-sheet .it-marks-table-panel.is-scrolled-x .it-marks-table-scroll .exam-record-students-table td:first-child {
+  box-shadow: 10px 0 14px -10px rgba(21, 35, 63, 0.35);
+}
+
+.it-marks-sheet .it-marks-table-panel.is-scrolled-x .it-marks-mean-table th:first-child,
+.it-marks-sheet .it-marks-table-panel.is-scrolled-x .it-marks-mean-table td:first-child,
+.teacher-marks-sheet .teacher-marks-table-panel.is-scrolled-x .teacher-marks-mean-table th:first-child,
+.teacher-marks-sheet .teacher-marks-table-panel.is-scrolled-x .teacher-marks-mean-table td:first-child {
+  box-shadow: 10px 0 14px -10px rgba(21, 35, 63, 0.35);
 }
 
 @media (max-width: 720px) {
@@ -6382,6 +7707,14 @@ body.is-reordering-exam-subjects [data-marks-input] {
     min-width: 36rem;
   }
 
+  .teacher-marks-sheet .exam-record-students-table {
+    min-width: 0;
+  }
+
+  .it-marks-sheet .exam-record-students-table {
+    min-width: 0;
+  }
+
   .exam-record-sheet .settings-table.exam-record-students-table,
   .exam-record-sheet .settings-table-responsive.exam-record-students-table {
     width: max-content;
@@ -6396,6 +7729,335 @@ body.is-reordering-exam-subjects [data-marks-input] {
   .exam-record-students-table th,
   .exam-record-students-table td {
     padding: 0.28rem 0.4rem;
+  }
+
+  /* Teacher marks sheet: compact mobile layout; full names until horizontal scroll */
+  .workspace-content:has(> .teacher-marks-sheet) {
+    width: min(100% - 1rem, var(--page-max));
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .teacher-marks-sheet {
+    font-size: 0.76rem;
+    border-radius: 0.85rem;
+  }
+
+  .teacher-marks-bar {
+    padding: 0.55rem 0.6rem;
+    gap: 0.4rem 0.55rem;
+  }
+
+  .teacher-marks-bar .exam-detail-kicker {
+    font-size: 0.58rem;
+  }
+
+  .teacher-marks-title-block h2 {
+    font-size: 0.78rem;
+  }
+
+  .teacher-marks-meta {
+    font-size: 0.66rem;
+  }
+
+  .teacher-marks-sheet .student-count-chip,
+  .teacher-marks-sheet .exam-marks-lock-chip,
+  .teacher-marks-subject-chip {
+    font-size: 0.56rem;
+    padding: 0.1rem 0.34rem;
+  }
+
+  .teacher-marks-tools .exam-back-link,
+  .teacher-marks-tools .ghost-button,
+  .teacher-marks-tools .primary-button,
+  .teacher-marks-back {
+    min-height: 1.85rem;
+    padding: 0.22rem 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  .teacher-marks-notice {
+    font-size: 0.72rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .teacher-marks-sheet .exam-record-sheet-table,
+  .teacher-marks-sheet .teacher-marks-table-panel {
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .teacher-marks-sheet .teacher-marks-table-scroll,
+  .it-marks-sheet .it-marks-table-scroll {
+    overflow: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .it-marks-sheet .exam-record-sheet-table,
+  .it-marks-sheet .it-marks-table-panel {
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .teacher-marks-sheet .exam-record-students-table {
+    width: max-content;
+    min-width: 100%;
+    font-size: 0.68rem;
+  }
+
+  .teacher-marks-sheet .settings-table.exam-record-students-table,
+  .teacher-marks-sheet .settings-table-responsive.exam-record-students-table {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .teacher-marks-sheet .exam-record-students-table thead th {
+    padding: 0.32rem 0.22rem;
+    font-size: 0.52rem;
+    letter-spacing: 0.03em;
+  }
+
+  .teacher-marks-sheet .exam-subject-code {
+    min-width: 1.75rem;
+    padding: 0.1rem 0.28rem;
+    font-size: 0.56rem;
+    border-radius: 0.35rem;
+  }
+
+  .teacher-marks-pct-head {
+    min-width: 1rem;
+    font-size: 0.58rem;
+  }
+
+  .teacher-marks-sheet .exam-record-students-table th,
+  .teacher-marks-sheet .exam-record-students-table td {
+    padding: 0.2rem 0.22rem;
+  }
+
+  .teacher-marks-sheet .exam-record-students-table th:first-child,
+  .teacher-marks-sheet .exam-record-students-table td:first-child {
+    min-width: 8.5rem;
+    max-width: none;
+    padding-left: 0.5rem;
+    padding-right: 0.55rem;
+  }
+
+  .teacher-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
+  .teacher-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
+    min-width: 4.5rem;
+    max-width: 5.25rem;
+    padding-left: 0.4rem;
+    padding-right: 0.28rem;
+  }
+
+  .teacher-marks-sheet .exam-record-students-table th:nth-child(n + 3),
+  .teacher-marks-sheet .exam-record-students-table td:nth-child(n + 3) {
+    min-width: 1.85rem;
+  }
+
+  .teacher-marks-sheet .exam-student-name {
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .teacher-marks-sheet .exam-admission {
+    padding: 0;
+    background: transparent;
+    font-size: 0.66rem;
+  }
+
+  .teacher-marks-sheet .exam-mark-input {
+    width: 1.95rem;
+    min-height: 1.35rem;
+    padding: 0.04rem 0.08rem;
+    font-size: 0.66rem;
+    border-radius: 0.4rem;
+  }
+
+  .teacher-marks-sheet .exam-record-marks-form.is-editing .exam-mark-input {
+    font-size: 16px;
+  }
+
+  .teacher-marks-sheet .exam-mark-percent,
+  .teacher-marks-sheet .exam-mark-mean {
+    min-width: 1.65rem;
+    padding: 0.08rem 0.2rem;
+    font-size: 0.62rem;
+    border-radius: 0.32rem;
+  }
+
+  .teacher-marks-sheet .exam-record-mean-row td:first-child {
+    padding-left: 0.4rem;
+    font-size: 0.62rem;
+  }
+
+  .teacher-marks-chips {
+    gap: 0.25rem;
+  }
+
+  @media (max-width: 480px) {
+    .teacher-marks-subject-chip {
+      display: none;
+    }
+
+    .teacher-marks-meta {
+      display: none;
+    }
+
+    .it-marks-meta {
+      display: none;
+    }
+  }
+
+  /* IT support marks sheet: compact mobile layout; full names until horizontal scroll */
+  .workspace-content:has(> .it-marks-sheet) {
+    width: min(100% - 1rem, var(--page-max));
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .it-marks-sheet {
+    font-size: 0.76rem;
+    border-radius: 0.85rem;
+  }
+
+  .it-marks-bar {
+    padding: 0.55rem 0.65rem;
+    gap: 0.45rem 0.6rem;
+  }
+
+  .it-marks-bar .exam-detail-crumb {
+    font-size: 0.58rem;
+  }
+
+  .it-marks-title-block h2,
+  .it-marks-bar .exam-record-bar-title h2 {
+    font-size: 0.82rem;
+  }
+
+  .it-marks-meta {
+    font-size: 0.66rem;
+  }
+
+  .it-marks-sheet .student-count-chip {
+    font-size: 0.58rem;
+    padding: 0.12rem 0.38rem;
+  }
+
+  .it-marks-tools .exam-class-filter {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .it-marks-tools .exam-class-filter select,
+  .it-marks-tools .exam-detail-actions .ghost-button,
+  .it-marks-tools .exam-detail-actions .primary-button {
+    min-height: 1.9rem;
+    font-size: 0.72rem;
+  }
+
+  .it-marks-notice {
+    font-size: 0.72rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .it-marks-sheet .exam-record-sheet-table,
+  .it-marks-sheet .it-marks-table-panel {
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .it-marks-sheet .it-marks-table-scroll {
+    overflow: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .it-marks-sheet .exam-record-students-table {
+    width: max-content;
+    min-width: 100%;
+    font-size: 0.68rem;
+  }
+
+  .it-marks-sheet .exam-record-students-table thead th {
+    padding: 0.35rem 0.25rem;
+    font-size: 0.54rem;
+  }
+
+  .it-marks-sheet .exam-subject-code {
+    min-width: 1.7rem;
+    padding: 0.1rem 0.26rem;
+    font-size: 0.56rem;
+  }
+
+  .it-marks-sheet .exam-subject-combined-note {
+    display: none;
+  }
+
+  .it-marks-sheet .exam-record-students-table th,
+  .it-marks-sheet .exam-record-students-table td {
+    padding: 0.22rem 0.24rem;
+  }
+
+  .it-marks-sheet .exam-record-students-table th:first-child,
+  .it-marks-sheet .exam-record-students-table td:first-child {
+    min-width: 8.5rem;
+    max-width: none;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .it-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
+  .it-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
+    min-width: 4.5rem;
+    max-width: 5.25rem;
+    padding-left: 0.4rem;
+    padding-right: 0.28rem;
+  }
+
+  .it-marks-sheet .exam-record-students-table th:nth-child(n + 3),
+  .it-marks-sheet .exam-record-students-table td:nth-child(n + 3) {
+    min-width: 2rem;
+  }
+
+  .it-marks-sheet .exam-student-name {
+    font-size: 0.68rem;
+  }
+
+  .it-marks-sheet .exam-admission {
+    padding: 0.1rem 0.32rem;
+    font-size: 0.64rem;
+  }
+
+  .it-marks-sheet .exam-mark-input {
+    width: 2rem;
+    min-height: 1.4rem;
+    font-size: 0.66rem;
+    border-radius: 0.4rem;
+  }
+
+  .it-marks-sheet .exam-record-marks-form.is-editing .exam-mark-input {
+    font-size: 16px;
+  }
+
+  .it-marks-sheet .exam-mark-percent-readonly,
+  .it-marks-sheet .exam-mark-mean-percent {
+    min-width: 1.7rem;
+    padding: 0.08rem 0.18rem;
+    font-size: 0.62rem;
+  }
+
+  .it-marks-sheet .exam-record-mean-row td:first-child {
+    padding-left: 0.4rem;
+    font-size: 0.62rem;
+  }
+
+  .it-marks-chips {
+    gap: 0.28rem;
   }
 
   .settings-table .record-actions {
@@ -6629,6 +8291,11 @@ body.is-reordering-exam-subjects [data-marks-input] {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 
+  .app-modal-dialog.app-modal-dialog-generation {
+    width: 100%;
+    max-height: min(92dvh, 100%);
+  }
+
   .app-modal-dialog.app-modal-dialog-calendar {
     width: 100%;
     max-height: min(92dvh, 100%);
@@ -6640,6 +8307,119 @@ body.is-reordering-exam-subjects [data-marks-input] {
 
   .app-modal-form {
     padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .app-modal-dialog-generation .app-modal-form {
+    padding: 0;
+  }
+
+  .app-modal-dialog-generation .app-modal-header {
+    padding: 1rem 1rem 0.75rem;
+  }
+
+  .app-modal-dialog-generation .generation-step > .subtle,
+  .app-modal-dialog-generation .generation-step > .notice,
+  .app-modal-dialog-generation .generation-step > .settings-empty {
+    padding: 0.75rem 1rem 0.45rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .app-modal-dialog-generation .generation-level-list,
+  .app-modal-dialog-generation .generation-calendar {
+    padding: 0.25rem 1rem;
+  }
+
+  .app-modal-dialog-generation .generation-level {
+    padding: 0.7rem 0.75rem;
+    gap: 0.55rem;
+  }
+
+  .app-modal-dialog-generation .generation-level .subtle,
+  .app-modal-dialog-generation .generation-level-reason {
+    overflow-wrap: anywhere;
+  }
+
+  .app-modal-dialog-generation .generation-step .app-modal-actions {
+    padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom));
+  }
+
+  .exam-manage-modal {
+    place-items: end center;
+    padding: 0;
+  }
+
+  .exam-manage-modal.is-open .exam-manage-dialog {
+    animation: exam-manage-dialog-in-mobile 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes exam-manage-dialog-in-mobile {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .exam-manage-dialog,
+  .exam-manage-dialog-edit {
+    width: 100%;
+    max-height: min(92dvh, 100%);
+    border-radius: 1.35rem 1.35rem 0 0;
+  }
+
+  .exam-manage-dialog-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 1rem 1rem 0.8rem;
+  }
+
+  .exam-manage-dialog-heading h2 {
+    font-size: 1.05rem;
+  }
+
+  .exam-manage-dialog-lead {
+    font-size: 0.8rem;
+  }
+
+  .exam-manage-dialog-body {
+    padding: 0.85rem 1rem 0.25rem;
+  }
+
+  .exam-manage-dialog-actions,
+  .exam-manage-dialog-edit .generation-step .app-modal-actions {
+    flex-direction: column-reverse;
+    padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom));
+  }
+
+  .exam-manage-dialog-actions .primary-button,
+  .exam-manage-dialog-actions .ghost-button,
+  .exam-manage-dialog-edit .generation-step .app-modal-actions .primary-button,
+  .exam-manage-dialog-edit .generation-step .app-modal-actions .ghost-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .exam-manage-field-grid,
+  .exam-level-chip-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-status-card {
+    padding: 0.8rem 0.85rem;
+  }
+
+  .exam-timetable-generation-page .teacher-page-bar-actions .ghost-button,
+  .exam-timetable-generation-page .teacher-page-bar-actions .primary-button {
+    flex: 1 1 100%;
+  }
+
+  .exam-timetable-generation-page .generated-timetable .record-action {
+    display: block;
+    width: 100%;
+    text-align: center;
   }
 
   .file-drop {
@@ -6858,6 +8638,77 @@ body.is-reordering-exam-subjects [data-marks-input] {
 @media (min-width: 1101px) {
   .teacher-dash-actions.is-nav-links {
     display: none;
+  }
+
+  .workspace-nav-drawer-toggle {
+    display: none;
+  }
+
+  .workspace-nav-drawer-panel {
+    display: block !important;
+  }
+
+  .workspace-nav-drawer-panel[hidden] {
+    display: block !important;
+  }
+}
+
+.workspace-nav-drawer {
+  flex: 0 0 auto;
+  margin-bottom: 0.55rem;
+}
+
+.workspace-nav-drawer-toggle {
+  display: none;
+  width: 100%;
+  min-height: 2.35rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.75rem;
+  border-color: #d5e1f2;
+  background: #f7faff;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.workspace-nav-drawer-toggle:hover {
+  border-color: #b8ccee;
+  background: #eef4ff;
+  color: var(--blue);
+}
+
+.workspace-nav-drawer-toggle-icon {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.workspace-nav-drawer:not(.is-collapsed) .workspace-nav-drawer-toggle-icon {
+  transform: rotate(-135deg);
+}
+
+.workspace-nav-drawer-panel {
+  display: grid;
+  gap: 0.45rem;
+}
+
+@media (max-width: 1100px) {
+  .workspace-nav-drawer-toggle {
+    display: inline-flex;
+  }
+
+  .workspace-nav-drawer.is-collapsed .workspace-nav-drawer-panel {
+    display: none;
+  }
+
+  .workspace-nav-drawer:not(.is-collapsed) .workspace-nav-drawer-panel {
+    display: grid;
   }
 }
 
@@ -7363,6 +9214,21 @@ body.is-reordering-exam-subjects [data-marks-input] {
   .schedule-timetable,
   .generated-timetable {
     min-width: 22rem;
+  }
+
+  .exam-timetable-generation-page .schedule-timetable thead th,
+  .exam-timetable-generation-page .schedule-timetable td {
+    padding: 0.4rem 0.35rem;
+    font-size: 0.68rem;
+  }
+
+  .exam-timetable-generation-page .schedule-timetable thead th:first-child,
+  .exam-timetable-generation-page .schedule-timetable tbody th {
+    min-width: 4.25rem;
+  }
+
+  .exam-timetable-generation-page .generated-timetable td {
+    min-width: 6.5rem;
   }
 
   .class-attendance-day-filter,
@@ -9058,6 +10924,20 @@ body.is-reordering-exam-subjects [data-marks-input] {
 
   .generation-level-list {
     max-height: min(55dvh, 22rem);
+  }
+
+  .app-modal-dialog-generation .generation-level-list {
+    max-height: none;
+  }
+
+  .exam-timetable-generation-page .exam-tool-panel,
+  .exam-timetable-generation-page .exam-tool-block {
+    padding-inline: 0.85rem;
+  }
+
+  .exam-timetable-generation-page .schedule-timetable-wrap.is-scrollable-x {
+    margin-inline: -0.15rem;
+    border-radius: 0.75rem;
   }
 
   .analytics-page .analytics-section,

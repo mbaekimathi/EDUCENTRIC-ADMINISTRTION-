@@ -187,8 +187,19 @@ class ExamSupervisorAllocationAdmin(admin.ModelAdmin):
 
 @admin.register(GeneratedExamTimetable)
 class GeneratedExamTimetableAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "academic_year", "academic_term", "start_date", "end_date", "created_by", "created_at")
-    list_filter = ("academic_year", "academic_term", "created_at")
+    list_display = (
+        "id",
+        "name",
+        "status",
+        "deadline",
+        "academic_year",
+        "academic_term",
+        "start_date",
+        "end_date",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("status", "academic_year", "academic_term", "created_at")
     search_fields = ("name",)
     filter_horizontal = ("academic_levels",)
 

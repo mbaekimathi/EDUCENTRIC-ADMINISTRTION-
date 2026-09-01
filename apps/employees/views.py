@@ -14,6 +14,8 @@ from django.db.models.functions import Concat
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -676,12 +678,58 @@ def _teacher_class_subjects(employee, academic_class, level):
     return subjects
 
 
-def _teacher_exam_classes(employee, generation):
+def _teacher_exam_subject_groups(employee, generation):
     exam_level_ids = set(generation.academic_levels.values_list("id", flat=True))
-    classes = []
+    allocations = (
+        ClassSubjectAllocation.objects.filter(teacher=employee)
+        .select_related(
+            "learning_area",
+            "academic_class",
+            "academic_class__academic_level",
+        )
+        .order_by(
+            "academic_class__academic_level__order",
+            "academic_class__academic_level__name",
+            "learning_area__display_order",
+            "learning_area__name",
+            "academic_class__order",
+            "academic_class__name",
+        )
+    )
+    grouped = OrderedDict()
+    for allocation in allocations:
+        academic_class = allocation.academic_class
+        level = academic_class.academic_level
+        if level.status != AcademicLevel.Status.ACTIVE:
+            continue
+        if academic_class.status != AcademicClass.Status.ACTIVE:
+            continue
+        if exam_level_ids and level.id not in exam_level_ids:
+            continue
+        group = grouped.setdefault(level.id, {"level": level, "subjects": []})
+        group["subjects"].append(
+            {
+                "subject": allocation.learning_area,
+                "academic_class": academic_class,
+            }
+        )
+    return list(grouped.values())
+
+
+def _teacher_exam_class_groups(employee, generation):
+    exam_level_ids = set(generation.academic_levels.values_list("id", flat=True))
+    groups = []
     for group in _teacher_allocated_levels(employee):
         if exam_level_ids and group["level"].id not in exam_level_ids:
             continue
+        if group["classes"]:
+            groups.append({"level": group["level"], "classes": group["classes"]})
+    return groups
+
+
+def _teacher_exam_classes(employee, generation):
+    classes = []
+    for group in _teacher_exam_class_groups(employee, generation):
         classes.extend(group["classes"])
     return classes
 
@@ -2299,7 +2347,13 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
         GeneratedExamTimetable.objects.select_related("academic_year", "academic_term"),
         pk=exam_id,
     )
-    exam_classes = _teacher_exam_classes(workspace_view_employee(request), generation)
+    employee = workspace_view_employee(request)
+    exam_subject_groups = _teacher_exam_subject_groups(employee, generation)
+    exam_subject_allocations = [
+        item for group in exam_subject_groups for item in group["subjects"]
+    ]
+    exam_class_groups = _teacher_exam_class_groups(employee, generation)
+    exam_classes = [academic_class for group in exam_class_groups for academic_class in group["classes"]]
     selected_class = None
     selected_level = None
     students = []
@@ -2313,7 +2367,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
         selected_level = selected_class.academic_level
         students = list(_students_in_academic_level(selected_level, selected_class))
         subjects = _teacher_class_subjects(
-            workspace_view_employee(request), selected_class, selected_level
+            employee, selected_class, selected_level
         )
         out_of_by_subject = _exam_record_out_of(selected_level, subjects)
         for subject in subjects:
@@ -2322,34 +2376,52 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             "employees:teacher_exam_record_class",
             kwargs={"exam_id": generation.id, "class_id": selected_class.id},
         )
+        marks_editable = generation.status == GeneratedExamTimetable.Status.MARKING
         if request.method == "POST":
-            try:
-                _save_exam_record_marks(
-                    generation,
-                    students,
-                    subjects,
-                    out_of_by_subject,
-                    request.POST,
-                    input_is_percent=False,
+            if not marks_editable:
+                error(
+                    request,
+                    "Marks can only be edited while this exam is in Marking status.",
                 )
-            except (TypeError, ValueError, ValidationError):
-                error(request, "Enter whole numbers within each subject's total marks.")
-                _attach_exam_mark_cells(
-                    students,
-                    subjects,
-                    {
-                        (student.id, subject.id): (
-                            request.POST.get(f"mark_{student.id}_{subject.id}") or ""
-                        ).strip()
-                        for student in students
-                        for subject in subjects
-                    },
-                    out_of_by_subject,
-                )
-                subject_means = _exam_record_subject_means(students, subjects)
             else:
-                success(request, "Student marks were saved.")
-                return redirect(class_url)
+                try:
+                    _save_exam_record_marks(
+                        generation,
+                        students,
+                        subjects,
+                        out_of_by_subject,
+                        request.POST,
+                        input_is_percent=False,
+                    )
+                except (TypeError, ValueError, ValidationError):
+                    error(request, "Enter whole numbers within each subject's total marks.")
+                    _attach_exam_mark_cells(
+                        students,
+                        subjects,
+                        {
+                            (student.id, subject.id): (
+                                request.POST.get(f"mark_{student.id}_{subject.id}") or ""
+                            ).strip()
+                            for student in students
+                            for subject in subjects
+                        },
+                        out_of_by_subject,
+                    )
+                    subject_means = _exam_record_subject_means(students, subjects)
+                else:
+                    success(request, "Student marks were saved.")
+                    return redirect(class_url)
+            marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
+            out_of_settings_changed = _exam_marks_out_of_settings_changed(
+                marks_lookup, out_of_by_subject
+            )
+            _attach_exam_mark_cells(
+                students,
+                subjects,
+                marks_lookup,
+                out_of_by_subject,
+            )
+            subject_means = _exam_record_subject_means(students, subjects)
         else:
             marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
             out_of_settings_changed = _exam_marks_out_of_settings_changed(
@@ -2362,6 +2434,8 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                 out_of_by_subject,
             )
             subject_means = _exam_record_subject_means(students, subjects)
+    else:
+        marks_editable = generation.status == GeneratedExamTimetable.Status.MARKING
     return render(
         request,
         "employees/teacher_exam_record_detail.html",
@@ -2374,12 +2448,15 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                 "employees:teacher_exam_record_detail", kwargs={"exam_id": generation.id}
             ),
             "exam_classes": exam_classes,
+            "exam_subject_groups": exam_subject_groups,
+            "exam_subject_allocations": exam_subject_allocations,
             "selected_class": selected_class,
             "selected_level": selected_level,
             "students": students,
             "subjects": subjects,
             "subject_means": subject_means,
             "out_of_settings_changed": out_of_settings_changed,
+            "marks_editable": marks_editable,
         },
     )
 
@@ -2429,6 +2506,11 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
     )
     employee = workspace_view_employee(request)
     exam_classes = _teacher_exam_classes(employee, generation)
+    exam_class_groups = _teacher_exam_class_groups(employee, generation)
+    exam_subject_groups = _teacher_exam_subject_groups(employee, generation)
+    exam_subject_allocations = [
+        item for group in exam_subject_groups for item in group["subjects"]
+    ]
     allocated_ids = {item.id for item in exam_classes}
     other_classes = [
         academic_class
@@ -2466,6 +2548,8 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
                 "employees:teacher_exam_record_detail", kwargs={"exam_id": generation.id}
             ),
             "exam_classes": exam_classes,
+            "exam_class_groups": exam_class_groups,
+            "exam_subject_allocations": exam_subject_allocations,
             "other_classes": other_classes,
             "selected_class": selected_class,
             "view_all_classes": view_all,
@@ -5832,6 +5916,20 @@ def _grouped_registered_exams():
 
 def exam_records(request, current):
     exam_groups, exam_count = _grouped_registered_exams()
+    return render(
+        request,
+        "employees/it_support_exam_records.html",
+        {
+            "active_nav": "dashboard",
+            "page": current,
+            "active_exam_tool": "exam-records",
+            "exam_groups": exam_groups,
+            "exam_count": exam_count,
+        },
+    )
+
+
+def _exam_record_manage_context(exam):
     academic_years = _registered_academic_years()
     terms_by_year = {
         str(year.id): [
@@ -5848,20 +5946,40 @@ def exam_records(request, current):
         ]
         for year in academic_years
     }
-    return render(
-        request,
-        "employees/it_support_exam_records.html",
-        {
-            "active_nav": "dashboard",
-            "page": current,
-            "active_exam_tool": "exam-records",
-            "exam_groups": exam_groups,
-            "exam_count": exam_count,
-            "academic_years": academic_years,
-            "academic_levels": list(AcademicLevel.objects.order_by("order", "name")),
-            "terms_by_year_json": json.dumps(terms_by_year),
-        },
-    )
+    return {
+        "academic_years": academic_years,
+        "academic_levels_for_exam": list(AcademicLevel.objects.order_by("order", "name")),
+        "terms_by_year_json": json.dumps(terms_by_year),
+        "exam_status_choices": GeneratedExamTimetable.Status.choices,
+    }
+
+
+def _exam_record_manage_redirect(request, exam_id, level_id=None):
+    next_url = (request.POST.get("next") or "").strip()
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    if level_id is not None:
+        return redirect("employees:exam_record_level", exam_id=exam_id, level_id=level_id)
+    return redirect("employees:exam_record_detail", exam_id=exam_id)
+
+
+def _parse_exam_datetime(value):
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            parsed = datetime.strptime(raw, fmt)
+            if timezone.is_naive(parsed):
+                return timezone.make_aware(parsed, timezone.get_current_timezone())
+            return parsed
+        except ValueError:
+            continue
+    return None
 
 
 @login_required
@@ -5926,7 +6044,63 @@ def update_exam_record(request, exam_id):
             exam.save()
             exam.academic_levels.set(level_ids)
         success(request, f"{exam.display_name} was updated.")
-    return redirect("employees:it_support_exam_page", tool="exam-records")
+    level_id = request.POST.get("level_id") or None
+    if level_id is not None and str(level_id).isdigit():
+        level_id = int(level_id)
+    else:
+        level_id = None
+    return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+
+@login_required
+@require_POST
+def update_exam_record_status(request, exam_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
+    status = (request.POST.get("status") or "").strip()
+    valid_statuses = {choice for choice, _label in GeneratedExamTimetable.Status.choices}
+    level_id = request.POST.get("level_id") or None
+    if level_id is not None and str(level_id).isdigit():
+        level_id = int(level_id)
+    else:
+        level_id = None
+    if status not in valid_statuses:
+        error(request, "Select a valid exam status.")
+    else:
+        exam.status = status
+        exam.save(update_fields=["status"])
+        label = dict(GeneratedExamTimetable.Status.choices).get(status, status)
+        success(request, f"{exam.display_name} status set to {label.lower()}.")
+    return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+
+@login_required
+@require_POST
+def update_exam_record_deadline(request, exam_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
+    level_id = request.POST.get("level_id") or None
+    if level_id is not None and str(level_id).isdigit():
+        level_id = int(level_id)
+    else:
+        level_id = None
+    if request.POST.get("clear_deadline") == "1":
+        exam.deadline = None
+        exam.save(update_fields=["deadline"])
+        success(request, f"Deadline cleared for {exam.display_name}.")
+        return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+    deadline = _parse_exam_datetime(request.POST.get("deadline"))
+    if deadline is None:
+        error(request, "Select a valid deadline date and time.")
+    else:
+        exam.deadline = deadline
+        exam.save(update_fields=["deadline"])
+        success(request, f"Deadline updated for {exam.display_name}.")
+    return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
 
 
 @login_required
@@ -5982,6 +6156,139 @@ def _students_in_academic_level(level, academic_class=None):
 
 def _exam_record_subjects(level, academic_class=None):
     return [item["area"] for item in _build_exam_subjects(level)]
+
+
+def _level_combined_exam_subjects(level):
+    return list(
+        CombinedExamSubject.objects.filter(academic_level=level)
+        .prefetch_related(
+            Prefetch(
+                "components",
+                queryset=CombinedExamSubjectComponent.objects.select_related(
+                    "subject_setting__learning_area"
+                ),
+            )
+        )
+    )
+
+
+def _exam_record_display_columns(level):
+    built_subjects = _build_exam_subjects(level)
+    combined_area_ids = set()
+    combined_entries = []
+    for combined in _level_combined_exam_subjects(level):
+        components = list(combined.components.all())
+        component_areas = [component.subject_setting.learning_area for component in components]
+        component_ids = [area.id for area in component_areas]
+        combined_area_ids.update(component_ids)
+        order_indexes = [
+            index
+            for index, item in enumerate(built_subjects)
+            if item["area"].id in component_ids
+        ]
+        combined_entries.append(
+            {
+                "kind": "combined",
+                "combined": combined,
+                "code": combined.code,
+                "name": combined.name,
+                "component_codes": combined.component_codes,
+                "component_ids": component_ids,
+                "sort_key": min(order_indexes) if order_indexes else len(built_subjects),
+            }
+        )
+
+    columns = []
+    for index, item in enumerate(built_subjects):
+        area = item["area"]
+        if area.id in combined_area_ids:
+            continue
+        columns.append(
+            {
+                "kind": "subject",
+                "subject": area,
+                "code": area.code,
+                "name": area.name,
+                "sort_key": index,
+            }
+        )
+    columns.extend(combined_entries)
+    columns.sort(key=lambda column: column["sort_key"])
+    return columns
+
+
+def _combined_exam_percent(marks_lookup, student_id, component_ids, out_of_by_subject):
+    total_raw = 0
+    total_out_of = 0
+    for component_id in component_ids:
+        entry = marks_lookup.get((student_id, component_id))
+        raw = _exam_mark_entry_raw(entry)
+        if raw in (None, ""):
+            return None
+        current_out_of = out_of_by_subject.get(component_id)
+        saved_out_of = _exam_mark_entry_out_of(entry, None) if isinstance(entry, dict) else None
+        display_out_of = saved_out_of if saved_out_of is not None else current_out_of
+        if not display_out_of:
+            return None
+        total_raw += int(raw)
+        total_out_of += int(display_out_of)
+    return _marks_as_percent(total_raw, total_out_of)
+
+
+def _attach_exam_record_display_cells(students, display_columns, marks_lookup, out_of_by_subject):
+    for student in students:
+        student.mark_cells = []
+        for column in display_columns:
+            if column["kind"] == "combined":
+                percent = _combined_exam_percent(
+                    marks_lookup,
+                    student.id,
+                    column["component_ids"],
+                    out_of_by_subject,
+                )
+                student.mark_cells.append(
+                    {
+                        "kind": "combined",
+                        "column": column,
+                        "code": column["code"],
+                        "name": column["name"],
+                        "component_codes": column["component_codes"],
+                        "percent": percent,
+                        "readonly": True,
+                    }
+                )
+                continue
+
+            subject = column["subject"]
+            current_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
+            entry = marks_lookup.get((student.id, subject.id))
+            stored = _exam_mark_entry_raw(entry)
+            saved_out_of = _exam_mark_entry_out_of(entry, None) if isinstance(entry, dict) else None
+            if stored not in (None, "") and saved_out_of is not None:
+                display_out_of = saved_out_of
+            else:
+                display_out_of = current_out_of
+            settings_changed = (
+                stored not in (None, "")
+                and saved_out_of is not None
+                and int(saved_out_of) != int(current_out_of)
+            )
+            student.mark_cells.append(
+                {
+                    "kind": "subject",
+                    "column": column,
+                    "subject": subject,
+                    "code": column["code"],
+                    "name": column["name"],
+                    "out_of": display_out_of,
+                    "current_out_of": current_out_of,
+                    "saved_out_of": saved_out_of,
+                    "settings_changed": settings_changed,
+                    "percent": _marks_as_percent(stored, display_out_of),
+                    "field_name": f"mark_{student.id}_{subject.id}",
+                    "readonly": False,
+                }
+            )
 
 
 def _exam_record_out_of(level, subjects):
@@ -6086,7 +6393,33 @@ def _exam_record_subject_means(students, subjects):
                 "subject": subject,
                 "raw_mean": raw_mean,
                 "percent_mean": percent_mean,
+                "out_of": out_of,
                 "count": len(raw_values),
+            }
+        )
+    return means
+
+
+def _exam_record_display_column_means(students, display_columns):
+    means = []
+    for col_index, column in enumerate(display_columns):
+        values = []
+        for student in students:
+            if col_index >= len(student.mark_cells):
+                continue
+            percent = student.mark_cells[col_index].get("percent")
+            if percent in (None, ""):
+                continue
+            try:
+                values.append(int(percent))
+            except (TypeError, ValueError):
+                continue
+        percent_mean = round(sum(values) / len(values)) if values else None
+        means.append(
+            {
+                "column": column,
+                "code": column["code"],
+                "percent_mean": percent_mean,
             }
         )
     return means
@@ -6184,7 +6517,9 @@ def exam_record_detail(request, exam_id, level_id=None):
     if denied:
         return denied
     generation = get_object_or_404(
-        GeneratedExamTimetable.objects.select_related("academic_year", "academic_term").annotate(
+        GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
+        .prefetch_related("academic_levels")
+        .annotate(
             sitting_count=Count("sittings", distinct=True)
         ),
         pk=exam_id,
@@ -6199,6 +6534,8 @@ def exam_record_detail(request, exam_id, level_id=None):
     level_classes = []
     students = []
     subjects = []
+    display_columns = []
+    subject_means = []
     out_of_by_subject = {}
     out_of_settings_changed = False
     if level_id is not None:
@@ -6226,6 +6563,7 @@ def exam_record_detail(request, exam_id, level_id=None):
             )
         students = list(_students_in_academic_level(selected_level, selected_class))
         subjects = _exam_record_subjects(selected_level, selected_class)
+        display_columns = _exam_record_display_columns(selected_level)
         out_of_by_subject = _exam_record_out_of(selected_level, subjects)
         for subject in subjects:
             subject.exam_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
@@ -6240,17 +6578,28 @@ def exam_record_detail(request, exam_id, level_id=None):
                 )
             except (TypeError, ValueError, ValidationError):
                 error(request, "Enter whole numbers from 0 to 100 for each subject.")
-                _attach_exam_mark_cells(
+                marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
+                for student in students:
+                    for subject in subjects:
+                        raw_post = (request.POST.get(f"mark_{student.id}_{subject.id}") or "").strip()
+                        if raw_post == "":
+                            continue
+                        try:
+                            percent = int(raw_post)
+                        except (TypeError, ValueError):
+                            continue
+                        out_of = out_of_by_subject.get(subject.id, subject.total_marks)
+                        marks_lookup[(student.id, subject.id)] = {
+                            "marks": _percent_to_raw_marks(percent, out_of),
+                            "out_of_marks": out_of,
+                        }
+                _attach_exam_record_display_cells(
                     students,
-                    subjects,
-                    {
-                        (student.id, subject.id): (request.POST.get(f"mark_{student.id}_{subject.id}") or "").strip()
-                        for student in students
-                        for subject in subjects
-                    },
+                    display_columns,
+                    marks_lookup,
                     out_of_by_subject,
-                    values_are_percent=True,
                 )
+                subject_means = _exam_record_display_column_means(students, display_columns)
             else:
                 success(request, "Student marks were saved.")
                 redirect_url = reverse(
@@ -6265,12 +6614,15 @@ def exam_record_detail(request, exam_id, level_id=None):
             out_of_settings_changed = _exam_marks_out_of_settings_changed(
                 marks_lookup, out_of_by_subject
             )
-            _attach_exam_mark_cells(
+            _attach_exam_record_display_cells(
                 students,
-                subjects,
+                display_columns,
                 marks_lookup,
                 out_of_by_subject,
             )
+            subject_means = _exam_record_display_column_means(students, display_columns)
+    else:
+        display_columns = []
     return render(
         request,
         "employees/it_support_exam_record_detail.html",
@@ -6285,7 +6637,11 @@ def exam_record_detail(request, exam_id, level_id=None):
             "level_classes": level_classes,
             "students": students,
             "subjects": subjects,
+            "display_columns": display_columns,
+            "subject_means": subject_means,
             "out_of_settings_changed": out_of_settings_changed,
+            "manage_next_url": request.get_full_path(),
+            **_exam_record_manage_context(generation),
         },
     )
 
@@ -7783,7 +8139,9 @@ def _build_exam_subjects(level):
     )
 
 
-def _redirect_exam_level(level_id):
+def _redirect_exam_level(level_id, request=None):
+    if request is not None and request.POST.get("redirect_to") == "combinations":
+        return redirect("employees:exam_subject_combination_level", level_id=level_id)
     return redirect("employees:exam_level_settings", level_id=level_id)
 
 
@@ -7943,17 +8301,6 @@ def exam_level_settings(request, level_id):
                 "exam_subject_settings",
                 queryset=ExamSubjectSetting.objects.select_related("learning_area"),
             ),
-            Prefetch(
-                "combined_exam_subjects",
-                queryset=CombinedExamSubject.objects.prefetch_related(
-                    Prefetch(
-                        "components",
-                        queryset=CombinedExamSubjectComponent.objects.select_related(
-                            "subject_setting__learning_area"
-                        ),
-                    )
-                ),
-            ),
         ),
         pk=level_id,
         status=AcademicLevel.Status.ACTIVE,
@@ -7970,7 +8317,6 @@ def exam_level_settings(request, level_id):
             "exam_level": level,
             "exam_nav_levels": _exam_nav_levels(),
             "exam_subjects": exam_subjects,
-            "combined_subjects": list(level.combined_exam_subjects.all()),
         },
     )
 
@@ -7994,7 +8340,7 @@ def save_exam_subject_marks(request, level_id):
             updates.append((area_id, marks))
     except (TypeError, ValueError, ValidationError):
         error(request, "Enter a whole number greater than zero for each subject.")
-        return _redirect_exam_level(level_id)
+        return _redirect_exam_level(level_id, request)
 
     with transaction.atomic():
         for area_id, marks in updates:
@@ -8009,7 +8355,7 @@ def save_exam_subject_marks(request, level_id):
         f"Exam marks saved for {level.name}. Existing student scores keep their previous "
         f"out-of values until those marks are edited.",
     )
-    return _redirect_exam_level(level_id)
+    return _redirect_exam_level(level_id, request)
 
 
 @login_required
@@ -8061,13 +8407,13 @@ def create_combined_exam_subject(request, level_id):
 
     if not name or not code or len(subject_ids) < 2:
         error(request, "Provide a name, code, and at least two subjects to combine.")
-        return _redirect_exam_level(level_id)
+        return _redirect_exam_level(level_id, request)
 
     active_areas = level.learning_areas.filter(status=LearningArea.Status.ACTIVE)
     areas = {str(area.id): area for area in active_areas}
     if any(area_id not in areas for area_id in subject_ids):
         error(request, "All selected subjects must be active for this academic level.")
-        return _redirect_exam_level(level_id)
+        return _redirect_exam_level(level_id, request)
 
     with transaction.atomic():
         settings = []
@@ -8099,7 +8445,7 @@ def create_combined_exam_subject(request, level_id):
             error(request, f"A combined subject with code {code} already exists for this level.")
         else:
             success(request, f"Combined subject {name} registered for {level.name}.")
-    return _redirect_exam_level(level_id)
+    return _redirect_exam_level(level_id, request)
 
 
 @login_required
@@ -8109,7 +8455,81 @@ def delete_combined_exam_subject(request, combined_id):
     level_id = combined.academic_level_id
     combined.delete()
     success(request, "Combined exam subject removed.")
-    return _redirect_exam_level(level_id)
+    return _redirect_exam_level(level_id, request)
+
+
+@login_required
+@require_http_methods(["GET"])
+def exam_subject_combination_settings(request):
+    levels = _exam_nav_levels()
+    for level in levels:
+        level.subject_count = level.learning_areas.filter(
+            status=LearningArea.Status.ACTIVE
+        ).count()
+        level.combined_count = CombinedExamSubject.objects.filter(
+            academic_level=level
+        ).count()
+
+    return render(
+        request,
+        "employees/settings_exam_subject_combinations.html",
+        {
+            "active_nav": "settings",
+            "active_settings": "curriculum",
+            "levels": levels,
+            "exam_nav_levels": levels,
+            "exam_level": None,
+            "exam_combination_active": True,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def exam_subject_combination_level(request, level_id):
+    level = get_object_or_404(
+        AcademicLevel.objects.prefetch_related(
+            Prefetch(
+                "learning_areas",
+                queryset=LearningArea.objects.filter(status=LearningArea.Status.ACTIVE).order_by(
+                    "display_order", "name"
+                ),
+            ),
+            Prefetch(
+                "exam_subject_settings",
+                queryset=ExamSubjectSetting.objects.select_related("learning_area"),
+            ),
+            Prefetch(
+                "combined_exam_subjects",
+                queryset=CombinedExamSubject.objects.prefetch_related(
+                    Prefetch(
+                        "components",
+                        queryset=CombinedExamSubjectComponent.objects.select_related(
+                            "subject_setting__learning_area"
+                        ),
+                    )
+                ),
+            ),
+        ),
+        pk=level_id,
+        status=AcademicLevel.Status.ACTIVE,
+    )
+    exam_subjects = _build_exam_subjects(level)
+
+    return render(
+        request,
+        "employees/settings_exam_subject_combination_level.html",
+        {
+            "active_nav": "settings",
+            "active_settings": "curriculum",
+            "level": level,
+            "exam_level": level,
+            "exam_nav_levels": _exam_nav_levels(),
+            "exam_subjects": exam_subjects,
+            "combined_subjects": list(level.combined_exam_subjects.all()),
+            "exam_combination_active": True,
+        },
+    )
 
 
 @login_required

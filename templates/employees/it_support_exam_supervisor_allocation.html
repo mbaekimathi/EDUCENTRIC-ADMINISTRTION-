@@ -23,6 +23,11 @@
         <span>Teacher{{ teachers|length|pluralize }}</span>
       </div>
     </div>
+    <div class="teacher-page-bar-actions">
+      <a class="ghost-button" href="{% url 'employees:exam_manual_supervisor_allocation' %}">
+        Manual allocation
+      </a>
+    </div>
   </div>
 
   {% if not teachers %}

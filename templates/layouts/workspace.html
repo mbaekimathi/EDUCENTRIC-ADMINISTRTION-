@@ -332,6 +332,17 @@
   syncWorkspaceBack();
   if (backBtn) backBtn.addEventListener("click", goWorkspaceBack);
 
+  document.querySelectorAll("[data-nav-drawer]").forEach(function (drawer) {
+    const toggle = drawer.querySelector("[data-nav-drawer-toggle]");
+    const panel = drawer.querySelector(".workspace-nav-drawer-panel");
+    if (!toggle || !panel) return;
+    toggle.addEventListener("click", function () {
+      const collapsed = drawer.classList.toggle("is-collapsed");
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      panel.hidden = collapsed;
+    });
+  });
+
   function setNavOpen(open) {
     root.classList.toggle("is-nav-open", open);
     if (toggle) {

@@ -11,7 +11,7 @@
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/exam_management.html" %}
-<div class="exam-tool-page">
+<div class="exam-tool-page exam-timetable-generation-page">
   <div class="teacher-page-bar" aria-label="Generate exam timetable overview">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
@@ -20,12 +20,6 @@
       </div>
     </div>
     <div class="teacher-page-bar-actions">
-      <a
-        class="ghost-button"
-        href="{% url 'employees:exam_manual_supervisor_allocation' %}"
-      >
-        Manual allocation
-      </a>
       <a
         class="ghost-button"
         href="{% url 'employees:it_support_exam_page' 'exam-records' %}"
@@ -49,7 +43,7 @@
   {% if not open_generate_modal %}hidden{% endif %}
 >
   <div class="app-modal-backdrop" data-modal-close></div>
-  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="exam-timetable-generation-title">
+  <div class="app-modal-dialog app-modal-dialog-wide app-modal-dialog-generation" role="dialog" aria-modal="true" aria-labelledby="exam-timetable-generation-title">
     <div class="app-modal-header">
       <h2 id="exam-timetable-generation-title">Generate exam timetable</h2>
       <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>

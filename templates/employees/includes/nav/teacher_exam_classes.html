@@ -1,4 +1,11 @@
-<section class="teacher-dash-actions is-nav-links" aria-label="Exam classes">
+<section class="teacher-dash-actions is-nav-links" aria-label="Exam subjects">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SU</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Your subjects</strong>
+      <span>Your subjects</span>
+    </span>
+  </a>
   <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_analytics' exam.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">EA</span>
     <span class="teacher-dash-action-copy">
@@ -6,4 +13,16 @@
       <span>Exam analytics</span>
     </span>
   </a>
+  {% for item in exam_subject_allocations %}
+  <a
+    class="teacher-dash-action"
+    href="{% url 'employees:teacher_exam_record_class' exam.id item.academic_class.id %}"
+  >
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ item.subject.code|slice:":2" }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong class="is-uppercase">{{ item.subject.name }}</strong>
+      <span>{{ item.academic_class.display_label }}</span>
+    </span>
+  </a>
+  {% endfor %}
 </section>

@@ -1,11 +1,34 @@
-<section class="teacher-dash-actions is-nav-links" aria-label="Exam levels">
-  <a class="teacher-dash-action" href="{% url 'employees:it_support_exam_page' 'exam-records' %}">
-    <span class="teacher-dash-action-icon" aria-hidden="true">AE</span>
+<section class="teacher-dash-actions is-nav-links exam-record-manage-actions" aria-label="Exam management">
+  <button type="button" class="teacher-dash-action" data-open-modal="exam-edit">
+    <span class="teacher-dash-action-icon" aria-hidden="true">ED</span>
     <span class="teacher-dash-action-copy">
-      <strong>All exams</strong>
-      <span>Back to exam records</span>
+      <strong>Edit exam</strong>
+      <span>Edit exam</span>
     </span>
-  </a>
+  </button>
+  <button type="button" class="teacher-dash-action" data-open-modal="exam-status">
+    <span class="teacher-dash-action-icon" aria-hidden="true">ST</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Set status</strong>
+      <span>Set status</span>
+    </span>
+  </button>
+  <button type="button" class="teacher-dash-action" data-open-modal="exam-deadline">
+    <span class="teacher-dash-action-icon" aria-hidden="true">DL</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Set deadline</strong>
+      <span>Set deadline</span>
+    </span>
+  </button>
+  <button type="button" class="teacher-dash-action is-danger" data-open-modal="exam-delete">
+    <span class="teacher-dash-action-icon" aria-hidden="true">DE</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Delete exam</strong>
+      <span>Delete exam</span>
+    </span>
+  </button>
+</section>
+<section class="teacher-dash-actions is-nav-links" aria-label="Exam levels">
   {% for level in academic_levels %}
   <a class="teacher-dash-action" href="{% url 'employees:exam_record_level' exam.id level.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|default:level.name|slice:":2" }}</span>

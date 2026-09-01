@@ -10,6 +10,8 @@ from apps.curriculum.models import (
     AcademicYear,
     ClassSubjectAllocation,
     ClassSubjectLessonPlan,
+    CombinedExamSubject,
+    CombinedExamSubjectComponent,
     ELearningLearningMaterial,
     ELearningSubjectAllocation,
     ELearningSubjectLessonPlan,
@@ -2749,20 +2751,12 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(response, "Grade 1")
         self.assertContains(response, "19 Aug 2026")
         self.assertContains(response, "Open")
-        self.assertContains(response, "Edit")
-        self.assertContains(response, "Delete")
+        self.assertNotContains(response, ">Edit<")
+        self.assertNotContains(response, ">Delete<")
         self.assertNotContains(response, "No exams registered yet")
         generation = GeneratedExamTimetable.objects.get()
         detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
         self.assertContains(response, detail_url)
-        self.assertContains(
-            response,
-            reverse("employees:update_exam_record", kwargs={"exam_id": generation.id}),
-        )
-        self.assertContains(
-            response,
-            reverse("employees:delete_exam_record", kwargs={"exam_id": generation.id}),
-        )
 
         page = self.client.get(detail_url)
         self.assertEqual(page.status_code, 200)
@@ -2771,6 +2765,10 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(page, "Grade 1")
         self.assertContains(page, "Back to all exams")
         self.assertContains(page, "Open marks")
+        self.assertContains(page, 'data-open-modal="exam-edit"')
+        self.assertContains(page, 'data-open-modal="exam-status"')
+        self.assertContains(page, 'data-open-modal="exam-deadline"')
+        self.assertContains(page, 'data-open-modal="exam-delete"')
         self.assertNotContains(page, "Select an academic level")
         level_url = reverse(
             "employees:exam_record_level",
@@ -2881,6 +2879,96 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(converted_page, 'value="50"')
         self.assertNotContains(converted_page, "/ 50 → 100%")
 
+    def test_exam_record_level_shows_combined_subject_results(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        art = LearningArea.objects.create(name="Art", code="ART")
+        art.academic_levels.add(self.level)
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=art,
+            supervisor=self.teacher,
+        )
+        math_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=self.subject,
+            out_of_marks=50,
+        )
+        art_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=art,
+            out_of_marks=50,
+        )
+        combined = CombinedExamSubject.objects.create(
+            academic_level=self.level,
+            name="CREATIVE ARTS",
+            code="CA-COMB",
+        )
+        CombinedExamSubjectComponent.objects.bulk_create(
+            [
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=math_setting,
+                    position=1,
+                ),
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=art_setting,
+                    position=2,
+                ),
+            ]
+        )
+        self._exam_profile()
+        self._generate_post()
+        generation = GeneratedExamTimetable.objects.get()
+        parent = ParentGuardian.objects.create(
+            full_name="JANE DOE",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000333",
+            email="jane.exam@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="G1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        ExamMark.objects.create(
+            generation=generation,
+            student=student,
+            learning_area=self.subject,
+            marks=40,
+            out_of_marks=50,
+        )
+        ExamMark.objects.create(
+            generation=generation,
+            student=student,
+            learning_area=art,
+            marks=30,
+            out_of_marks=50,
+        )
+        level_url = reverse(
+            "employees:exam_record_level",
+            kwargs={"exam_id": generation.id, "level_id": self.level.id},
+        )
+        response = self.client.get(level_url, {"class_id": str(self.academic_class.id)})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CA-COMB")
+        self.assertContains(response, "MATH + ART")
+        self.assertNotContains(response, 'name="mark_')
+        self.assertContains(response, ">70<")
+
     def test_exam_record_can_be_updated(self):
         ExamSupervisorAllocation.objects.create(
             academic_class=self.academic_class,
@@ -2890,7 +2978,7 @@ class ExamTimetableGenerationTests(TestCase):
         self._exam_profile()
         self._generate_post()
         generation = GeneratedExamTimetable.objects.get()
-        records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
         response = self.client.post(
             reverse("employees:update_exam_record", kwargs={"exam_id": generation.id}),
             {
@@ -2900,17 +2988,45 @@ class ExamTimetableGenerationTests(TestCase):
                 "start_date": "2026-08-12",
                 "end_date": "2026-08-14",
                 "academic_levels": [str(self.level.id)],
+                "next": detail_url,
             },
         )
-        self.assertRedirects(response, records_url)
+        self.assertRedirects(response, detail_url)
         generation.refresh_from_db()
         self.assertEqual(generation.name, "MIDTERM EXAM")
         self.assertEqual(generation.start_date, date(2026, 8, 12))
         self.assertEqual(generation.end_date, date(2026, 8, 14))
         self.assertEqual(list(generation.academic_levels.values_list("id", flat=True)), [self.level.id])
-        page = self.client.get(records_url)
+        page = self.client.get(detail_url)
         self.assertContains(page, "MIDTERM EXAM")
         self.assertContains(page, "was updated")
+
+    def test_exam_record_status_and_deadline_can_be_updated(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        generation = GeneratedExamTimetable.objects.get()
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
+
+        status_response = self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": detail_url},
+        )
+        self.assertRedirects(status_response, detail_url)
+        generation.refresh_from_db()
+        self.assertEqual(generation.status, GeneratedExamTimetable.Status.MARKING)
+
+        deadline_response = self.client.post(
+            reverse("employees:update_exam_record_deadline", kwargs={"exam_id": generation.id}),
+            {"deadline": "2026-08-20T17:30", "next": detail_url},
+        )
+        self.assertRedirects(deadline_response, detail_url)
+        generation.refresh_from_db()
+        self.assertIsNotNone(generation.deadline)
 
     def test_exam_record_can_be_deleted(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -3911,12 +4027,15 @@ class TeacherExamRecordsTests(TestCase):
         self.assertNotContains(response, reverse("employees:teacher_subject_attendance"))
         self.assertNotContains(response, "workspace-nav-label")
 
-    def test_opening_an_exam_lists_allocated_classes(self):
+    def test_opening_an_exam_lists_allocated_subjects(self):
         response = self.client.get(
             reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": self.exam.id})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Allocated classes")
+        self.assertContains(response, "Your subjects to teach")
+        self.assertContains(response, "Subjects to teach")
+        self.assertContains(response, "Mathematics")
+        self.assertContains(response, "MATH")
         self.assertContains(response, "Exam analytics")
         self.assertContains(
             response,
@@ -3931,7 +4050,7 @@ class TeacherExamRecordsTests(TestCase):
             ),
         )
         self.assertNotContains(response, "Grade 2 West")
-        self.assertNotContains(response, "workspace-nav-label")
+        self.assertNotContains(response, "ENG2")
         self.assertNotContains(response, "Select a class from the sidebar")
 
     def test_teacher_exam_analytics_lists_allocated_classes_for_selection(self):
@@ -4173,22 +4292,61 @@ class TeacherExamRecordsTests(TestCase):
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
         )
-        response = self.client.get(
-            reverse(
-                "employees:teacher_exam_record_class",
-                kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
-            )
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
         )
+        locked = self.client.get(class_url)
+        self.assertEqual(locked.status_code, 200)
+        self.assertContains(locked, "Grade 1 East")
+        self.assertContains(locked, "ANN EAST")
+        self.assertContains(locked, "1001")
+        self.assertContains(locked, "Mathematics")
+        self.assertContains(locked, "Locked · In session")
+        self.assertContains(locked, "Marks are read-only")
+        self.assertNotContains(locked, "data-exam-edit")
+        self.assertNotContains(locked, "Save marks")
+        self.assertContains(locked, "readonly")
+        self.assertNotContains(locked, "BEN WEST")
+        self.assertNotContains(locked, "English")
+
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        editable = self.client.get(class_url)
+        self.assertEqual(editable.status_code, 200)
+        self.assertContains(editable, "data-exam-edit")
+        self.assertContains(editable, "Save marks")
+        self.assertNotContains(editable, "Marks are read-only")
+
+    def test_teacher_cannot_save_marks_when_exam_is_not_marking(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000555",
+            email="pat.east@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+        response = self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "25"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Grade 1 East")
-        self.assertContains(response, "ANN EAST")
-        self.assertContains(response, "1001")
-        self.assertContains(response, "Mathematics")
-        self.assertContains(response, "Edit")
-        self.assertContains(response, "Save marks")
-        self.assertContains(response, "readonly")
-        self.assertNotContains(response, "BEN WEST")
-        self.assertNotContains(response, "English")
+        self.assertContains(response, "Marks can only be edited while this exam is in Marking status.")
+        self.assertFalse(ExamMark.objects.filter(student=student, learning_area=self.subject).exists())
 
     def test_teacher_can_enter_marks_and_convert(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -4216,6 +4374,8 @@ class TeacherExamRecordsTests(TestCase):
             learning_area=self.subject,
             out_of_marks=50,
         )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
         class_url = reverse(
             "employees:teacher_exam_record_class",
             kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
@@ -4263,6 +4423,8 @@ class TeacherExamRecordsTests(TestCase):
             learning_area=self.subject,
             out_of_marks=50,
         )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
         class_url = reverse(
             "employees:teacher_exam_record_class",
             kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},

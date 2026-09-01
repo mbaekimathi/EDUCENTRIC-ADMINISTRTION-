@@ -2,7 +2,7 @@
 <a
   class="workspace-nav-link"
   href="{% url 'employees:exam_settings' %}"
-  {% if not exam_level and not exam_timetable_active and not exam_grading_active %}aria-current="page"{% endif %}
+  {% if not exam_level and not exam_timetable_active and not exam_grading_active and not exam_combination_active %}aria-current="page"{% endif %}
 >
   <span class="workspace-nav-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -18,6 +18,16 @@
     <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14v15H5V5zM8 13h3M13 13h3M8 17h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
   Exam timetable settings
+</a>
+<a
+  class="workspace-nav-link"
+  href="{% url 'employees:exam_subject_combination_settings' %}"
+  {% if exam_combination_active %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </span>
+  Exam subject combinations
 </a>
 <a
   class="workspace-nav-link"

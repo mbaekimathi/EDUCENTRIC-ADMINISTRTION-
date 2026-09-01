@@ -10,14 +10,18 @@
 {% block workspace_content %}
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
-{% include "employees/includes/nav/exam_record_levels.html" %}
 {% if selected_level %}
-<section class="exam-record-sheet exam-detail-sheet">
+{% include "employees/includes/page_nav_drawer.html" with label="Exam tools & levels" panel_id="exam-record-page-nav" nav_template="employees/includes/nav/exam_record_levels.html" collapsed=True %}
+{% else %}
+{% include "employees/includes/nav/exam_record_levels.html" %}
+{% endif %}
+{% if selected_level %}
+<section class="exam-record-sheet exam-detail-sheet it-marks-sheet">
   {% if students %}
   <form method="post" class="exam-record-marks-form" data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
     {% if selected_class %}<input type="hidden" name="class_id" value="{{ selected_class.id }}">{% endif %}
-    <header class="exam-record-bar exam-detail-bar">
+    <header class="exam-record-bar exam-detail-bar it-marks-bar">
       <div class="exam-detail-bar-main">
         <nav class="exam-detail-crumb" aria-label="Breadcrumb">
           <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All exams</a>
@@ -27,16 +31,21 @@
           <span class="is-uppercase">{{ selected_level.name }}</span>
         </nav>
         <div class="exam-record-bar-title">
-          <div>
+          <div class="it-marks-title-block">
             <p class="exam-detail-kicker">Marks sheet · out of 100%</p>
             <h2 class="is-uppercase">{{ selected_level.name }}</h2>
+            {% if selected_class %}
+            <p class="it-marks-meta">{{ selected_class.name }} · {{ exam.get_status_display }}</p>
+            {% else %}
+            <p class="it-marks-meta">All classes · {{ exam.get_status_display }}</p>
+            {% endif %}
           </div>
-          <div class="exam-detail-bar-chips">
+          <div class="exam-detail-bar-chips it-marks-chips">
             <span class="student-count-chip is-quiet">
               {{ students|length }} student{{ students|length|pluralize }}
             </span>
             <span class="student-count-chip is-quiet">
-              {{ subjects|length }} subject{{ subjects|length|pluralize }}
+              {{ display_columns|length }} subject{{ display_columns|length|pluralize }}
             </span>
             {% if selected_class %}
             <span class="student-count-chip">{{ selected_class.name }}</span>
@@ -44,7 +53,7 @@
           </div>
         </div>
       </div>
-      <div class="exam-record-bar-tools">
+      <div class="exam-record-bar-tools it-marks-tools">
         {% if level_classes %}
         <div class="exam-class-filter">
           <label for="exam-class-filter">Class</label>
@@ -69,58 +78,90 @@
       </div>
     </header>
     {% if out_of_settings_changed %}
-    <div class="notice warning" data-out-of-changed-notice>
+    <div class="notice warning it-marks-notice" data-out-of-changed-notice>
       Out-of marks settings have changed since some scores were saved. Saved percentages stay as they were until you edit and save; saving will apply the current out-of values.
     </div>
     {% endif %}
 
-    <div class="settings-table-panel exam-record-sheet-table">
-      <table class="settings-table settings-table-responsive exam-record-students-table">
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Admission</th>
-            {% for subject in subjects %}
-            <th title="{{ subject.name }}">
-              <span class="exam-subject-code">{{ subject.code }}</span>
-            </th>
+    <div class="settings-table-panel exam-record-sheet-table it-marks-table-panel">
+      <div class="it-marks-table-scroll">
+        <table class="settings-table settings-table-responsive exam-record-students-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Admission</th>
+              {% for column in display_columns %}
+              <th title="{% if column.kind == 'combined' %}{{ column.name }} · {{ column.component_codes }} · combined{% else %}{{ column.name }}{% endif %}">
+                <span class="exam-subject-code{% if column.kind == 'combined' %} is-combined{% endif %}">{{ column.code }}</span>
+                {% if column.kind == "combined" %}
+                <span class="exam-subject-combined-note">{{ column.component_codes }}</span>
+                {% endif %}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+            <tr>
+              <td data-label="Student">
+                <strong class="is-uppercase exam-student-name">
+                  <span class="exam-student-first">{{ student.first_name }}</span>
+                  <span class="exam-student-last">{{ student.last_name }}</span>
+                </strong>
+              </td>
+              <td data-label="Admission">
+                <span class="exam-admission">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</span>
+              </td>
+              {% for cell in student.mark_cells %}
+              <td data-label="{{ cell.code }}{% if cell.kind == 'combined' %} ({{ cell.component_codes }}){% endif %}">
+                {% if cell.kind == "combined" %}
+                <span class="exam-mark-percent exam-mark-percent-readonly" title="Combined from {{ cell.component_codes }}">
+                  {% if cell.percent != None %}{{ cell.percent }}%{% else %}—{% endif %}
+                </span>
+                {% else %}
+                <label class="sr-only" for="{{ cell.field_name }}">{{ cell.name }} converted marks for {{ student.display_name }}, out of 100%</label>
+                <input
+                  id="{{ cell.field_name }}"
+                  class="exam-mark-input"
+                  type="number"
+                  name="{{ cell.field_name }}"
+                  value="{% if cell.percent != None %}{{ cell.percent }}{% endif %}"
+                  min="0"
+                  max="100"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="—"
+                  readonly
+                >
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
             {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for student in students %}
-          <tr>
-            <td data-label="Student">
-              <strong class="is-uppercase exam-student-name">
-                <span class="exam-student-first">{{ student.first_name }}</span>
-                <span class="exam-student-last">{{ student.last_name }}</span>
-              </strong>
-            </td>
-            <td data-label="Admission">
-              <span class="exam-admission">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</span>
-            </td>
-            {% for cell in student.mark_cells %}
-            <td data-label="{{ cell.subject.code }}">
-              <label class="sr-only" for="{{ cell.field_name }}">{{ cell.subject.name }} converted marks for {{ student.display_name }}, out of 100%</label>
-              <input
-                id="{{ cell.field_name }}"
-                class="exam-mark-input"
-                type="number"
-                name="{{ cell.field_name }}"
-                value="{% if cell.percent != None %}{{ cell.percent }}{% endif %}"
-                min="0"
-                max="100"
-                step="1"
-                inputmode="numeric"
-                placeholder="—"
-                readonly
-              >
-            </td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+      {% if subject_means %}
+      <div class="it-marks-mean-bar" aria-label="Class mean">
+        <div class="it-marks-mean-scroll">
+          <table class="settings-table settings-table-responsive exam-record-students-table it-marks-mean-table">
+            <tbody>
+              <tr class="exam-record-mean-row">
+                <td><strong>Class mean</strong></td>
+                <td></td>
+                {% for mean in subject_means %}
+                <td>
+                  <span class="exam-mark-mean exam-mark-mean-percent">
+                    {% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}
+                  </span>
+                </td>
+                {% endfor %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
     </div>
   </form>
   {% else %}
@@ -188,6 +229,10 @@
         {% else %}
           Dates not set
         {% endif %}
+        · {{ exam.get_status_display }}
+        {% if exam.deadline %}
+          · Deadline {{ exam.deadline|date:"j M Y, g:i A" }}
+        {% endif %}
       </p>
     </div>
     <div class="exam-detail-hero-aside">
@@ -238,6 +283,7 @@
   </section>
 </div>
 {% endif %}
+{% include "employees/includes/exam_record_manage_modals.html" %}
 {% endblock %}
 
 {% block workspace_scripts %}
