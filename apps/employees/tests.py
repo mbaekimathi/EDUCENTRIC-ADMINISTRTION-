@@ -2068,6 +2068,35 @@ class ClassSubjectAllocationTests(TestCase):
         self.assertNotContains(response, "135790")
         self.assertNotContains(response, "JOY ACCOUNTS")
 
+    def test_multi_role_teacher_with_non_teacher_primary_appears_in_allocation(self):
+        multi_role_teacher = Employee.objects.create_user(
+            employee_code="864200",
+            password="ReliablePass456",
+            title=Employee.Title.MS,
+            first_name="NELLY",
+            last_name="MWEBIA",
+            email="nelly.mwebia@example.com",
+            phone_number="+254700000555",
+            role=Employee.Role.ACCOUNTANT,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        multi_role_teacher.set_roles(
+            [Employee.Role.ACCOUNTANT, Employee.Role.TEACHER],
+            primary=Employee.Role.ACCOUNTANT,
+        )
+
+        response = self.client.get(
+            reverse(
+                "employees:it_support_timetable_page",
+                kwargs={"tool": "class-and-subject-allocation"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "NELLY MWEBIA")
+        self.assertNotContains(response, "JOY ACCOUNTS")
+
     def test_teacher_can_be_allocated_a_subject_in_a_class(self):
         response = self.client.post(
             reverse(

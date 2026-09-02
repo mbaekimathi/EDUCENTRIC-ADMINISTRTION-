@@ -5892,11 +5892,21 @@ def it_support_class_page(request, tool):
     )
 
 
+def _approved_teacher_queryset(*, active_only=False):
+    queryset = (
+        Employee.objects.filter(
+            Q(role=Employee.Role.TEACHER) | Q(assigned_roles__role=Employee.Role.TEACHER),
+            approval_status=Employee.ApprovalStatus.APPROVED,
+        )
+        .distinct()
+    )
+    if active_only:
+        queryset = queryset.filter(is_active=True)
+    return queryset
+
+
 def _approved_teachers():
-    return Employee.objects.filter(
-        role=Employee.Role.TEACHER,
-        approval_status=Employee.ApprovalStatus.APPROVED,
-    ).order_by("first_name", "last_name", "employee_code")
+    return _approved_teacher_queryset().order_by("first_name", "last_name", "employee_code")
 
 
 def _class_teacher_allocation_levels():
@@ -6106,13 +6116,7 @@ def class_subject_allocation(request, page=None):
 
 
 def _active_teacher_ids():
-    return set(
-        Employee.objects.filter(
-            role=Employee.Role.TEACHER,
-            approval_status=Employee.ApprovalStatus.APPROVED,
-            is_active=True,
-        ).values_list("id", flat=True)
-    )
+    return set(_approved_teacher_queryset(active_only=True).values_list("id", flat=True))
 
 
 def _timetable_generation_levels():
