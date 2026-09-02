@@ -533,12 +533,11 @@ def generate_exam_timetable_plan(class_plans):
                     (item_id for item_subject, item_id in plan["assignments"] if item_subject.id == subject.id),
                     None,
                 )
-                if teacher_id is None:
-                    continue
                 if not _is_free(class_busy[class_id], day_key, start, end):
                     continue
-                teacher_busy[teacher_id].append((day_key, start, end))
                 class_busy[class_id].append((day_key, start, end))
+                if teacher_id is not None:
+                    teacher_busy[teacher_id].append((day_key, start, end))
                 placements.append(
                     {
                         "level": plan["level"],
@@ -574,8 +573,9 @@ def build_exam_class_plans(levels, allocations, supervisor_ids, exam_dates=None,
             assignments = []
             for subject in subjects:
                 supervisor_id = allocations.get((academic_class.id, subject.id))
-                if supervisor_id in supervisor_ids:
-                    assignments.append((subject, supervisor_id))
+                if supervisor_id not in supervisor_ids:
+                    supervisor_id = None
+                assignments.append((subject, supervisor_id))
             plans.append(
                 {
                     "level": level,

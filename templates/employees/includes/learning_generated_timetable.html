@@ -1,73 +1,260 @@
 {% if timetable_groups %}
+
 <section class="generated-timetable-list exam-tool-scroll" aria-label="Generated class timetables">
+
   {% for group in timetable_groups %}
+
   <section class="exam-tool-panel" aria-label="{{ group.level.name }} timetables">
+
     <header class="exam-tool-panel-head">
+
       <div>
+
         <h3 class="is-uppercase">{{ group.level.name }}</h3>
-        <p>Generated class sittings for this academic level</p>
+
+        <p>{% if class_actions %}Class timetables for this academic level{% else %}Generated class sittings for this academic level{% endif %}</p>
+
       </div>
+
       <span class="exam-tool-panel-count">{{ group.classes|length }} class{{ group.classes|length|pluralize }}</span>
+
     </header>
+
     {% for grid in group.classes %}
+
     <article class="exam-tool-block generated-timetable-card" aria-label="{{ grid.academic_class.name }}">
+
       <header class="exam-tool-block-head">
+
         <div>
+
           <h3 class="is-uppercase">{{ grid.academic_class.name }}</h3>
-          <p>{{ grid.academic_class.code }} · {{ grid.lesson_count }} lesson{{ grid.lesson_count|pluralize }} placed</p>
+
+          <p>
+
+            {{ grid.academic_class.code }}
+
+            {% if grid.has_generated_timetable %}
+
+            · {{ grid.lesson_count }} lesson{{ grid.lesson_count|pluralize }} placed
+
+            {% elif class_actions %}
+
+            · No timetable generated yet
+
+            {% endif %}
+
+          </p>
+
+          {% if class_actions and not grid.is_viable %}
+
+          <p class="exam-tool-note">{{ grid.viability_reason }}</p>
+
+          {% endif %}
+
         </div>
+
+        {% if class_actions %}
+
+        <div class="exam-tool-block-actions">
+
+          {% if grid.has_generated_timetable %}
+
+          <form
+
+            method="post"
+
+            class="inline-form"
+
+            onsubmit="return confirm('Remove the generated timetable for {{ grid.academic_class.name|escapejs }}? This cannot be undone.');"
+
+          >
+
+            {% csrf_token %}
+
+            <input type="hidden" name="action" value="reset_class">
+
+            <input type="hidden" name="class_id" value="{{ grid.academic_class.id }}">
+
+            <button type="submit" class="ghost-button is-danger">Reset</button>
+
+          </form>
+
+          {% endif %}
+
+          <form method="post" class="inline-form">
+
+            {% csrf_token %}
+
+            <input type="hidden" name="action" value="generate_class">
+
+            <input type="hidden" name="class_id" value="{{ grid.academic_class.id }}">
+
+            <button
+
+              type="submit"
+
+              class="primary-button"
+
+              {% if not grid.is_viable %}disabled title="{{ grid.viability_reason }}"{% endif %}
+
+            >
+
+              Generate
+
+            </button>
+
+          </form>
+
+        </div>
+
+        {% endif %}
+
       </header>
-      <div class="schedule-timetable-wrap">
+
+      {% if grid.rows %}
+
+      <div class="schedule-timetable-wrap{% if not manual_allocation %} is-scrollable-x{% endif %}">
+
+        {% if not manual_allocation %}
+
+        <p class="schedule-timetable-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all periods</p>
+
+        {% endif %}
+
         <table class="schedule-timetable generated-timetable">
+
           <thead>
+
             <tr>
+
               <th>Day</th>
+
               {% for period in grid.periods %}
+
               <th>
+
                 <span>{{ period.name }}</span>
+
                 <span>{{ period.start_label }}–{{ period.end_label }}</span>
+
               </th>
+
               {% endfor %}
+
             </tr>
+
           </thead>
+
           <tbody>
+
             {% for row in grid.rows %}
+
             <tr>
+
               <th scope="row">{{ row.day_label }}</th>
+
               {% for cell in row.cells %}
+
               {% if cell.lesson %}
+
               <td{% if cell.is_collision %} class="is-collision" title="Teacher collision"{% endif %}>
+
                 <span class="tt-subject">{{ cell.lesson.learning_area.code }}</span>
+
                 <span class="tt-teacher">{{ cell.lesson.teacher.employment_number }}</span>
+
                 {% if manual_allocation %}
+
                 <button
+
                   type="button"
+
                   class="record-action"
+
                   data-change-teacher
+
                   data-lesson-id="{{ cell.lesson.id }}"
+
                 >
+
                   Change allocation
+
                 </button>
+
                 {% endif %}
+
               </td>
+
               {% else %}
-              <td class="is-blank">Free</td>
+
+              <td class="is-blank">
+
+                Free
+
+                {% if manual_allocation and cell.slot_key %}
+
+                <button
+
+                  type="button"
+
+                  class="record-action"
+
+                  data-change-teacher
+
+                  data-slot-key="{{ cell.slot_key }}"
+
+                >
+
+                  Allocate
+
+                </button>
+
+                {% endif %}
+
+              </td>
+
               {% endif %}
+
               {% endfor %}
+
             </tr>
+
             {% endfor %}
+
           </tbody>
+
         </table>
+
       </div>
+
+      {% elif class_actions %}
+
+      <p class="exam-tool-note">Generate a timetable for this class to see lesson slots here.</p>
+
+      {% endif %}
+
     </article>
+
     {% endfor %}
+
   </section>
+
   {% endfor %}
+
 </section>
+
 {% else %}
+
 <section class="exam-tool-empty">
+
   <span class="exam-tool-empty-icon" aria-hidden="true">TT</span>
+
   <strong>No generated class timetables yet</strong>
-  <p>Generate a timetable to see class lessons here.</p>
+
+  <p>{% if class_actions %}Register active classes to manage timetables here.{% else %}Generate a timetable to see class lessons here.{% endif %}</p>
+
 </section>
+
 {% endif %}
+

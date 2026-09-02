@@ -51,7 +51,7 @@
     <form method="post" class="app-modal-form" novalidate data-exam-generate-form>
       {% csrf_token %}
       <div class="generation-step" data-generate-panel="1">
-        <p class="subtle">1. Select academic levels with a green background. Those levels have every active subject allocated to an active supervisor, and they use the matching exam timetable profile for sessions.</p>
+        <p class="subtle">1. Select academic levels with a green background. Those levels have active classes, subjects, and a matching exam timetable profile for sessions. Supervisors can be assigned before or after generation.</p>
 
         {% if level_groups %}
         <div class="generation-level-list">

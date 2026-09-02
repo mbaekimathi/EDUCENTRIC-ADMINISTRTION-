@@ -125,6 +125,11 @@ urlpatterns = [
         name="it_support_exam_report_students",
     ),
     path(
+        "workspace/it_support/reports/curriculum-reports/exam-reports/export/",
+        views.it_support_exam_report_export,
+        name="it_support_exam_report_export",
+    ),
+    path(
         "workspace/it_support/reports/curriculum-reports/<slug:page>/",
         views.it_support_curriculum_report_page,
         name="it_support_curriculum_report_page",

@@ -233,3 +233,27 @@ class ExamTimetableGeneratorTests(TestCase):
         self.assertEqual(len(placements), 3)
         self.assertEqual({item["learning_area"].id for item in placements}, {10, 11, 12})
         self.assertEqual(len({(item["exam_date"], item["start"]) for item in placements}), 3)
+
+    def test_subjects_without_supervisors_are_still_placed(self):
+        profile = SimpleNamespace(
+            first_exam_start_time=time(8, 0),
+            exam_session_duration_minutes=120,
+            last_exam_end_time=time(10, 0),
+            activities=SimpleNamespace(all=lambda: []),
+        )
+        dates = [date(2026, 8, 19)]
+        slots = exam_slots_from_profile(profile, exam_dates=dates)
+        math = SimpleNamespace(id=10)
+        placements, expected = generate_exam_timetable_plan(
+            [
+                {
+                    "level": SimpleNamespace(id=1),
+                    "academic_class": SimpleNamespace(id=1),
+                    "assignments": [(math, None)],
+                    "slots": slots,
+                }
+            ]
+        )
+        self.assertEqual(expected, 1)
+        self.assertEqual(len(placements), 1)
+        self.assertIsNone(placements[0]["teacher_id"])

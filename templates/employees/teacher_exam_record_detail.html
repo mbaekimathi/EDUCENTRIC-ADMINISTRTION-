@@ -16,7 +16,7 @@
 {% include "employees/includes/nav/teacher_exam_classes.html" %}
 {% endif %}
 {% if selected_class %}
-<section class="exam-record-sheet teacher-marks-sheet">
+<section class="exam-record-sheet teacher-marks-sheet teacher-exam-marks-view">
   {% if students %}
   <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
@@ -194,36 +194,60 @@
   {% endif %}
 </section>
 {% else %}
-<div class="exam-detail-page">
-  <section class="exam-detail-hero" aria-label="Exam overview">
+<div class="exam-detail-page teacher-exam-detail-page">
+  <section class="exam-detail-hero teacher-exam-hero" aria-label="Exam overview">
     <div class="exam-detail-hero-copy">
-      <p class="exam-detail-kicker">Exam session</p>
-      <h2 class="is-uppercase">{{ exam_title }}</h2>
-      <p>
-        {% if exam.academic_year %}{{ exam.academic_year.name }}{% else %}No year{% endif %}
-        ·
-        {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}No term{% endif %}
-        ·
-        {% if exam.start_date and exam.end_date %}
-          {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
-        {% else %}
-          Dates not set
-        {% endif %}
-        · {{ exam.get_status_display }}
-      </p>
-    </div>
-    <div class="exam-detail-hero-aside">
-      <div class="exam-detail-stats" aria-label="Quick stats">
-        <div class="exam-detail-stat">
-          <strong>{{ exam_subject_allocations|length }}</strong>
-          <span>Subject allocation{{ exam_subject_allocations|length|pluralize }}</span>
+      <div class="teacher-exam-hero-lead">
+        <span class="teacher-exam-hero-mark" aria-hidden="true">ER</span>
+        <div class="teacher-exam-hero-titles">
+          <p class="exam-detail-kicker">Exam session</p>
+          <h2 class="is-uppercase">{{ exam_title }}</h2>
         </div>
       </div>
+      <div class="teacher-exam-meta-chips" aria-label="Exam details">
+        <span class="teacher-exam-meta-chip">
+          {% if exam.academic_year %}{{ exam.academic_year.name }}{% else %}No year{% endif %}
+        </span>
+        <span class="teacher-exam-meta-chip">
+          {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}No term{% endif %}
+        </span>
+        <span class="teacher-exam-meta-chip">
+          {% if exam.start_date and exam.end_date %}
+            {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
+          {% else %}
+            Dates not set
+          {% endif %}
+        </span>
+        <span class="teacher-exam-status-chip" data-status="{{ exam.status }}">
+          {{ exam.get_status_display }}
+        </span>
+      </div>
+    </div>
+    <div class="exam-detail-hero-aside teacher-exam-hero-aside">
+      <div class="exam-detail-stats teacher-exam-stats" aria-label="Quick stats">
+        <div class="exam-detail-stat">
+          <strong>{{ exam_subject_allocations|length }}</strong>
+          <span>Subject{{ exam_subject_allocations|length|pluralize }}</span>
+        </div>
+        <div class="exam-detail-stat">
+          <strong>{{ exam_classes|length }}</strong>
+          <span>Class{{ exam_classes|length|pluralize }}</span>
+        </div>
+        {% if exam_subject_groups %}
+        <div class="exam-detail-stat is-muted">
+          <strong>{{ exam_subject_groups|length }}</strong>
+          <span>Level{{ exam_subject_groups|length|pluralize }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <a class="ghost-button teacher-exam-analytics-link" href="{% url 'employees:teacher_exam_analytics' exam.id %}">
+        Exam analytics
+      </a>
     </div>
   </section>
 
   {% if exam_subject_groups %}
-  <section class="exam-detail-levels" aria-label="Allocated subjects">
+  <section class="exam-detail-levels teacher-exam-subjects" aria-label="Allocated subjects">
     <header class="exam-detail-levels-head">
       <div>
         <h3>Your subjects to teach</h3>
@@ -232,26 +256,24 @@
       <span class="exam-detail-levels-count">{{ exam_subject_allocations|length }} subject{{ exam_subject_allocations|length|pluralize }}</span>
     </header>
     {% for group in exam_subject_groups %}
-    <section class="sa-level-block" aria-label="{{ group.level.name }}">
-      <header class="sa-level-head">
+    <section class="sa-level-block teacher-exam-level-block" aria-label="{{ group.level.name }}">
+      <header class="sa-level-head teacher-exam-level-head">
         <div>
           <h3 class="is-uppercase">{{ group.level.name }}</h3>
           <p class="subtle">{{ group.level.code }} · {{ group.subjects|length }} subject{{ group.subjects|length|pluralize }}</p>
         </div>
       </header>
-      <div class="exam-hub-grid">
+      <div class="exam-hub-grid teacher-exam-subject-grid">
         {% for item in group.subjects %}
         <a
-          class="exam-hub-card"
+          class="exam-hub-card teacher-exam-subject-card"
           href="{% url 'employees:teacher_exam_record_class' exam.id item.academic_class.id %}"
         >
           <span class="exam-hub-card-icon" aria-hidden="true">{{ item.subject.code|slice:":2" }}</span>
           <span class="exam-hub-card-copy">
             <strong class="is-uppercase">{{ item.subject.name }}</strong>
-            <span>
-              {{ item.subject.code }}
-              · {{ item.academic_class.display_label }}
-            </span>
+            <span>{{ item.subject.code }}</span>
+            <span class="teacher-exam-class-chip">{{ item.academic_class.display_label }}</span>
           </span>
           <span class="exam-hub-card-go">Open marks →</span>
         </a>
@@ -261,7 +283,8 @@
     {% endfor %}
   </section>
   {% else %}
-  <section class="sa-hub-empty">
+  <section class="sa-hub-empty teacher-exam-empty">
+    <span class="exam-tool-empty-icon" aria-hidden="true">SU</span>
     <strong>No allocated subjects</strong>
     <p class="settings-empty">You have no subject allocations in the academic levels covered by this exam.</p>
   </section>

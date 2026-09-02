@@ -11,25 +11,44 @@
 {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/timetable_management.html" %}
-<div class="exam-tool-page">
-  <div class="teacher-page-bar" aria-label="Timetable generation overview">
-    <div class="teacher-page-bar-stats">
-      <div class="teacher-page-bar-stat">
-        <strong>{{ viable_count }}</strong>
-        <span>Viable</span>
+<div class="exam-tool-page learning-timetable-generation-page">
+  <div class="ttgen-page-bar no-print" aria-label="Timetable generation overview">
+    <div class="ttgen-page-bar-primary">
+      <div class="ttgen-page-bar-stats" aria-label="Generation status">
+        <div class="ttgen-stat-chip">
+          <strong>{{ viable_count }}</strong>
+          <span>Viable level{{ viable_count|pluralize }}</span>
+        </div>
+        {% if generated_level_count %}
+        <div class="ttgen-stat-chip is-muted">
+          <strong>{{ generated_level_count }}</strong>
+          <span>Generated level{{ generated_level_count|pluralize }}</span>
+        </div>
+        {% endif %}
       </div>
+      <p class="ttgen-page-bar-copy">
+        Generate or reset timetables by academic level or for each class individually, using subject allocations and learning schedule settings.
+      </p>
     </div>
-    <div class="teacher-page-bar-actions">
-      <a class="ghost-button" href="{% url 'employees:it_support_timetable_page' 'manual-allocation' %}">
+    <div class="ttgen-page-bar-actions">
+      <a class="ghost-button ttgen-secondary-action" href="{% url 'employees:it_support_timetable_page' 'manual-allocation' %}">
         Manual allocation
       </a>
+      <button
+        type="button"
+        class="ghost-button is-danger"
+        data-open-modal="timetable-reset"
+        {% if not resettable_count %}disabled{% endif %}
+      >
+        Reset timetable
+      </button>
       <button type="button" class="primary-button" data-open-modal="timetable-generation">
         Generate timetable
       </button>
     </div>
   </div>
 
-  {% include "employees/includes/learning_generated_timetable.html" %}
+  {% include "employees/includes/learning_generated_timetable.html" with class_actions=True %}
 </div>
 
 <div
@@ -39,14 +58,21 @@
   {% if not open_generate_modal %}hidden{% endif %}
 >
   <div class="app-modal-backdrop" data-modal-close></div>
-  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="timetable-generation-title">
+  <div class="app-modal-dialog app-modal-dialog-wide app-modal-dialog-generation" role="dialog" aria-modal="true" aria-labelledby="timetable-generation-title">
     <div class="app-modal-header">
       <h2 id="timetable-generation-title">Generate timetable</h2>
       <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
     </div>
-    <form method="post" class="app-modal-form" novalidate>
+    <form method="post" class="app-modal-form ttgen-modal-form" novalidate>
       {% csrf_token %}
-      <p class="subtle">Select academic levels with a green background. Those levels have every active subject allocated to an active teacher in each class, and they use the matching learning timetable settings for days, periods, and breaks.</p>
+      <input type="hidden" name="action" value="generate">
+      <p class="subtle">
+        Select academic levels with a green background. Those levels have every active subject allocated to an active teacher in each class, and they use the matching learning timetable settings for days, periods, and breaks.
+      </p>
+      <ul class="ttgen-viability-legend" aria-label="Level status legend">
+        <li><span class="ttgen-legend-swatch is-viable" aria-hidden="true"></span> Ready to generate</li>
+        <li><span class="ttgen-legend-swatch is-blocked" aria-hidden="true"></span> Missing requirements</li>
+      </ul>
 
       {% if level_groups %}
       <div class="generation-level-list">
@@ -82,32 +108,97 @@
     </form>
   </div>
 </div>
+
+<div
+  class="app-modal{% if open_reset_modal %} is-open{% endif %}"
+  id="timetable-reset-modal"
+  data-modal="timetable-reset"
+  {% if not open_reset_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-dialog app-modal-dialog-wide app-modal-dialog-generation" role="dialog" aria-modal="true" aria-labelledby="timetable-reset-title">
+    <div class="app-modal-header">
+      <h2 id="timetable-reset-title">Reset timetable</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form method="post" class="app-modal-form ttgen-modal-form" novalidate onsubmit="return confirm('Remove generated lessons for the selected levels? This cannot be undone.');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reset">
+      <p class="subtle">
+        Select academic levels whose generated class timetables should be cleared. Manual allocation changes will also be removed.
+      </p>
+
+      {% if level_groups %}
+      <div class="generation-level-list">
+        {% for group in level_groups %}
+        <section class="generation-level-group" aria-label="{{ group.category }}">
+          <h3 class="settings-category-title is-uppercase">{{ group.category }}</h3>
+          {% for level in group.levels %}
+          <label class="generation-level {% if level.has_generated_timetable %}is-viable{% else %}is-blocked{% endif %}">
+            <input
+              type="checkbox"
+              name="level_id"
+              value="{{ level.id }}"
+              {% if not level.has_generated_timetable %}disabled{% endif %}
+            >
+            <span>
+              <strong class="is-uppercase">{{ level.name }}</strong>
+              <span class="subtle">{{ level.code }} · {{ level.generation_classes|length }} class{{ level.generation_classes|length|pluralize }}</span>
+              <span class="generation-level-reason">
+                {% if level.has_generated_timetable %}
+                Generated timetable on record
+                {% else %}
+                No generated timetable yet
+                {% endif %}
+              </span>
+            </span>
+          </label>
+          {% endfor %}
+        </section>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="settings-empty">No active academic levels are registered yet.</p>
+      {% endif %}
+
+      <div class="app-modal-actions">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button is-danger" {% if not resettable_count %}disabled{% endif %}>Reset</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block workspace_scripts %}
 <script>
 (function () {
-  const modal = document.querySelector('[data-modal="timetable-generation"]');
-  if (!modal) return;
-  const openers = document.querySelectorAll('[data-open-modal="timetable-generation"]');
-  const closers = modal.querySelectorAll("[data-modal-close]");
+  function wireModal(modalName) {
+    const modal = document.querySelector(`[data-modal="${modalName}"]`);
+    if (!modal) return;
+    const openers = document.querySelectorAll(`[data-open-modal="${modalName}"]`);
+    const closers = modal.querySelectorAll("[data-modal-close]");
 
-  function setOpen(open) {
-    modal.classList.toggle("is-open", open);
-    modal.hidden = !open;
-    document.body.classList.toggle("modal-open", open);
+    function setOpen(open) {
+      modal.classList.toggle("is-open", open);
+      modal.hidden = !open;
+      document.body.classList.toggle("modal-open", open);
+    }
+
+    openers.forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
+        setOpen(true);
+      });
+    });
+    closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) setOpen(false);
+    });
   }
 
-  openers.forEach((button) => {
-    button.addEventListener("click", () => {
-      document.querySelector("[data-workspace]")?.classList.remove("is-nav-open");
-      setOpen(true);
-    });
-  });
-  closers.forEach((element) => element.addEventListener("click", () => setOpen(false)));
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") setOpen(false);
-  });
+  wireModal("timetable-generation");
+  wireModal("timetable-reset");
 })();
 </script>
 {% endblock %}

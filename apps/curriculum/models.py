@@ -1062,6 +1062,8 @@ class GeneratedExamSitting(models.Model):
         "employees.Employee",
         on_delete=models.CASCADE,
         related_name="generated_exam_sittings",
+        null=True,
+        blank=True,
     )
     weekday = models.CharField(max_length=3)
     exam_date = models.DateField(null=True, blank=True)

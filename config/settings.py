@@ -160,6 +160,8 @@ if env("REDIS_URL", default=""):
             "KEY_PREFIX": "edu_admin",
         }
     }
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
 else:
     CACHES = {
         "default": {

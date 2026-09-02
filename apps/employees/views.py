@@ -1,8 +1,9 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from datetime import date, datetime
 from itertools import groupby
 import json
 import re
+from types import SimpleNamespace
 
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -11,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Prefetch, Q, Value
 from django.db.models.functions import Concat
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -20,6 +21,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.admissions.forms import StudentWorkspaceForm
+from apps.employees.exam_report_export import build_exam_report_excel
 from apps.admissions.models import Student
 from apps.curriculum.forms import (
     AcademicLevelForm,
@@ -100,6 +102,7 @@ from apps.curriculum.timetable_generator import (
     lesson_slots_from_profile,
 )
 
+from .db_bulk import bulk_upsert_by_keys
 from .forms import (
     EmployeeLoginForm,
     EmployeeProfileForm,
@@ -441,7 +444,7 @@ IT_SUPPORT_EXAM_PAGES = (
         "title": "Generate exam timetable",
         "icon": "EG",
         "summary": "Build exam timetables from the exam profile.",
-        "copy": "Generate exam timetables from supervisor allocations and the exam timetable profile for each academic level.",
+        "copy": "Generate exam timetables from the exam timetable profile for each academic level. Supervisors can be assigned before or after generation.",
     },
     {
         "slug": "exam-records",
@@ -738,7 +741,13 @@ def _teacher_session_timetable(employee):
     """Build a personal weekday × period grid from this teacher's generated lessons."""
     lessons = list(
         GeneratedLearningLesson.objects.filter(teacher=employee)
-        .select_related("academic_class", "academic_level", "learning_area", "teacher")
+        .select_related(
+            "academic_class",
+            "academic_class__academic_level",
+            "academic_level",
+            "learning_area",
+            "teacher",
+        )
         .order_by("weekday", "start_time", "academic_class__order", "academic_class__name")
     )
     if not lessons:
@@ -880,6 +889,79 @@ def group_employees_by_role(employees):
 
 
 CLASS_STREAM_RE = re.compile(r"^(\d+)\s*([A-Za-z]+)$")
+
+
+def _student_management_stats():
+    from django.db.models import Count
+
+    level_counts = {
+        row["academic_level"]: row["count"]
+        for row in Student.objects.values("academic_level").annotate(count=Count("id"))
+    }
+    return {
+        "student_count": sum(level_counts.values()),
+        "level_count": len(level_counts),
+        "class_count": Student.objects.values("academic_level", "class_group").distinct().count(),
+        "level_counts": level_counts,
+    }
+
+
+def _student_management_context(request):
+    level_labels = dict(Student.AcademicLevel.choices)
+    valid_levels = {value for value, _label in Student.AcademicLevel.choices}
+    stats = _student_management_stats()
+    level_counts = stats["level_counts"]
+
+    selected_level = (request.GET.get("level") or "").strip().upper()
+    if selected_level not in valid_levels or not level_counts.get(selected_level):
+        selected_level = next(
+            (value for value, _label in Student.AcademicLevel.choices if level_counts.get(value)),
+            "",
+        )
+
+    students_qs = Student.objects.select_related("parent_guardian").order_by(
+        "academic_level",
+        "class_group",
+        "last_name",
+        "first_name",
+    )
+    if selected_level:
+        students_qs = students_qs.filter(academic_level=selected_level)
+    students = list(students_qs)
+    student_groups = group_students_by_class(students)
+    level_filters = [
+        {
+            "value": value,
+            "label": label,
+            "count": level_counts.get(value, 0),
+            "is_active": value == selected_level,
+        }
+        for value, label in Student.AcademicLevel.choices
+        if level_counts.get(value)
+    ]
+    return {
+        "student_groups": student_groups,
+        "student_count": stats["student_count"],
+        "class_count": stats["class_count"],
+        "level_count": stats["level_count"],
+        "selected_student_level": selected_level,
+        "selected_student_level_label": level_labels.get(selected_level, ""),
+        "student_level_filters": level_filters,
+        "gender_choices": Student.Gender.choices,
+        "academic_level_choices": Student.AcademicLevel.choices,
+        "sponsorship_choices": Student.SponsorshipCategory.choices,
+    }
+
+
+def _cached_exam_report_builder_catalog():
+    from django.core.cache import cache
+
+    cache_key = "exam_report_builder_catalog"
+    catalog = cache.get(cache_key)
+    if catalog is None:
+        catalog = _exam_report_builder_catalog()
+        cache.set(cache_key, catalog, 300)
+    return catalog
 
 
 def group_students_by_class(students):
@@ -1637,15 +1719,25 @@ def teacher_elearning_attendance_profile(request, level_id, subject_id):
             )
             valid_statuses = {choice for choice, _label in ELearningAttendanceRecord.Status.choices}
             student_ids = {student.id for student in students}
-            for student in students:
-                status = (request.POST.get(f"status_{student.id}") or "").strip().upper()
-                if status not in valid_statuses:
-                    status = ELearningAttendanceRecord.Status.PRESENT
-                ELearningAttendanceRecord.objects.update_or_create(
-                    session=session,
-                    student=student,
-                    defaults={"status": status},
-                )
+            bulk_upsert_by_keys(
+                ELearningAttendanceRecord,
+                scope_filter={"session_id": session.id},
+                create_defaults={"session_id": session.id},
+                rows=[
+                    {
+                        "student_id": student.id,
+                        "status": (
+                            (request.POST.get(f"status_{student.id}") or "").strip().upper()
+                            if (request.POST.get(f"status_{student.id}") or "").strip().upper()
+                            in valid_statuses
+                            else ELearningAttendanceRecord.Status.PRESENT
+                        ),
+                    }
+                    for student in students
+                ],
+                key_fields=("student_id",),
+                update_fields=("status",),
+            )
             ELearningAttendanceRecord.objects.filter(session=session).exclude(
                 student_id__in=student_ids
             ).delete()
@@ -1754,13 +1846,22 @@ def _save_elearning_assessment_marks(assessment, students, subjects, out_of_by_s
             for student_id, subject_id in to_delete:
                 query |= Q(student_id=student_id, learning_area_id=subject_id)
             ELearningAssessmentMark.objects.filter(assessment=assessment).filter(query).delete()
-        for student_id, subject_id, marks, out_of in to_upsert:
-            ELearningAssessmentMark.objects.update_or_create(
-                assessment=assessment,
-                student_id=student_id,
-                learning_area_id=subject_id,
-                defaults={"marks": marks, "out_of_marks": out_of},
-            )
+        bulk_upsert_by_keys(
+            ELearningAssessmentMark,
+            scope_filter={"assessment_id": assessment.id},
+            create_defaults={"assessment_id": assessment.id},
+            rows=[
+                {
+                    "student_id": student_id,
+                    "learning_area_id": subject_id,
+                    "marks": marks,
+                    "out_of_marks": out_of,
+                }
+                for student_id, subject_id, marks, out_of in to_upsert
+            ],
+            key_fields=("student_id", "learning_area_id"),
+            update_fields=("marks", "out_of_marks"),
+        )
 
 
 def _grouped_elearning_assessments():
@@ -2100,16 +2201,22 @@ def teacher_register_class_attendance(request, employee, led_classes, page):
             },
         )
         student_ids = {student.id for student in students}
-        for student in students:
-            ClassAttendanceRecord.objects.update_or_create(
-                session=session,
-                student=student,
-                defaults={
+        bulk_upsert_by_keys(
+            ClassAttendanceRecord,
+            scope_filter={"session_id": session.id},
+            create_defaults={"session_id": session.id},
+            rows=[
+                {
+                    "student_id": student.id,
                     "morning": request.POST.get(f"morning_{student.id}") == "on",
                     "afternoon": request.POST.get(f"afternoon_{student.id}") == "on",
                     "evening": request.POST.get(f"evening_{student.id}") == "on",
-                },
-            )
+                }
+                for student in students
+            ],
+            key_fields=("student_id",),
+            update_fields=("morning", "afternoon", "evening"),
+        )
         ClassAttendanceRecord.objects.filter(session=session).exclude(student_id__in=student_ids).delete()
         success(
             request,
@@ -3531,15 +3638,25 @@ def teacher_subject_attendance_profile(request, class_id, subject_id):
             )
             valid_statuses = {choice for choice, _label in SubjectAttendanceRecord.Status.choices}
             student_ids = {student.id for student in students}
-            for student in students:
-                status = (request.POST.get(f"status_{student.id}") or "").strip().upper()
-                if status not in valid_statuses:
-                    status = SubjectAttendanceRecord.Status.PRESENT
-                SubjectAttendanceRecord.objects.update_or_create(
-                    session=session,
-                    student=student,
-                    defaults={"status": status},
-                )
+            bulk_upsert_by_keys(
+                SubjectAttendanceRecord,
+                scope_filter={"session_id": session.id},
+                create_defaults={"session_id": session.id},
+                rows=[
+                    {
+                        "student_id": student.id,
+                        "status": (
+                            (request.POST.get(f"status_{student.id}") or "").strip().upper()
+                            if (request.POST.get(f"status_{student.id}") or "").strip().upper()
+                            in valid_statuses
+                            else SubjectAttendanceRecord.Status.PRESENT
+                        ),
+                    }
+                    for student in students
+                ],
+                key_fields=("student_id",),
+                update_fields=("status",),
+            )
             SubjectAttendanceRecord.objects.filter(session=session).exclude(
                 student_id__in=student_ids
             ).delete()
@@ -3698,19 +3815,10 @@ def it_support_module(request, module):
         template = "employees/it_support_reports.html"
     else:
         template = "employees/it_support_module.html"
-    students = (
-        Student.objects.select_related("parent_guardian").order_by(
-            "academic_level",
-            "class_group",
-            "last_name",
-            "first_name",
-        )
-        if current["slug"] == "student-management"
-        else Student.objects.none()
-    )
-    student_groups = (
-        group_students_by_class(students) if current["slug"] == "student-management" else []
-    )
+    students = []
+    student_context = {}
+    if current["slug"] == "student-management":
+        student_context = _student_management_context(request)
     return render(
         request,
         template,
@@ -3720,13 +3828,7 @@ def it_support_module(request, module):
             "module": current,
             "curriculum_sections": IT_SUPPORT_CURRICULUM_SECTIONS,
             "report_sections": IT_SUPPORT_REPORT_SECTIONS,
-            "student_groups": student_groups,
-            "student_count": students.count() if current["slug"] == "student-management" else 0,
-            "class_count": sum(len(group["streams"]) for group in student_groups),
-            "level_count": len(student_groups),
-            "gender_choices": Student.Gender.choices,
-            "academic_level_choices": Student.AcademicLevel.choices,
-            "sponsorship_choices": Student.SponsorshipCategory.choices,
+            **student_context,
         },
     )
 
@@ -3952,9 +4054,9 @@ def _exam_report_selection(request):
     )
     if level is None:
         return selection, {"error": "The selected academic level could not be found."}
-    leveled_exams = [item for item in exams if item.academic_levels.exists()]
+    leveled_exams = [item for item in exams if _exam_has_academic_levels(item)]
     if leveled_exams and not any(
-        item.academic_levels.filter(pk=level.id).exists() for item in leveled_exams
+        _exam_includes_academic_level(item, level.id) for item in leveled_exams
     ):
         return selection, {"error": "The selected academic level is not part of the chosen exam(s)."}
 
@@ -4024,8 +4126,8 @@ def _exam_report_selection(request):
     usable_exams = []
     for exam_item in exams:
         if (
-            exam_item.academic_levels.exists()
-            and not exam_item.academic_levels.filter(pk=level.id).exists()
+            _exam_has_academic_levels(exam_item)
+            and not _exam_includes_academic_level(exam_item, level.id)
         ):
             continue
         usable_exams.append(exam_item)
@@ -4068,8 +4170,8 @@ def _exam_report_selection(request):
             item
             for item in trend_exams
             if (
-                not item.academic_levels.exists()
-                or item.academic_levels.filter(pk=level.id).exists()
+                not _exam_has_academic_levels(item)
+                or _exam_includes_academic_level(item, level.id)
             )
         ]
         report_cards = _build_individual_multi_exam_report_cards(
@@ -4235,9 +4337,10 @@ def _build_individual_trend_chart(exam_columns, exam_means, subject_rows=None):
 def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
     """Return academic-level mark sheets: students as rows, subjects as columns."""
     sheets = []
+    marks_by_exam = _exam_record_marks_lookup_multi(exams, students, subjects)
     for exam_item in exams:
         out_of_by_subject = _exam_record_out_of(level, subjects)
-        mark_lookup = _exam_record_mark_lookup(exam_item, students, subjects)
+        mark_lookup = marks_by_exam.get(exam_item.id, {})
         rows = []
         for student in students:
             cells = []
@@ -4300,8 +4403,11 @@ def _build_individual_multi_exam_report_cards(
     students, exams, subjects, level, selected_class, grade_bands, trend_exams=None
 ):
     exam_columns = []
-    marks_by_exam = []
     out_of_by_exam = []
+    trend_source = list(trend_exams or exams)
+    all_exams = list(dict.fromkeys([*exams, *trend_source]))
+    marks_lookup_multi = _exam_record_marks_lookup_multi(all_exams, students, subjects)
+    marks_by_exam = [marks_lookup_multi.get(exam_item.id, {}) for exam_item in exams]
     for index, exam_item in enumerate(exams, start=1):
         term_label = (exam_item.academic_term.name if exam_item.academic_term_id else "").strip()
         title = _exam_record_title(exam_item)
@@ -4315,9 +4421,7 @@ def _build_individual_multi_exam_report_cards(
         )
         out_of_by_subject = _exam_record_out_of(level, subjects)
         out_of_by_exam.append(out_of_by_subject)
-        marks_by_exam.append(_exam_record_mark_lookup(exam_item, students, subjects))
 
-    trend_source = list(trend_exams or exams)
     trend_columns = []
     trend_marks = []
     trend_out_of = []
@@ -4332,7 +4436,7 @@ def _build_individual_multi_exam_report_cards(
             }
         )
         trend_out_of.append(_exam_record_out_of(level, subjects))
-        trend_marks.append(_exam_record_mark_lookup(exam_item, students, subjects))
+        trend_marks.append(marks_lookup_multi.get(exam_item.id, {}))
 
     cards = []
     for student in students:
@@ -4489,7 +4593,7 @@ def it_support_exam_reports(request, page):
     denied = _require_it_support(request)
     if denied:
         return denied
-    catalog = _exam_report_builder_catalog()
+    catalog = _cached_exam_report_builder_catalog()
     selection, report = _exam_report_selection(request)
     return render(
         request,
@@ -4508,6 +4612,37 @@ def it_support_exam_reports(request, page):
             "report_error": (report or {}).get("error") if report else "",
         },
     )
+
+
+@login_required
+def it_support_exam_report_export(request):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    if (request.GET.get("generate") or "").strip() != "1":
+        return redirect(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            )
+        )
+    selection, report = _exam_report_selection(request)
+    if not report or report.get("error"):
+        query = request.GET.copy()
+        query["generate"] = "1"
+        return redirect(
+            f"{reverse('employees:it_support_curriculum_report_page', kwargs={'page': 'exam-reports'})}?{query.urlencode()}"
+        )
+    export_mode = (request.GET.get("export_mode") or "raw").strip()
+    if export_mode not in {"raw", "graded"}:
+        export_mode = "raw"
+    workbook_bytes, filename = build_exam_report_excel(report, mode=export_mode)
+    response = HttpResponse(
+        workbook_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
@@ -5523,7 +5658,113 @@ def _generate_lessons_for_level(generation, level, allocations, teacher_ids):
     return created
 
 
-def _generated_class_timetables(levels):
+def _generate_lessons_for_classes(generation, levels, class_ids, allocations, teacher_ids):
+    selected_ids = set(class_ids)
+    class_plans = build_class_plans(levels, allocations, teacher_ids)
+    class_plans = [plan for plan in class_plans if plan["academic_class"].id in selected_ids]
+    placements, total_slots = generate_timetable_plan(class_plans)
+    created = persist_timetable_plan(generation, placements)
+    return created, total_slots
+
+
+def _learning_class_generation_viability(level, academic_class, allocations, teacher_ids):
+    subjects = list(getattr(level, "generation_subjects", []))
+    missing = sum(
+        1
+        for subject in subjects
+        if allocations.get((academic_class.id, subject.id)) not in teacher_ids
+    )
+    profile = getattr(level, "schedule_profile", None)
+    slots = list(getattr(level, "schedule_slots", []) or [])
+    if not subjects:
+        return False, "No active subjects linked to this level."
+    if missing:
+        return False, f"{missing} subject{'' if missing == 1 else 's'} still need an active teacher."
+    if not profile:
+        return False, "Add this level to a learning timetable settings profile."
+    if not slots:
+        return False, "Complete learning timetable settings so lesson periods can be generated."
+    return True, "Ready to generate."
+
+
+def _learning_class_timetable_grid(level, academic_class, class_lessons, colliding_ids):
+    slots = list(getattr(level, "schedule_slots", []) or [])
+    if slots:
+        days = []
+        seen_days = set()
+        periods = []
+        seen_periods = set()
+        for slot in slots:
+            if slot["weekday"] not in seen_days:
+                seen_days.add(slot["weekday"])
+                days.append(slot["weekday"])
+            period_key = (slot["start"], slot["end"], slot["period_name"])
+            if period_key not in seen_periods:
+                seen_periods.add(period_key)
+                periods.append(
+                    {
+                        "name": slot["period_name"],
+                        "start": slot["start"],
+                        "end": slot["end"],
+                        "start_label": f"{slot['start'] // 60:02d}:{slot['start'] % 60:02d}",
+                        "end_label": f"{slot['end'] // 60:02d}:{slot['end'] % 60:02d}",
+                    }
+                )
+    elif class_lessons:
+        days = [day for day in DAY_ORDER if any(item.weekday == day for item in class_lessons)]
+        periods = []
+        seen_periods = set()
+        for lesson in sorted(class_lessons, key=lambda item: item.start_time):
+            start = to_minutes(lesson.start_time)
+            end = to_minutes(lesson.end_time)
+            period_key = (start, end, lesson.period_name)
+            if period_key in seen_periods:
+                continue
+            seen_periods.add(period_key)
+            periods.append(
+                {
+                    "name": lesson.period_name,
+                    "start": start,
+                    "end": end,
+                    "start_label": lesson.start_time.strftime("%H:%M"),
+                    "end_label": lesson.end_time.strftime("%H:%M"),
+                }
+            )
+    else:
+        return {"periods": [], "rows": [], "lesson_count": 0}
+
+    lookup = {(lesson.weekday, to_minutes(lesson.start_time)): lesson for lesson in class_lessons}
+    rows = []
+    for day in days:
+        cells = []
+        for period in periods:
+            lesson = lookup.get((day, period["start"]))
+            cells.append(
+                _learning_timetable_cell(
+                    lesson,
+                    colliding_ids,
+                    academic_class=academic_class,
+                    day=day,
+                    period=period,
+                )
+            )
+        rows.append(
+            {
+                "day_code": day,
+                "day_label": WEEKDAY_LABELS.get(day, day),
+                "cells": cells,
+            }
+        )
+    return {"periods": periods, "rows": rows, "lesson_count": len(class_lessons)}
+
+
+def _generated_class_timetables(
+    levels,
+    *,
+    include_all_classes=False,
+    allocations=None,
+    teacher_ids=None,
+):
     class_ids = [
         academic_class.id
         for level in levels
@@ -5544,86 +5785,48 @@ def _generated_class_timetables(levels):
         class_grids = []
         for academic_class in getattr(level, "generation_classes", []):
             class_lessons = by_class.get(academic_class.id, [])
-            if not class_lessons:
+            if not class_lessons and not include_all_classes:
                 continue
-            slots = list(getattr(level, "schedule_slots", []) or [])
-            if slots:
-                days = []
-                seen_days = set()
-                periods = []
-                seen_periods = set()
-                for slot in slots:
-                    if slot["weekday"] not in seen_days:
-                        seen_days.add(slot["weekday"])
-                        days.append(slot["weekday"])
-                    period_key = (slot["start"], slot["end"], slot["period_name"])
-                    if period_key not in seen_periods:
-                        seen_periods.add(period_key)
-                        periods.append(
-                            {
-                                "name": slot["period_name"],
-                                "start": slot["start"],
-                                "end": slot["end"],
-                                "start_label": f"{slot['start'] // 60:02d}:{slot['start'] % 60:02d}",
-                                "end_label": f"{slot['end'] // 60:02d}:{slot['end'] % 60:02d}",
-                            }
-                        )
-            else:
-                days = [day for day in DAY_ORDER if any(item.weekday == day for item in class_lessons)]
-                periods = []
-                seen_periods = set()
-                for lesson in sorted(class_lessons, key=lambda item: item.start_time):
-                    start = to_minutes(lesson.start_time)
-                    end = to_minutes(lesson.end_time)
-                    period_key = (start, end, lesson.period_name)
-                    if period_key in seen_periods:
-                        continue
-                    seen_periods.add(period_key)
-                    periods.append(
-                        {
-                            "name": lesson.period_name,
-                            "start": start,
-                            "end": end,
-                            "start_label": lesson.start_time.strftime("%H:%M"),
-                            "end_label": lesson.end_time.strftime("%H:%M"),
-                        }
-                    )
-            lookup = {
-                (lesson.weekday, to_minutes(lesson.start_time)): lesson
-                for lesson in class_lessons
+            grid = _learning_class_timetable_grid(level, academic_class, class_lessons, colliding_ids)
+            class_entry = {
+                "academic_class": academic_class,
+                "lesson_count": grid["lesson_count"],
+                "periods": grid["periods"],
+                "rows": grid["rows"],
+                "has_generated_timetable": bool(class_lessons),
             }
-            rows = []
-            for day in days:
-                cells = []
-                for period in periods:
-                    lesson = lookup.get((day, period["start"]))
-                    cells.append(_learning_timetable_cell(lesson, colliding_ids))
-                rows.append(
-                    {
-                        "day_code": day,
-                        "day_label": WEEKDAY_LABELS.get(day, day),
-                        "cells": cells,
-                    }
+            if include_all_classes and allocations is not None and teacher_ids is not None:
+                is_viable, viability_reason = _learning_class_generation_viability(
+                    level, academic_class, allocations, teacher_ids
                 )
-            class_grids.append(
-                {
-                    "academic_class": academic_class,
-                    "lesson_count": len(class_lessons),
-                    "periods": periods,
-                    "rows": rows,
-                }
-            )
+                class_entry["is_viable"] = is_viable
+                class_entry["viability_reason"] = viability_reason
+            class_grids.append(class_entry)
         if class_grids:
             groups.append({"level": level, "classes": class_grids})
     return groups
 
 
-def _learning_timetable_cell(lesson, colliding_ids):
-    return {
+def _learning_slot_key(class_id, weekday, start_minutes):
+    return f"{class_id}:{weekday}:{start_minutes}"
+
+
+def _learning_timetable_cell(lesson, colliding_ids, *, academic_class=None, day=None, period=None):
+    cell = {
         "lesson": lesson,
         "is_blank": lesson is None,
         "is_collision": bool(lesson and lesson.id in colliding_ids),
     }
+    if lesson is None and academic_class is not None and day is not None and period is not None:
+        cell["slot_key"] = _learning_slot_key(academic_class.id, day, period["start"])
+        cell["slot"] = {
+            "class_id": academic_class.id,
+            "weekday": day,
+            "period_name": period["name"],
+            "start": period["start"],
+            "end": period["end"],
+        }
+    return cell
 
 
 def _learning_lesson_times_overlap(left, right):
@@ -5649,13 +5852,9 @@ def _colliding_learning_lesson_ids(lessons):
     return colliding
 
 
-def _allocated_pairs_by_level(levels):
-    class_to_level = {}
-    for level in levels:
-        for academic_class in getattr(level, "generation_classes", []):
-            class_to_level[academic_class.id] = level.id
-    pairs_by_level = {level.id: [] for level in levels}
-    seen = {level.id: set() for level in levels}
+def _allocated_pairs_by_class(class_to_level):
+    pairs_by_class = {}
+    seen = {}
     allocations = (
         ClassSubjectAllocation.objects.filter(
             academic_class_id__in=class_to_level,
@@ -5670,52 +5869,184 @@ def _allocated_pairs_by_level(levels):
         )
     )
     for allocation in allocations:
-        level_id = class_to_level.get(allocation.academic_class_id)
-        if level_id is None:
+        class_id = allocation.academic_class_id
+        if class_id not in class_to_level:
             continue
         key = (allocation.learning_area_id, allocation.teacher_id)
-        if key in seen[level_id]:
+        if class_id not in pairs_by_class:
+            pairs_by_class[class_id] = []
+            seen[class_id] = set()
+        if key in seen[class_id]:
             continue
-        seen[level_id].add(key)
-        pairs_by_level[level_id].append((allocation.learning_area, allocation.teacher))
-    return class_to_level, pairs_by_level
+        seen[class_id].add(key)
+        pairs_by_class[class_id].append((allocation.learning_area, allocation.teacher))
+    return pairs_by_class
 
 
-def _learning_allocation_options_by_lesson(lessons, class_to_level, pairs_by_level):
+def _learning_busy_teachers_for_session(session, lessons):
+    busy = {}
+    for other in lessons:
+        if other.teacher_id is None:
+            continue
+        if getattr(session, "id", None) and other.id == session.id:
+            continue
+        if not _learning_lesson_times_overlap(session, other):
+            continue
+        busy[other.teacher_id] = other.academic_class.name
+    return busy
+
+
+def _learning_allocation_pair_options(pairs, busy, selected_subject_id=None, selected_teacher_id=None):
+    options = []
+    for subject, teacher in pairs:
+        busy_class = busy.get(teacher.id)
+        options.append(
+            {
+                "subject_id": subject.id,
+                "teacher_id": teacher.id,
+                "subject_code": subject.code,
+                "subject_name": subject.name,
+                "teacher_name": f"{teacher.first_name} {teacher.last_name}".strip(),
+                "available": busy_class is None,
+                "busy_class": busy_class or "",
+                "selected": (
+                    subject.id == selected_subject_id and teacher.id == selected_teacher_id
+                ),
+            }
+        )
+    return options
+
+
+def _learning_allocation_options_by_lesson(lessons, pairs_by_class):
     choices = {}
     for lesson in lessons:
-        busy = {}
-        for other in lessons:
-            if other.id == lesson.id or other.teacher_id is None:
-                continue
-            if not _learning_lesson_times_overlap(lesson, other):
-                continue
-            busy[other.teacher_id] = other.academic_class.name
-        level_id = class_to_level.get(lesson.academic_class_id)
-        pairs = list(pairs_by_level.get(level_id, []))
+        busy = _learning_busy_teachers_for_session(lesson, lessons)
+        pairs = list(pairs_by_class.get(lesson.academic_class_id, []))
         pair_keys = {(subject.id, teacher.id) for subject, teacher in pairs}
         current_key = (lesson.learning_area_id, lesson.teacher_id)
         if current_key not in pair_keys and lesson.learning_area_id and lesson.teacher_id:
             pairs.append((lesson.learning_area, lesson.teacher))
-        options = []
-        for subject, teacher in pairs:
-            busy_class = busy.get(teacher.id)
-            options.append(
-                {
-                    "subject_id": subject.id,
-                    "teacher_id": teacher.id,
-                    "subject_code": subject.code,
-                    "subject_name": subject.name,
-                    "teacher_name": f"{teacher.first_name} {teacher.last_name}".strip(),
-                    "available": busy_class is None,
-                    "busy_class": busy_class or "",
-                    "selected": (
-                        subject.id == lesson.learning_area_id and teacher.id == lesson.teacher_id
-                    ),
-                }
-            )
-        choices[str(lesson.id)] = options
+        choices[str(lesson.id)] = _learning_allocation_pair_options(
+            pairs,
+            busy,
+            selected_subject_id=lesson.learning_area_id,
+            selected_teacher_id=lesson.teacher_id,
+        )
     return choices
+
+
+def _learning_allocation_options_by_slot(timetable_groups, lessons, pairs_by_class):
+    choices = {}
+    for group in timetable_groups:
+        for grid in group["classes"]:
+            academic_class = grid["academic_class"]
+            pairs = pairs_by_class.get(academic_class.id, [])
+            if not pairs:
+                continue
+            for row in grid["rows"]:
+                for cell in row["cells"]:
+                    slot_key = cell.get("slot_key")
+                    slot = cell.get("slot")
+                    if not slot_key or not slot:
+                        continue
+                    session = SimpleNamespace(
+                        id=None,
+                        weekday=slot["weekday"],
+                        start_time=minutes_to_time(slot["start"]),
+                        end_time=minutes_to_time(slot["end"]),
+                        academic_class_id=slot["class_id"],
+                    )
+                    busy = _learning_busy_teachers_for_session(session, lessons)
+                    choices[slot_key] = _learning_allocation_pair_options(pairs, busy)
+    return choices
+
+
+def _learning_generation_for_class(class_id, level_id):
+    existing = (
+        GeneratedLearningLesson.objects.filter(academic_class_id=class_id)
+        .select_related("generation")
+        .order_by("-id")
+        .first()
+    )
+    if existing:
+        return existing.generation
+    return (
+        GeneratedLearningTimetable.objects.filter(academic_levels__id=level_id)
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _learning_level_ids_with_generated_timetables(levels):
+    class_ids = [
+        academic_class.id
+        for level in levels
+        for academic_class in getattr(level, "generation_classes", [])
+    ]
+    if not class_ids:
+        return set()
+    return set(
+        GeneratedLearningLesson.objects.filter(academic_class_id__in=class_ids)
+        .values_list("academic_level_id", flat=True)
+        .distinct()
+    )
+
+
+def _learning_class_ids_with_generated_timetables(levels):
+    class_ids = [
+        academic_class.id
+        for level in levels
+        for academic_class in getattr(level, "generation_classes", [])
+    ]
+    if not class_ids:
+        return set()
+    return set(
+        GeneratedLearningLesson.objects.filter(academic_class_id__in=class_ids)
+        .values_list("academic_class_id", flat=True)
+        .distinct()
+    )
+
+
+def _reset_learning_timetables_for_levels(levels, selected_ids):
+    selected_levels = [level for level in levels if level.id in selected_ids]
+    class_ids = [
+        academic_class.id
+        for level in selected_levels
+        for academic_class in level.generation_classes
+    ]
+    deleted_count, _selected_classes = _reset_learning_timetables_for_classes(levels, class_ids)
+    return deleted_count, selected_levels
+
+
+def _reset_learning_timetables_for_classes(levels, class_ids):
+    class_id_set = set(class_ids)
+    affected_level_ids = set()
+    selected_classes = []
+    for level in levels:
+        for academic_class in getattr(level, "generation_classes", []):
+            if academic_class.id in class_id_set:
+                affected_level_ids.add(level.id)
+                selected_classes.append(academic_class)
+    with transaction.atomic():
+        deleted_count, _details = GeneratedLearningLesson.objects.filter(
+            academic_class_id__in=class_ids
+        ).delete()
+        for level_id in affected_level_ids:
+            if not GeneratedLearningLesson.objects.filter(academic_level_id=level_id).exists():
+                for generation in GeneratedLearningTimetable.objects.filter(academic_levels__id=level_id):
+                    generation.academic_levels.remove(level_id)
+        GeneratedLearningTimetable.objects.annotate(lesson_count=Count("lessons")).filter(
+            lesson_count=0
+        ).delete()
+    return deleted_count, selected_classes
+
+
+def _learning_class_for_id(levels, class_id):
+    for level in levels:
+        for academic_class in getattr(level, "generation_classes", []):
+            if academic_class.id == class_id:
+                return level, academic_class
+    return None, None
 
 
 @login_required
@@ -5727,46 +6058,142 @@ def timetable_generation(request, page=None):
     current = page or _it_support_timetable_page("timetable-generation")
     levels, allocations, teacher_ids = _timetable_generation_levels()
     viable_ids = {level.id for level in levels if level.is_viable}
+    resettable_ids = _learning_level_ids_with_generated_timetables(levels)
+    for level in levels:
+        level.has_generated_timetable = level.id in resettable_ids
     open_generate_modal = False
+    open_reset_modal = False
     if request.method == "GET" and request.GET.get("generate"):
         open_generate_modal = True
+    if request.method == "GET" and request.GET.get("reset"):
+        open_reset_modal = True
 
     if request.method == "POST":
-        selected_ids = []
-        for raw_id in request.POST.getlist("level_id"):
+        action = (request.POST.get("action") or "generate").strip().lower()
+        if action in {"generate_class", "reset_class"}:
             try:
-                selected_ids.append(int(raw_id))
+                class_id = int((request.POST.get("class_id") or "").strip())
             except (TypeError, ValueError):
-                continue
-        selected_ids = [level_id for level_id in selected_ids if level_id in viable_ids]
-        if not selected_ids:
-            error(request, "Select at least one viable academic level to generate a timetable.")
-            open_generate_modal = True
-        else:
-            selected_levels = [level for level in levels if level.id in selected_ids]
-            class_ids = [
-                academic_class.id
-                for level in selected_levels
-                for academic_class in level.generation_classes
-            ]
-            with transaction.atomic():
-                GeneratedLearningLesson.objects.filter(academic_class_id__in=class_ids).delete()
-                generation = GeneratedLearningTimetable.objects.create(created_by=request.user)
-                generation.academic_levels.set(selected_levels)
-                lesson_count, total_slots = _generate_lessons_for_levels(
-                    generation, selected_levels, allocations, teacher_ids
-                )
-            names = ", ".join(level.name for level in selected_levels)
-            blank_count = max(total_slots - lesson_count, 0)
-            if blank_count:
-                detail = (
-                    f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} placed, "
-                    f"{blank_count} left blank to avoid teacher collisions."
-                )
+                class_id = None
+            level, academic_class = _learning_class_for_id(levels, class_id)
+            if academic_class is None:
+                error(request, "Select a valid class to continue.")
+            elif action == "reset_class":
+                if class_id not in _learning_class_ids_with_generated_timetables(levels):
+                    error(request, f"{academic_class.name} does not have a generated timetable to reset.")
+                else:
+                    deleted_count, selected_classes = _reset_learning_timetables_for_classes(
+                        levels, [class_id]
+                    )
+                    lesson_count = max(deleted_count, 0)
+                    detail = (
+                        f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} removed."
+                        if lesson_count
+                        else "No lessons were stored for this class."
+                    )
+                    success(request, f"Timetable reset for {academic_class.name}. {detail}")
+                    return redirect("employees:it_support_timetable_page", tool="timetable-generation")
             else:
-                detail = f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} created with no teacher collisions."
-            success(request, f"Timetable generated for {names}. {detail}")
-            return redirect("employees:it_support_timetable_page", tool="timetable-generation")
+                is_viable, viability_reason = _learning_class_generation_viability(
+                    level, academic_class, allocations, teacher_ids
+                )
+                if not is_viable:
+                    error(request, f"{academic_class.name} cannot be generated yet. {viability_reason}")
+                else:
+                    with transaction.atomic():
+                        GeneratedLearningLesson.objects.filter(academic_class_id=class_id).delete()
+                        generation = _learning_generation_for_class(class_id, level.id)
+                        if not generation:
+                            generation = GeneratedLearningTimetable.objects.create(
+                                created_by=request.user
+                            )
+                            generation.academic_levels.add(level)
+                        lesson_count, total_slots = _generate_lessons_for_classes(
+                            generation, levels, [class_id], allocations, teacher_ids
+                        )
+                    blank_count = max(total_slots - lesson_count, 0)
+                    if blank_count:
+                        detail = (
+                            f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} placed, "
+                            f"{blank_count} left blank to avoid teacher collisions."
+                        )
+                    else:
+                        detail = (
+                            f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} created "
+                            "with no teacher collisions."
+                        )
+                    success(request, f"Timetable generated for {academic_class.name}. {detail}")
+                    return redirect("employees:it_support_timetable_page", tool="timetable-generation")
+        else:
+            selected_ids = []
+            for raw_id in request.POST.getlist("level_id"):
+                try:
+                    selected_ids.append(int(raw_id))
+                except (TypeError, ValueError):
+                    continue
+            if action == "reset":
+                selected_ids = [level_id for level_id in selected_ids if level_id in resettable_ids]
+                if not selected_ids:
+                    error(
+                        request,
+                        "Select at least one academic level with a generated timetable to reset.",
+                    )
+                    open_reset_modal = True
+                else:
+                    deleted_count, selected_levels = _reset_learning_timetables_for_levels(
+                        levels, selected_ids
+                    )
+                    names = ", ".join(level.name for level in selected_levels)
+                    lesson_count = max(deleted_count, 0)
+                    detail = (
+                        f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} removed."
+                        if lesson_count
+                        else "No lessons were stored for the selected levels."
+                    )
+                    success(request, f"Timetable reset for {names}. {detail}")
+                    return redirect("employees:it_support_timetable_page", tool="timetable-generation")
+            else:
+                selected_ids = [level_id for level_id in selected_ids if level_id in viable_ids]
+                if not selected_ids:
+                    error(request, "Select at least one viable academic level to generate a timetable.")
+                    open_generate_modal = True
+                else:
+                    selected_levels = [level for level in levels if level.id in selected_ids]
+                    class_ids = [
+                        academic_class.id
+                        for level in selected_levels
+                        for academic_class in level.generation_classes
+                    ]
+                    with transaction.atomic():
+                        GeneratedLearningLesson.objects.filter(academic_class_id__in=class_ids).delete()
+                        generation = GeneratedLearningTimetable.objects.create(created_by=request.user)
+                        generation.academic_levels.set(selected_levels)
+                        lesson_count, total_slots = _generate_lessons_for_levels(
+                            generation, selected_levels, allocations, teacher_ids
+                        )
+                    names = ", ".join(level.name for level in selected_levels)
+                    blank_count = max(total_slots - lesson_count, 0)
+                    if blank_count:
+                        detail = (
+                            f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} placed, "
+                            f"{blank_count} left blank to avoid teacher collisions."
+                        )
+                    else:
+                        detail = f"{lesson_count} lesson{'' if lesson_count == 1 else 's'} created with no teacher collisions."
+                    success(request, f"Timetable generated for {names}. {detail}")
+                    return redirect("employees:it_support_timetable_page", tool="timetable-generation")
+
+    timetable_groups = _generated_class_timetables(
+        levels,
+        include_all_classes=True,
+        allocations=allocations,
+        teacher_ids=teacher_ids,
+    )
+    generated_level_count = sum(
+        1
+        for group in timetable_groups
+        if any(class_grid["has_generated_timetable"] for class_grid in group["classes"])
+    )
 
     return render(
         request,
@@ -5777,10 +6204,21 @@ def timetable_generation(request, page=None):
             "active_timetable_tool": "timetable-generation",
             "level_groups": group_academic_levels_by_category(levels),
             "viable_count": len(viable_ids),
+            "resettable_count": len(resettable_ids),
+            "generated_level_count": generated_level_count,
             "open_generate_modal": open_generate_modal,
-            "timetable_groups": _generated_class_timetables(levels),
+            "open_reset_modal": open_reset_modal,
+            "timetable_groups": timetable_groups,
         },
     )
+
+
+def _class_to_level_map(levels):
+    class_to_level = {}
+    for level in levels:
+        for academic_class in getattr(level, "generation_classes", []):
+            class_to_level[academic_class.id] = level.id
+    return class_to_level
 
 
 @login_required
@@ -5790,20 +6228,41 @@ def learning_manual_teacher_allocation(request):
     if denied:
         return denied
     levels, _allocations, _teacher_ids = _timetable_generation_levels()
-    class_to_level, pairs_by_level = _allocated_pairs_by_level(levels)
+    class_to_level = _class_to_level_map(levels)
+    pairs_by_class = _allocated_pairs_by_class(class_to_level)
     class_ids = list(class_to_level)
     lessons = list(
         GeneratedLearningLesson.objects.filter(academic_class_id__in=class_ids)
         .select_related("academic_class", "learning_area", "teacher")
         .order_by("weekday", "start_time", "academic_class__order")
     )
+    timetable_groups = _generated_class_timetables(levels)
+    slot_meta = {}
+    for group in timetable_groups:
+        for grid in group["classes"]:
+            academic_class = grid["academic_class"]
+            for row in grid["rows"]:
+                for cell in row["cells"]:
+                    slot_key = cell.get("slot_key")
+                    slot = cell.get("slot")
+                    if not slot_key or not slot:
+                        continue
+                    slot_meta[slot_key] = {
+                        "class_id": slot["class_id"],
+                        "class_name": academic_class.name,
+                        "day_label": row["day_label"],
+                        "session": slot["period_name"],
+                        "time": (
+                            f"{slot['start'] // 60:02d}:{slot['start'] % 60:02d}"
+                            f"–{slot['end'] // 60:02d}:{slot['end'] % 60:02d}"
+                        ),
+                        "weekday": slot["weekday"],
+                        "period_name": slot["period_name"],
+                        "start": slot["start"],
+                        "end": slot["end"],
+                    }
 
     if request.method == "POST":
-        lesson = get_object_or_404(
-            GeneratedLearningLesson,
-            pk=request.POST.get("lesson_id"),
-            academic_class_id__in=class_ids,
-        )
         try:
             subject_id = int((request.POST.get("subject_id") or "").strip())
         except (TypeError, ValueError):
@@ -5820,13 +6279,80 @@ def learning_manual_teacher_allocation(request):
                 teacher_id = int(raw_teacher)
             except (TypeError, ValueError):
                 subject_id = teacher_id = None
-        level_id = class_to_level.get(lesson.academic_class_id)
+
+        slot_key = (request.POST.get("slot_key") or "").strip()
+        if slot_key:
+            slot = slot_meta.get(slot_key)
+            if not slot:
+                error(request, "Select a valid free session to allocate.")
+                return redirect("employees:it_support_timetable_page", tool="manual-allocation")
+            class_id = slot["class_id"]
+            allowed_pairs = {
+                (subject.id, teacher.id) for subject, teacher in pairs_by_class.get(class_id, [])
+            }
+            if (subject_id, teacher_id) not in allowed_pairs:
+                error(request, "Select a subject and teacher allocated to this class.")
+                return redirect("employees:it_support_timetable_page", tool="manual-allocation")
+            if GeneratedLearningLesson.objects.filter(
+                academic_class_id=class_id,
+                weekday=slot["weekday"],
+                start_time=minutes_to_time(slot["start"]),
+            ).exists():
+                error(request, "This session is no longer free.")
+                return redirect("employees:it_support_timetable_page", tool="manual-allocation")
+            session = SimpleNamespace(
+                id=None,
+                weekday=slot["weekday"],
+                start_time=minutes_to_time(slot["start"]),
+                end_time=minutes_to_time(slot["end"]),
+                academic_class_id=class_id,
+            )
+            others = GeneratedLearningLesson.objects.filter(
+                teacher_id=teacher_id,
+                weekday=slot["weekday"],
+            ).select_related("academic_class", "teacher")
+            conflict = next(
+                (other for other in others if _learning_lesson_times_overlap(session, other)),
+                None,
+            )
+            if conflict:
+                error(
+                    request,
+                    f"{conflict.teacher.first_name} {conflict.teacher.last_name} is already teaching "
+                    f"{conflict.academic_class.name} in this session.",
+                )
+                return redirect("employees:it_support_timetable_page", tool="manual-allocation")
+            level_id = class_to_level.get(class_id)
+            generation = _learning_generation_for_class(class_id, level_id)
+            if not generation or level_id is None:
+                error(request, "Generate a timetable for this class before allocating free sessions.")
+                return redirect("employees:it_support_timetable_page", tool="manual-allocation")
+            academic_class = get_object_or_404(AcademicClass, pk=class_id, status=AcademicClass.Status.ACTIVE)
+            GeneratedLearningLesson.objects.create(
+                generation=generation,
+                academic_level_id=level_id,
+                academic_class=academic_class,
+                learning_area_id=subject_id,
+                teacher_id=teacher_id,
+                weekday=slot["weekday"],
+                period_name=slot["period_name"],
+                start_time=minutes_to_time(slot["start"]),
+                end_time=minutes_to_time(slot["end"]),
+            )
+            success(request, f"Session allocated for {academic_class.name} only.")
+            return redirect("employees:it_support_timetable_page", tool="manual-allocation")
+
+        lesson = get_object_or_404(
+            GeneratedLearningLesson,
+            pk=request.POST.get("lesson_id"),
+            academic_class_id__in=class_ids,
+        )
         allowed_pairs = {
-            (subject.id, teacher.id) for subject, teacher in pairs_by_level.get(level_id, [])
+            (subject.id, teacher.id) for subject, teacher in pairs_by_class.get(lesson.academic_class_id, [])
         }
         allowed_pairs.add((lesson.learning_area_id, lesson.teacher_id))
         if (subject_id, teacher_id) not in allowed_pairs:
-            error(request, "Select a subject and teacher allocated to this academic level.")
+            error(request, "Select a subject and teacher allocated to this class.")
             return redirect("employees:it_support_timetable_page", tool="manual-allocation")
         others = GeneratedLearningLesson.objects.filter(
             teacher_id=teacher_id,
@@ -5869,11 +6395,13 @@ def learning_manual_teacher_allocation(request):
             "page": _it_support_timetable_page("timetable-generation"),
             "active_timetable_tool": "learning-manual-allocation",
             "manual_allocation": True,
-            "timetable_groups": _generated_class_timetables(levels),
-            "allocation_choices": _learning_allocation_options_by_lesson(
-                lessons, class_to_level, pairs_by_level
+            "timetable_groups": timetable_groups,
+            "allocation_choices": _learning_allocation_options_by_lesson(lessons, pairs_by_class),
+            "slot_allocation_choices": _learning_allocation_options_by_slot(
+                timetable_groups, lessons, pairs_by_class
             ),
             "lesson_meta": lesson_meta,
+            "slot_meta": slot_meta,
         },
     )
 
@@ -6347,20 +6875,50 @@ def _exam_marks_out_of_settings_changed(marks_lookup, out_of_by_subject):
     return False
 
 
+def _prefetched_m2m_items(instance, field_name):
+    cache = getattr(instance, "_prefetched_objects_cache", None)
+    if cache is not None and field_name in cache:
+        return list(cache[field_name])
+    return None
+
+
+def _exam_has_academic_levels(exam_item):
+    levels = _prefetched_m2m_items(exam_item, "academic_levels")
+    if levels is not None:
+        return bool(levels)
+    return exam_item.academic_levels.exists()
+
+
+def _exam_includes_academic_level(exam_item, level_id):
+    levels = _prefetched_m2m_items(exam_item, "academic_levels")
+    if levels is not None:
+        return any(level.id == level_id for level in levels)
+    return exam_item.academic_levels.filter(pk=level_id).exists()
+
+
 def _exam_record_mark_lookup(generation, students, subjects):
     if not students or not subjects:
         return {}
-    return {
-        (item.student_id, item.learning_area_id): {
+    return _exam_record_marks_lookup_multi([generation], students, subjects).get(generation.id, {})
+
+
+def _exam_record_marks_lookup_multi(generations, students, subjects):
+    if not generations or not students or not subjects:
+        return {}
+    student_ids = [student.id for student in students]
+    subject_ids = [subject.id for subject in subjects]
+    generation_ids = [generation.id for generation in generations]
+    lookups = defaultdict(dict)
+    for item in ExamMark.objects.filter(
+        generation_id__in=generation_ids,
+        student_id__in=student_ids,
+        learning_area_id__in=subject_ids,
+    ):
+        lookups[item.generation_id][(item.student_id, item.learning_area_id)] = {
             "marks": item.marks,
             "out_of_marks": item.out_of_marks,
         }
-        for item in ExamMark.objects.filter(
-            generation=generation,
-            student_id__in=[student.id for student in students],
-            learning_area_id__in=[subject.id for subject in subjects],
-        )
-    }
+    return lookups
 
 
 def _percent_to_raw_marks(percent, out_of):
@@ -6501,13 +7059,22 @@ def _save_exam_record_marks(
             for student_id, subject_id in to_delete:
                 query |= Q(student_id=student_id, learning_area_id=subject_id)
             ExamMark.objects.filter(generation=generation).filter(query).delete()
-        for student_id, subject_id, marks, out_of in to_upsert:
-            ExamMark.objects.update_or_create(
-                generation=generation,
-                student_id=student_id,
-                learning_area_id=subject_id,
-                defaults={"marks": marks, "out_of_marks": out_of},
-            )
+        bulk_upsert_by_keys(
+            ExamMark,
+            scope_filter={"generation_id": generation.id},
+            create_defaults={"generation_id": generation.id},
+            rows=[
+                {
+                    "student_id": student_id,
+                    "learning_area_id": subject_id,
+                    "marks": marks,
+                    "out_of_marks": out_of,
+                }
+                for student_id, subject_id, marks, out_of in to_upsert
+            ],
+            key_fields=("student_id", "learning_area_id"),
+            update_fields=("marks", "out_of_marks"),
+        )
 
 
 @login_required
@@ -6733,6 +7300,7 @@ def exam_supervisor_allocation(request, page=None):
                 subject_teacher_ids.setdefault(item.learning_area_id, set()).add(item.teacher_id)
             assignments = shuffle_level_supervisors(subjects, subject_teacher_ids, teachers)
             with transaction.atomic():
+                allocation_rows = []
                 for subject in subjects:
                     supervisor = assignments.get(subject.id)
                     if supervisor is None:
@@ -6742,11 +7310,21 @@ def exam_supervisor_allocation(request, page=None):
                         ).delete()
                         continue
                     for academic_class in classes:
-                        ExamSupervisorAllocation.objects.update_or_create(
-                            academic_class=academic_class,
-                            learning_area=subject,
-                            defaults={"supervisor_id": supervisor.id},
+                        allocation_rows.append(
+                            {
+                                "academic_class_id": academic_class.id,
+                                "learning_area_id": subject.id,
+                                "supervisor_id": supervisor.id,
+                            }
                         )
+                if allocation_rows:
+                    bulk_upsert_by_keys(
+                        ExamSupervisorAllocation,
+                        scope_filter={"academic_class_id__in": class_ids},
+                        rows=allocation_rows,
+                        key_fields=("academic_class_id", "learning_area_id"),
+                        update_fields=("supervisor_id",),
+                    )
                 ExamSupervisorAllocation.objects.filter(
                     academic_class_id__in=class_ids,
                 ).exclude(learning_area_id__in=[subject.id for subject in subjects]).delete()
@@ -6815,26 +7393,29 @@ def _exam_timetable_generation_levels():
         level.schedule_slots = slots
         level.schedule_days = sorted({slot["weekday"] for slot in slots}, key=lambda day: 0 if day == "EXM" else DAY_ORDER.index(day) if day in DAY_ORDER else 99)
         level.schedule_periods = len({(slot["start"], slot["end"], slot["period_name"]) for slot in slots})
-        allocations_ready = bool(classes and subjects and missing == 0)
+        allocations_ready = bool(classes and subjects)
         settings_ready = bool(profile and slots)
         level.is_viable = allocations_ready and settings_ready
         if not classes:
             level.viability_reason = "Register at least one active class."
         elif not subjects:
             level.viability_reason = "Link at least one active subject."
-        elif missing:
-            level.viability_reason = (
-                f"{missing} class subject{'' if missing == 1 else 's'} still need an active supervisor."
-            )
         elif not profile:
             level.viability_reason = "Add this level to an exam timetable settings profile."
         elif not slots:
             level.viability_reason = "Complete exam timetable settings so exam sessions can be generated."
         else:
-            level.viability_reason = (
+            profile_info = (
                 f"{profile.name}: {level.schedule_periods} session"
                 f"{'' if level.schedule_periods == 1 else 's'} from the exam profile."
             )
+            if missing:
+                level.viability_reason = (
+                    f"{profile_info} {missing} class subject{'' if missing == 1 else 's'} "
+                    f"without a supervisor — supervisors can be assigned later."
+                )
+            else:
+                level.viability_reason = profile_info
     return levels, allocations, supervisor_ids
 
 
@@ -7024,7 +7605,9 @@ def _exam_timetable_cell(sitting, colliding_ids):
     return {
         "sitting": sitting,
         "is_blank": sitting is None,
-        "hide_supervisor": bool(sitting and sitting.id in colliding_ids),
+        "hide_supervisor": bool(
+            sitting and (sitting.id in colliding_ids or sitting.supervisor_id is None)
+        ),
     }
 
 
@@ -7043,6 +7626,8 @@ def _colliding_exam_sitting_ids(sittings):
     items = list(sittings)
     for index, current in enumerate(items):
         for other in items[index + 1 :]:
+            if current.supervisor_id is None or other.supervisor_id is None:
+                continue
             if current.supervisor_id != other.supervisor_id:
                 continue
             if _exam_sitting_times_overlap(current, other):
@@ -8536,9 +9121,15 @@ def exam_subject_combination_level(request, level_id):
 @require_http_methods(["GET", "POST"])
 def grading_system_settings(request):
     levels = _exam_nav_levels()
-    default_count = GradeBand.objects.filter(academic_level__isnull=True).count()
+    grade_counts = GradeBand.objects.values("academic_level_id").annotate(
+        grade_count=Count("id")
+    )
+    count_by_level = {
+        item["academic_level_id"]: item["grade_count"] for item in grade_counts
+    }
+    default_count = count_by_level.get(None, 0)
     for level in levels:
-        level.grade_count = GradeBand.objects.filter(academic_level=level).count()
+        level.grade_count = count_by_level.get(level.id, 0)
 
     return render(
         request,

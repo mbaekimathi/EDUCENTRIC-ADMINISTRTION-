@@ -1,7 +1,10 @@
+from django.core.cache import cache
+
 from .models import Employee
 from .workspace import (
     can_choose_own_workspace_role,
     can_switch_workspace_role,
+    prefetch_user_roles,
     user_role_values,
     workspace_role,
     workspace_role_label,
@@ -13,6 +16,7 @@ def workspace(request):
     user = getattr(request, "user", None)
     if user is None or not user.is_authenticated:
         return {}
+    prefetch_user_roles(user)
     role = workspace_role(request)
     view_employee = workspace_view_employee(request)
     can_switch = can_switch_workspace_role(user)
@@ -22,13 +26,20 @@ def workspace(request):
     if role == Employee.Role.TEACHER and view_employee is not None:
         from apps.curriculum.models import AcademicClass, ELearningSubjectAllocation
 
-        teacher_is_class_teacher = AcademicClass.objects.filter(
-            class_teacher=view_employee,
-            status=AcademicClass.Status.ACTIVE,
-        ).exists()
-        teacher_has_elearning = ELearningSubjectAllocation.objects.filter(
-            teacher=view_employee,
-        ).exists()
+        cache_key = f"teacher_nav_flags:{view_employee.pk}"
+        flags = cache.get(cache_key)
+        if flags is None:
+            flags = (
+                AcademicClass.objects.filter(
+                    class_teacher=view_employee,
+                    status=AcademicClass.Status.ACTIVE,
+                ).exists(),
+                ELearningSubjectAllocation.objects.filter(
+                    teacher=view_employee,
+                ).exists(),
+            )
+            cache.set(cache_key, flags, 300)
+        teacher_is_class_teacher, teacher_has_elearning = flags
     return {
         "workspace_role": role,
         "workspace_role_label": workspace_role_label(role),

@@ -16,7 +16,9 @@
 </div>
 
 {{ allocation_choices|json_script:"learning-allocation-choices" }}
+{{ slot_allocation_choices|json_script:"learning-slot-allocation-choices" }}
 {{ lesson_meta|json_script:"learning-lesson-meta" }}
+{{ slot_meta|json_script:"learning-slot-meta" }}
 
 <div class="app-modal" id="learning-teacher-modal" data-modal="learning-teacher" hidden>
   <div class="app-modal-backdrop" data-modal-close></div>
@@ -28,6 +30,7 @@
     <form method="post" class="app-modal-form" novalidate>
       {% csrf_token %}
       <input type="hidden" name="lesson_id" data-lesson-id-field>
+      <input type="hidden" name="slot_key" data-slot-key-field>
       <p class="subtle" data-lesson-summary></p>
       <p class="subtle">This update applies to this class session only. Green options are available; red options are busy.</p>
       <div class="supervisor-choice-list" data-allocation-options></div>
@@ -46,12 +49,16 @@
   const modal = document.querySelector('[data-modal="learning-teacher"]');
   if (!modal) return;
   const choices = JSON.parse(document.getElementById("learning-allocation-choices").textContent || "{}");
+  const slotChoices = JSON.parse(document.getElementById("learning-slot-allocation-choices").textContent || "{}");
   const meta = JSON.parse(document.getElementById("learning-lesson-meta").textContent || "{}");
+  const slotMeta = JSON.parse(document.getElementById("learning-slot-meta").textContent || "{}");
   const openers = document.querySelectorAll("[data-change-teacher]");
   const closers = modal.querySelectorAll("[data-modal-close]");
   const optionsBox = modal.querySelector("[data-allocation-options]");
   const lessonField = modal.querySelector("[data-lesson-id-field]");
+  const slotField = modal.querySelector("[data-slot-key-field]");
   const summary = modal.querySelector("[data-lesson-summary]");
+  const title = modal.querySelector("#learning-teacher-title");
 
   function setOpen(open) {
     modal.classList.toggle("is-open", open);
@@ -59,10 +66,13 @@
     document.body.classList.toggle("modal-open", open);
   }
 
-  function renderOptions(lessonId) {
-    const details = meta[lessonId] || {};
-    const options = choices[lessonId] || [];
+  function renderOptions({ lessonId = "", slotKey = "" }) {
+    const isSlot = Boolean(slotKey);
+    const details = isSlot ? (slotMeta[slotKey] || {}) : (meta[lessonId] || {});
+    const options = isSlot ? (slotChoices[slotKey] || []) : (choices[lessonId] || []);
     lessonField.value = lessonId;
+    slotField.value = slotKey;
+    title.textContent = isSlot ? "Allocate session" : "Change allocation";
     summary.textContent = `${details.class_name || ""} · ${details.day_label || ""} · ${details.session || ""} ${details.time || ""}`;
     optionsBox.innerHTML = "";
     options.forEach((option) => {
@@ -85,7 +95,9 @@
 
   openers.forEach((button) => {
     button.addEventListener("click", () => {
-      renderOptions(button.getAttribute("data-lesson-id"));
+      const slotKey = button.getAttribute("data-slot-key") || "";
+      const lessonId = button.getAttribute("data-lesson-id") || "";
+      renderOptions({ lessonId, slotKey });
       setOpen(true);
     });
   });

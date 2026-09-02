@@ -4,11 +4,10 @@
 {% block header_title %}{{ page.title }}{% endblock %}
 
 {% block sidebar_modules %}
-{% include "employees/includes/exam_management_sidebar.html" %}
+{% include "employees/includes/curriculum_reports_sidebar.html" %}
 {% endblock %}
 
 {% block workspace_content %}
-{% include "employees/includes/nav/exam_management.html" %}
 <script>
 (function () {
   const nav = performance.getEntriesByType("navigation")[0];
@@ -19,32 +18,17 @@
   window.location.replace(window.location.pathname);
 })();
 </script>
-<div class="exam-tool-page exam-report-builder-page{% if report and not report.error %} has-report{% endif %}">
-  {% if report and not report.error %}
-  <div class="teacher-page-bar no-print" aria-label="Report summary">
-    <div class="teacher-page-bar-stats">
-      <div class="teacher-page-bar-stat">
-        <strong>{{ report.student_count }}</strong>
-        <span>Report card{{ report.student_count|pluralize }}</span>
-      </div>
-      <div class="teacher-page-bar-stat">
-        <strong>{{ report.kind_label }}</strong>
-        <span>Report type</span>
-      </div>
-    </div>
-    <div class="teacher-page-bar-actions">
-      <button type="button" class="primary-button" data-print-report-card>Print</button>
-    </div>
-  </div>
-  {% endif %}
-
+<div class="exam-tool-page exam-report-builder-page exam-report-page{% if report and not report.error %} has-report{% endif %}">
   {% if report_error %}<div class="notice error">{{ report_error }}</div>{% endif %}
 
-  <details class="exam-report-builder-details no-print"{% if not report or report.error %} open{% endif %}>
+  <details class="exam-report-builder-details exam-report-panel no-print"{% if not report or report.error %} open{% endif %}>
     <summary class="exam-report-builder-summary">
-      <span>
-        <strong>Generate exam report</strong>
-        <small>Year, exam, type, and scope</small>
+      <span class="exam-report-summary-lead">
+        <span class="exam-report-summary-mark" aria-hidden="true">ER</span>
+        <span>
+          <strong>Generate exam report</strong>
+          <small>Year, exam, type, and scope</small>
+        </span>
       </span>
       <span class="exam-report-builder-summary-action" aria-hidden="true">Edit options</span>
     </summary>
@@ -189,21 +173,53 @@
   </details>
 
   {% if report and not report.error %}
-  <div class="exam-report-toolbar no-print">
-    <div class="exam-report-toolbar-copy">
-      <strong>{{ report.kind_label }}</strong>
-      <p>{{ report.exam_title }} · {{ report.scope_label }}</p>
+  <div class="exam-report-toolbar no-print" aria-label="Report summary">
+    <div class="exam-report-toolbar-primary">
+      <div class="exam-report-toolbar-stats" aria-label="Report statistics">
+        <div class="exam-report-stat-chip">
+          <strong>{{ report.student_count }}</strong>
+          <span>
+            {% if report.is_matrix %}
+              Student{{ report.student_count|pluralize }}
+            {% else %}
+              Report card{{ report.student_count|pluralize }}
+            {% endif %}
+          </span>
+        </div>
+        {% if report.is_matrix %}
+        <div class="exam-report-stat-chip">
+          <strong>{{ report.subject_count }}</strong>
+          <span>Subject{{ report.subject_count|pluralize }}</span>
+        </div>
+        {% endif %}
+        <div class="exam-report-stat-chip is-muted">
+          <strong>{{ report.kind_label }}</strong>
+          <span>Report type</span>
+        </div>
+      </div>
+      <div class="exam-report-toolbar-copy">
+        <p class="exam-report-toolbar-title">{{ report.exam_title }}</p>
+        <p class="exam-report-toolbar-scope">{{ report.scope_label }}</p>
+      </div>
     </div>
     <div class="exam-report-toolbar-actions">
-      <span class="exam-tool-panel-count">
-        {% if report.is_matrix %}
-          {{ report.student_count }} student{{ report.student_count|pluralize }}
-          · {{ report.subject_count }} subject{{ report.subject_count|pluralize }}
-        {% else %}
-          {{ report.student_count }} report card{{ report.student_count|pluralize }}
-        {% endif %}
-      </span>
-      <button type="button" class="primary-button" data-print-report-card>
+      <div class="exam-report-export-group" aria-label="Export options">
+        <a
+          class="ghost-button exam-report-export-btn"
+          href="{% url 'employees:it_support_exam_report_export' %}?{{ request.GET.urlencode }}&amp;export_mode=raw"
+        >
+          <span class="exam-export-label exam-export-label-full">Export Excel (raw marks)</span>
+          <span class="exam-export-label exam-export-label-short" aria-hidden="true">Raw Excel</span>
+        </a>
+        <a
+          class="ghost-button exam-report-export-btn"
+          href="{% url 'employees:it_support_exam_report_export' %}?{{ request.GET.urlencode }}&amp;export_mode=graded"
+        >
+          <span class="exam-export-label exam-export-label-full">Export Excel (graded)</span>
+          <span class="exam-export-label exam-export-label-short" aria-hidden="true">Graded Excel</span>
+        </a>
+      </div>
+      <button type="button" class="primary-button exam-report-print-btn" data-print-report-card>
         {% if report.is_matrix %}Print report{% else %}Print report card{{ report.student_count|pluralize }}{% endif %}
       </button>
     </div>
@@ -259,7 +275,8 @@
           <span>{{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
         </p>
       </header>
-      <div class="exam-matrix-list-wrap">
+      <div class="exam-matrix-list-wrap" tabindex="0">
+        <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
         <table class="exam-matrix-list-table">
           <thead>
             <tr>

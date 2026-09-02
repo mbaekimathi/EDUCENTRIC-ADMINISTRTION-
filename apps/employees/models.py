@@ -202,13 +202,19 @@ class Employee(AbstractUser):
 
     def role_values(self):
         """Return all assigned role codes; fall back to primary role if none assigned yet."""
+        cached = getattr(self, "_cached_role_values", None)
+        if cached is not None:
+            return cached
         if self.pk:
             values = list(
                 self.assigned_roles.order_by("role").values_list("role", flat=True)
             )
             if values:
+                self._cached_role_values = values
                 return values
-        return [self.role] if self.role else []
+        values = [self.role] if self.role else []
+        self._cached_role_values = values
+        return values
 
     def role_labels(self):
         labels = dict(self.Role.choices)
@@ -248,6 +254,7 @@ class Employee(AbstractUser):
         if self.role != primary:
             type(self).objects.filter(pk=self.pk).update(role=primary)
             self.role = primary
+        self._cached_role_values = None
 
     def _ensure_primary_role_assignment(self):
         if not self.pk or not self.role:

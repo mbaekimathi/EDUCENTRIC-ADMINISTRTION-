@@ -25,6 +25,7 @@ from apps.curriculum.models import (
     GeneratedELearningTimetable,
     GeneratedLearningLesson,
     GeneratedLearningTimetable,
+    GradeBand,
     LearningArea,
     LearningScheduleProfile,
 )
@@ -553,6 +554,124 @@ class ITSupportWorkspaceTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Select an exam to generate the report.")
+
+    def test_exam_report_raw_excel_export(self):
+        from datetime import date
+
+        from apps.admissions.models import ParentGuardian, Student
+
+        level = AcademicLevel.objects.create(name="Grade 1", code="G1", order=1)
+        academic_class = AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 1 East",
+            code="G1E",
+            order=1,
+        )
+        subject = LearningArea.objects.create(name="Mathematics", code="MATH")
+        subject.academic_levels.add(level)
+        year = AcademicYear.objects.create(
+            name="2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 1",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 1),
+            opening_date=date(2026, 1, 5),
+            midterm_date=date(2026, 2, 15),
+            closing_date=date(2026, 4, 1),
+            order=1,
+        )
+        exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 3, 10),
+            end_date=date(2026, 3, 12),
+        )
+        exam.academic_levels.add(level)
+        parent = ParentGuardian.objects.create(
+            full_name="PAT PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700009999",
+            email="pat.parent@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="9001",
+            class_group="G1E",
+            assessment_number="A9001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        ExamMark.objects.create(
+            generation=exam,
+            student=student,
+            learning_area=subject,
+            marks=42,
+            out_of_marks=50,
+        )
+        GradeBand.objects.create(
+            academic_level=level,
+            code="A",
+            meaning="Excellent",
+            start_percent=80,
+            end_percent=100,
+            points=12,
+            mark_level="Exceeding",
+        )
+
+        report_params = {
+            "generate": "1",
+            "year_id": str(year.id),
+            "exam_id": str(exam.id),
+            "report_kind": "academic_level",
+            "level_id": str(level.id),
+            "level_scope": "individual_class",
+            "class_id": str(academic_class.id),
+        }
+        report_page = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            report_params,
+        )
+        self.assertEqual(report_page.status_code, 200)
+        self.assertContains(report_page, "Export Excel (raw marks)")
+        self.assertContains(report_page, "Export Excel (graded)")
+
+        response = self.client.get(
+            reverse("employees:it_support_exam_report_export"),
+            {**report_params, "export_mode": "raw"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("attachment", response["Content-Disposition"])
+        self.assertIn(".xlsx", response["Content-Disposition"])
+
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        workbook = load_workbook(BytesIO(response.content))
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+        flat = [cell for row in rows for cell in row if cell not in (None, "")]
+        self.assertIn("ANN EAST", flat)
+        self.assertIn(84, flat)
+        self.assertNotIn("42/50", flat)
+        self.assertNotIn("84/100", flat)
+        self.assertNotIn("A", [str(item) for item in flat if str(item) == "A"])
 
     def test_student_management_lists_all_students(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -1995,6 +2114,123 @@ class TimetableGenerationTests(TestCase):
         self.assertContains(response, 'data-modal="timetable-generation"')
         self.assertContains(response, "is-open")
 
+    def test_reset_query_opens_reset_popup(self):
+        response = self.client.get(f"{self.url}?reset=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-modal="timetable-reset"')
+        self.assertContains(response, "is-open")
+
+    def test_reset_removes_generated_lessons_for_selected_levels(self):
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        profile = LearningScheduleProfile.objects.create(
+            name="PRIMARY DAY",
+            category="PRIMARY",
+            study_days=["MON", "WED"],
+            lesson_duration_minutes=40,
+            first_class_start_time=time(8, 0),
+            last_class_end_time=time(8, 40),
+        )
+        profile.academic_levels.add(self.level)
+        self.client.post(self.url, {"level_id": str(self.level.id)})
+        self.assertEqual(GeneratedLearningLesson.objects.count(), 2)
+
+        response = self.client.post(
+            self.url,
+            {"action": "reset", "level_id": str(self.level.id)},
+        )
+        self.assertRedirects(response, self.url)
+        self.assertEqual(GeneratedLearningLesson.objects.count(), 0)
+        page = self.client.get(self.url)
+        self.assertContains(page, "No timetable generated yet")
+        self.assertContains(page, 'name="action" value="generate_class"')
+        self.assertRegex(
+            page.content.decode(),
+            r'data-open-modal="timetable-reset"[^>]*disabled|disabled[^>]*data-open-modal="timetable-reset"',
+        )
+
+    def test_generate_class_creates_timetable_for_one_class_only(self):
+        other_class = AcademicClass.objects.create(
+            academic_level=self.level,
+            name="Grade 1 West",
+            code="G1W",
+            order=2,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=other_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        profile = LearningScheduleProfile.objects.create(
+            name="PRIMARY DAY",
+            category="PRIMARY",
+            study_days=["MON", "WED"],
+            lesson_duration_minutes=40,
+            first_class_start_time=time(8, 0),
+            last_class_end_time=time(8, 40),
+        )
+        profile.academic_levels.add(self.level)
+
+        response = self.client.post(
+            self.url,
+            {"action": "generate_class", "class_id": str(self.academic_class.id)},
+        )
+        self.assertRedirects(response, self.url)
+        lessons = list(GeneratedLearningLesson.objects.all())
+        self.assertEqual(len(lessons), 2)
+        self.assertTrue(all(lesson.academic_class_id == self.academic_class.id for lesson in lessons))
+
+        page = self.client.get(self.url)
+        self.assertContains(page, "Grade 1 East")
+        self.assertContains(page, "Grade 1 West")
+        self.assertContains(page, "No timetable generated yet")
+
+    def test_reset_class_removes_lessons_for_that_class_only(self):
+        other_class = AcademicClass.objects.create(
+            academic_level=self.level,
+            name="Grade 1 West",
+            code="G1W",
+            order=2,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=other_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        profile = LearningScheduleProfile.objects.create(
+            name="PRIMARY DAY",
+            category="PRIMARY",
+            study_days=["MON", "WED"],
+            lesson_duration_minutes=40,
+            first_class_start_time=time(8, 0),
+            last_class_end_time=time(8, 40),
+        )
+        profile.academic_levels.add(self.level)
+        self.client.post(self.url, {"level_id": str(self.level.id)})
+        self.assertEqual(GeneratedLearningLesson.objects.count(), 4)
+
+        response = self.client.post(
+            self.url,
+            {"action": "reset_class", "class_id": str(self.academic_class.id)},
+        )
+        self.assertRedirects(response, self.url)
+        remaining = list(GeneratedLearningLesson.objects.all())
+        self.assertEqual(len(remaining), 2)
+        self.assertTrue(all(lesson.academic_class_id == other_class.id for lesson in remaining))
+
     def test_manual_allocation_changes_subject_and_teacher_for_that_class_only(self):
         other_teacher = Employee.objects.create_user(
             employee_code="975310",
@@ -2121,8 +2357,173 @@ class TimetableGenerationTests(TestCase):
         self.assertContains(page, "BETH TEACHER")
         self.assertContains(page, "ALI TEACHER")
 
+    def test_manual_allocation_limits_options_to_that_class_only(self):
+        other_teacher = Employee.objects.create_user(
+            employee_code="975311",
+            password="ReliablePass456",
+            title=Employee.Title.MS,
+            first_name="BETH",
+            last_name="TEACHER",
+            email="beth.teacher2@example.com",
+            phone_number="+254700000446",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        other_class = AcademicClass.objects.create(
+            academic_level=self.level,
+            name="Grade 1 West",
+            code="G1W",
+            order=2,
+        )
+        science = LearningArea.objects.create(name="Science", code="SCI")
+        science.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=science,
+            teacher=other_teacher,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=other_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        profile = LearningScheduleProfile.objects.create(
+            name="PRIMARY DAY",
+            category="PRIMARY",
+            study_days=["MON"],
+            lesson_duration_minutes=40,
+            first_class_start_time=time(8, 0),
+            last_class_end_time=time(9, 20),
+        )
+        profile.academic_levels.add(self.level)
+        generation = GeneratedLearningTimetable.objects.create(created_by=self.support)
+        generation.academic_levels.add(self.level)
+        GeneratedLearningLesson.objects.create(
+            generation=generation,
+            academic_level=self.level,
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+            weekday="MON",
+            period_name="Period 1",
+            start_time=time(8, 0),
+            end_time=time(8, 40),
+        )
+        GeneratedLearningLesson.objects.create(
+            generation=generation,
+            academic_level=self.level,
+            academic_class=other_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+            weekday="MON",
+            period_name="Period 1",
+            start_time=time(8, 0),
+            end_time=time(8, 40),
+        )
+        manual_url = reverse(
+            "employees:it_support_timetable_page",
+            kwargs={"tool": "manual-allocation"},
+        )
+        west_slot_key = f"{other_class.id}:MON:520"
+        east_slot_key = f"{self.academic_class.id}:MON:520"
+        page = self.client.get(manual_url)
+        self.assertContains(page, f'"{east_slot_key}"')
+        self.assertContains(page, f'"{west_slot_key}"')
+        self.assertContains(page, '"subject_code": "SCI"')
+        response = self.client.post(
+            manual_url,
+            {
+                "slot_key": west_slot_key,
+                "allocation": f"{science.id}:{other_teacher.id}",
+            },
+        )
+        self.assertRedirects(response, manual_url)
+        self.assertFalse(
+            GeneratedLearningLesson.objects.filter(
+                academic_class=other_class,
+                learning_area=science,
+            ).exists()
+        )
 
-class ELearningTimetableGenerationTests(TestCase):
+    def test_manual_allocation_fills_free_slot_for_that_class_only(self):
+        other_teacher = Employee.objects.create_user(
+            employee_code="975312",
+            password="ReliablePass456",
+            title=Employee.Title.MS,
+            first_name="BETH",
+            last_name="TEACHER",
+            email="beth.teacher3@example.com",
+            phone_number="+254700000447",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        science = LearningArea.objects.create(name="Science", code="SCI")
+        science.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=science,
+            teacher=other_teacher,
+        )
+        profile = LearningScheduleProfile.objects.create(
+            name="PRIMARY DAY",
+            category="PRIMARY",
+            study_days=["MON"],
+            lesson_duration_minutes=40,
+            first_class_start_time=time(8, 0),
+            last_class_end_time=time(9, 20),
+        )
+        profile.academic_levels.add(self.level)
+        generation = GeneratedLearningTimetable.objects.create(created_by=self.support)
+        generation.academic_levels.add(self.level)
+        GeneratedLearningLesson.objects.create(
+            generation=generation,
+            academic_level=self.level,
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+            weekday="MON",
+            period_name="Period 1",
+            start_time=time(8, 0),
+            end_time=time(8, 40),
+        )
+        manual_url = reverse(
+            "employees:it_support_timetable_page",
+            kwargs={"tool": "manual-allocation"},
+        )
+        slot_key = f"{self.academic_class.id}:MON:520"
+        page = self.client.get(manual_url)
+        self.assertContains(page, "Allocate")
+        self.assertContains(page, f'"{slot_key}"')
+        response = self.client.post(
+            manual_url,
+            {
+                "slot_key": slot_key,
+                "allocation": f"{science.id}:{other_teacher.id}",
+            },
+        )
+        self.assertRedirects(response, manual_url)
+        created = GeneratedLearningLesson.objects.get(
+            academic_class=self.academic_class,
+            weekday="MON",
+            start_time=time(8, 40),
+        )
+        self.assertEqual(created.learning_area, science)
+        self.assertEqual(created.teacher, other_teacher)
+        page = self.client.get(manual_url)
+        self.assertContains(page, "SCI")
+        self.assertContains(page, "BETH TEACHER")
     def setUp(self):
         self.support = Employee.objects.create_user(
             employee_code="246810",
@@ -2478,7 +2879,7 @@ class ExamTimetableGenerationTests(TestCase):
         payload.update(overrides)
         return self.client.post(self.url, payload)
 
-    def test_generation_page_opens_popup_and_blocks_unallocated_levels(self):
+    def test_generation_page_opens_popup_and_blocks_levels_without_exam_profile(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-open-modal="exam-timetable-generation"')
@@ -2491,6 +2892,19 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(response, 'name="academic_year_id"')
         self.assertContains(response, "uppercase-input")
         self.assertNotContains(response, "Exam dates until")
+
+    def test_level_without_supervisors_can_be_generated_with_exam_profile(self):
+        self._exam_profile()
+        response = self.client.get(self.url)
+        self.assertContains(response, "is-viable")
+        self.assertContains(response, "without a supervisor")
+
+        response = self._generate_post()
+        self.assertRedirects(response, self.url)
+        generation = GeneratedExamTimetable.objects.get()
+        sitting = GeneratedExamSitting.objects.get(generation=generation)
+        self.assertIsNone(sitting.supervisor_id)
+        self.assertEqual(sitting.learning_area, self.subject)
 
     def test_generate_query_opens_the_generation_popup(self):
         response = self.client.get(self.url, {"generate": "1"})

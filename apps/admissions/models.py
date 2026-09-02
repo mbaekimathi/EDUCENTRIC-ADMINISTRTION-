@@ -98,6 +98,14 @@ class Student(PortalAccount):
 
     class Meta:
         ordering = ["last_name", "first_name"]
+        indexes = [
+            models.Index(fields=["academic_level"], name="student_academic_level_idx"),
+            models.Index(fields=["class_group"], name="student_class_group_idx"),
+            models.Index(
+                fields=["academic_level", "class_group"],
+                name="student_level_class_idx",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         if self.is_suspended:

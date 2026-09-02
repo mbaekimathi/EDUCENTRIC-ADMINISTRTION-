@@ -18,6 +18,12 @@ def user_role_values(user):
     return [role] if role else []
 
 
+def prefetch_user_roles(user):
+    """Warm the per-instance role cache for the authenticated user."""
+    if user is not None and getattr(user, "is_authenticated", False) and hasattr(user, "role_values"):
+        user.role_values()
+
+
 def can_switch_workspace_role(user):
     return bool(
         user is not None
