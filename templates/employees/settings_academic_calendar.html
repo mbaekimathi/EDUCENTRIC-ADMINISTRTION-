@@ -30,7 +30,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/system_settings.html" %}
 
@@ -191,8 +190,8 @@
     <form method="post" class="app-modal-form calendar-modal-form" novalidate data-year-form>
       {% csrf_token %}
       <div class="calendar-modal-body">
-        {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
-        {% if term_errors %}<div class="notice error">{% for err in term_errors %}{{ err }} {% endfor %}</div>{% endif %}
+        {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
+        {% if term_errors %}{% include "partials/notify_trigger.html" with type="error" message=term_errors|join:" " %}{% endif %}
 
         <section class="calendar-section">
           <div class="calendar-year-name">

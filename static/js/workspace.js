@@ -39,6 +39,32 @@
     return index >= 0 ? stack[index] : "";
   }
 
+  function isMobileHeader() {
+    return window.matchMedia("(max-width: 1100px)").matches;
+  }
+
+  function isDashboardPath() {
+    try {
+      return window.location.pathname === new URL(dashboardUrl, window.location.origin).pathname;
+    } catch (error) {
+      return /\/dashboard\/?$/.test(window.location.pathname);
+    }
+  }
+
+  function syncProfileMenuPosition() {
+    if (!profilePanel || profilePanel.hidden) return;
+    const header = root.querySelector(".workspace-header");
+    if (!header) return;
+    profilePanel.style.setProperty("--profile-menu-top", `${header.getBoundingClientRect().bottom + 4}px`);
+  }
+
+  function syncBackdrop() {
+    if (!backdrop) return;
+    const navOpen = root.classList.contains("is-nav-open");
+    const profileOpen = Boolean(profile && profile.classList.contains("is-open"));
+    backdrop.hidden = !navOpen && !profileOpen;
+  }
+
   function syncWorkspaceBack() {
     if (!backBtn) return;
     const current = currentNavKey();
@@ -48,7 +74,10 @@
       writeNavStack(stack);
     }
     const previous = previousNavTarget(stack, current);
-    const canGoBack = Boolean(previous && previous !== current);
+    let canGoBack = Boolean(previous && previous !== current);
+    if (!canGoBack && isMobileHeader() && !isDashboardPath()) {
+      canGoBack = true;
+    }
     backBtn.hidden = !canGoBack;
     backBtn.disabled = !canGoBack;
   }
@@ -83,7 +112,7 @@
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
       toggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
     }
-    if (backdrop) backdrop.hidden = !open;
+    syncBackdrop();
   }
 
   function setProfileOpen(open) {
@@ -91,6 +120,11 @@
     profile.classList.toggle("is-open", open);
     profilePanel.hidden = !open;
     profileTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+    root.classList.toggle("is-profile-open", open);
+    if (open) {
+      window.requestAnimationFrame(syncProfileMenuPosition);
+    }
+    syncBackdrop();
   }
 
   function setRoleModalOpen(open) {
@@ -123,7 +157,15 @@
     setProfileOpen(false);
     setNavOpen(!root.classList.contains("is-nav-open"));
   });
-  backdrop?.addEventListener("click", () => setNavOpen(false));
+  backdrop?.addEventListener("click", () => {
+    setNavOpen(false);
+    setProfileOpen(false);
+  });
+  window.addEventListener("resize", () => {
+    syncProfileMenuPosition();
+    syncWorkspaceBack();
+  });
+  window.addEventListener("orientationchange", syncProfileMenuPosition);
   sidebar?.querySelectorAll("a, [data-student-search-open]").forEach((link) => {
     link.addEventListener("click", () => setNavOpen(false));
   });
@@ -132,6 +174,9 @@
     event.stopPropagation();
     setNavOpen(false);
     setProfileOpen(profilePanel.hidden);
+  });
+  profilePanel?.addEventListener("click", (event) => {
+    event.stopPropagation();
   });
   document.addEventListener("click", (event) => {
     if (profile && !profile.contains(event.target)) setProfileOpen(false);

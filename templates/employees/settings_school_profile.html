@@ -7,12 +7,11 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/school_profile.html" %}
 <form method="post" enctype="multipart/form-data" class="school-profile-form" novalidate>
   {% csrf_token %}
-  {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+  {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
 
   <section class="settings-panel school-profile-panel">
     <div class="settings-profile-card">

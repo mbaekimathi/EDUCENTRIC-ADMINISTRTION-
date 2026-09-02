@@ -279,6 +279,8 @@ class Employee(AbstractUser):
             IssuedEmploymentNumber.objects.get_or_create(number=number)
             return
         if IssuedEmploymentNumber.objects.filter(number=number).exists():
+            if getattr(self, "_allow_reassigned_employment_number", False):
+                return
             raise ValidationError(
                 {
                     "employment_number": "This employment number has already been used and cannot be reused."

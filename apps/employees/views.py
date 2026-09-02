@@ -104,7 +104,9 @@ from apps.curriculum.timetable_generator import (
 
 from .db_bulk import bulk_upsert_by_keys
 from .forms import (
+    EmployeeAccountSettingsForm,
     EmployeeLoginForm,
+    EmployeePasswordChangeForm,
     EmployeeProfileForm,
     EmployeeRegistrationForm,
     SchoolProfileAcademicSetupForm,
@@ -117,7 +119,7 @@ from .forms import (
     SchoolProfileOperationsForm,
 )
 from .models import Employee, SchoolProfile
-from .phone_countries import PHONE_COUNTRIES
+from .phone_countries import PHONE_COUNTRIES, parse_stored_phone
 from .workspace import (
     WORKSPACE_ROLE_SESSION_KEY,
     WORKSPACE_VIEW_EMPLOYEE_SESSION_KEY,
@@ -128,6 +130,7 @@ from .workspace import (
     needs_login_role_selection,
     set_active_workspace_role,
     user_role_values,
+    uses_profile_settings,
     workspace_role,
     workspace_view_employee,
 )
@@ -369,6 +372,30 @@ IT_SUPPORT_CURRICULUM_REPORT_PAGES = (
     },
 )
 
+SECRETARY_REPORT_SECTIONS = (
+    {
+        "slug": "admissions-reports",
+        "title": "Admissions reports",
+        "icon": "AD",
+        "summary": "New admissions, enrolment trends, and intake summaries.",
+        "copy": "Review admissions reports covering new students and enrolment activity.",
+    },
+    {
+        "slug": "student-records-reports",
+        "title": "Student records reports",
+        "icon": "SR",
+        "summary": "Student roster summaries and enrolment status.",
+        "copy": "Review student records reports covering rosters and enrolment status.",
+    },
+    {
+        "slug": "parent-portal-reports",
+        "title": "Parent portal reports",
+        "icon": "PP",
+        "summary": "Parent credentials and portal access activity.",
+        "copy": "Review parent portal reports covering credentials and access activity.",
+    },
+)
+
 IT_SUPPORT_CURRICULUM_SECTIONS = (
     {
         "slug": "learning-management",
@@ -602,6 +629,50 @@ def _it_support_curriculum_report_page(slug):
 
 def _require_it_support(request):
     if workspace_role(request) != Employee.Role.IT_SUPPORT:
+        return redirect_to_role_dashboard(request)
+    return None
+
+
+def _it_support_performance_context():
+    from apps.employees.system_performance import get_system_performance_snapshot
+
+    return {
+        "metrics_url": reverse("employees:it_support_system_performance_metrics"),
+        "performance_snapshot": get_system_performance_snapshot(),
+    }
+
+
+@login_required
+@require_http_methods(["GET"])
+def it_support_system_performance(request):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    context = {"active_nav": "system_performance"}
+    context.update(_it_support_performance_context())
+    return render(request, "employees/it_support_system_performance.html", context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def it_support_system_performance_metrics(request):
+    denied = _require_it_support(request)
+    if denied:
+        return JsonResponse({"error": "forbidden"}, status=403)
+    from apps.employees.system_performance import get_system_performance_snapshot
+
+    return JsonResponse(get_system_performance_snapshot())
+
+
+def _secretary_report_section(slug):
+    for section in SECRETARY_REPORT_SECTIONS:
+        if section["slug"] == slug:
+            return section
+    return None
+
+
+def _require_secretary(request):
+    if workspace_role(request) != Employee.Role.SECRETARY:
         return redirect_to_role_dashboard(request)
     return None
 
@@ -1113,14 +1184,12 @@ def role_dashboard(request, role):
     if current.lower() != role:
         return redirect_to_role_dashboard(request)
     if current == Employee.Role.IT_SUPPORT:
-        return render(
-            request,
-            "employees/it_support_dashboard.html",
-            {
-                "active_nav": "dashboard",
-                "it_support_modules": IT_SUPPORT_MODULES,
-            },
-        )
+        context = {
+            "active_nav": "dashboard",
+            "it_support_modules": IT_SUPPORT_MODULES,
+        }
+        context.update(_it_support_performance_context())
+        return render(request, "employees/it_support_dashboard.html", context)
     if current == Employee.Role.TEACHER:
         employee = workspace_view_employee(request)
         session_timetable = _teacher_session_timetable(employee)
@@ -1134,10 +1203,53 @@ def role_dashboard(request, role):
                 "elearning_timetable": elearning_timetable,
             },
         )
+    if current == Employee.Role.SECRETARY:
+        return render(
+            request,
+            "employees/secretary_dashboard.html",
+            {"active_nav": "dashboard"},
+        )
     return render(
         request,
         "employees/role_dashboard.html",
         {"active_nav": "dashboard"},
+    )
+
+
+@login_required
+def secretary_reports(request):
+    denied = _require_secretary(request)
+    if denied:
+        return denied
+    return render(
+        request,
+        "employees/secretary_reports.html",
+        {
+            "active_nav": "dashboard",
+            "active_module": "reports",
+            "report_sections": SECRETARY_REPORT_SECTIONS,
+        },
+    )
+
+
+@login_required
+def secretary_report_section(request, section):
+    denied = _require_secretary(request)
+    if denied:
+        return denied
+    current = _secretary_report_section(section)
+    if current is None:
+        return redirect("employees:secretary_reports")
+    return render(
+        request,
+        "employees/secretary_report_section.html",
+        {
+            "active_nav": "dashboard",
+            "active_module": "reports",
+            "active_report": current["slug"],
+            "section": current,
+            "report_sections": SECRETARY_REPORT_SECTIONS,
+        },
     )
 
 
@@ -4693,6 +4805,14 @@ def it_support_employee_management(request):
         if employee.approval_status == Employee.ApprovalStatus.PENDING_APPROVAL
     )
     suspended_count = sum(1 for employee in employees if employee.is_suspended)
+    employee_code_assignments = {
+        str(employee.employment_number): {
+            "id": employee.id,
+            "name": employee.display_name,
+        }
+        for employee in employees
+        if employee.employment_number is not None
+    }
     return render(
         request,
         "employees/it_support_employee_management.html",
@@ -4704,6 +4824,7 @@ def it_support_employee_management(request):
             "approved_count": approved_count,
             "pending_count": pending_count,
             "suspended_count": suspended_count,
+            "employee_code_assignments": employee_code_assignments,
             "title_choices": Employee.Title.choices,
             "role_choices": Employee.Role.choices,
             "approval_choices": Employee.ApprovalStatus.choices,
@@ -4723,9 +4844,23 @@ def update_workspace_employee(request, employee_id):
         try:
             employee = form.save()
         except ValidationError as exc:
-            error(request, " ".join(exc.messages))
+            if hasattr(exc, "message_dict"):
+                messages = []
+                for field_errors in exc.message_dict.values():
+                    messages.extend(field_errors)
+                error(request, " ".join(messages))
+            else:
+                error(request, " ".join(getattr(exc, "messages", [str(exc)])))
         else:
-            success(request, f"{employee.display_name} was updated.")
+            conflict = getattr(form, "_employment_number_conflict", None)
+            if form.cleaned_data.get("override_employment_number") and conflict:
+                success(
+                    request,
+                    f"{employee.display_name} was updated. "
+                    f"{conflict.display_name}'s employee code was cleared.",
+                )
+            else:
+                success(request, f"{employee.display_name} was updated.")
     else:
         employment_error = form.errors.get("employment_number")
         error(
@@ -8180,10 +8315,54 @@ def timetable_analytics(request, page=None):
 
 @login_required
 def system_settings(request):
+    if uses_profile_settings(workspace_role(request)):
+        return redirect("employees:profile_settings")
     return render(
         request,
         "employees/system_settings.html",
         {"active_nav": "settings", "active_settings": ""},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def profile_settings(request):
+    if not uses_profile_settings(workspace_role(request)):
+        return redirect("employees:system_settings")
+
+    employee = request.user
+    account_form = EmployeeAccountSettingsForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=employee,
+    )
+    password_form = EmployeePasswordChangeForm(user=employee)
+
+    if request.method == "POST":
+        form_type = (request.POST.get("form_type") or "").strip()
+        if form_type == "account" and account_form.is_valid():
+            account_form.save()
+            success(request, "Profile updated.")
+            return redirect("employees:profile_settings")
+        if form_type == "password":
+            password_form = EmployeePasswordChangeForm(user=employee, data=request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                success(request, "Password updated.")
+                return redirect("employees:profile_settings")
+
+    phone_country, phone_national = parse_stored_phone(employee.phone_number)
+    return render(
+        request,
+        "employees/settings_profile.html",
+        {
+            "active_nav": "settings",
+            "account_form": account_form,
+            "password_form": password_form,
+            "phone_countries_json": list(PHONE_COUNTRIES),
+            "phone_country": phone_country,
+            "phone_national": phone_national,
+        },
     )
 
 

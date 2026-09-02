@@ -53,3 +53,13 @@
   </span>
   Reports
 </a>
+<a
+  class="workspace-nav-link {% if active_nav == 'system_performance' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_system_performance' %}"
+  {% if active_nav == 'system_performance' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15V9m4 10V7m4 8v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  System performance
+</a>

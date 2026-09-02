@@ -1,4 +1,5 @@
 {% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}IT Support workspace | Edu-Centric{% endblock %}
 {% block header_eyebrow %}IT Support{% endblock %}
 {% block header_title %}Dashboard{% endblock %}
@@ -8,7 +9,9 @@
 {% endblock %}
 
 {% block workspace_content %}
-<div class="exam-tool-page">
+<div class="exam-tool-page it-support-dashboard sys-perf-dashboard">
+  {% include "employees/includes/system_performance_widget.html" with compact=True poll_interval=30000 %}
+
   <section class="teacher-dash-actions is-nav-links" aria-label="IT Support modules">
     {% for module in it_support_modules %}
     <a class="teacher-dash-action" href="{% url 'employees:it_support_module' module.slug %}">
@@ -21,4 +24,8 @@
     {% endfor %}
   </section>
 </div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/system_performance.js' %}?v=20260902e" defer></script>
 {% endblock %}

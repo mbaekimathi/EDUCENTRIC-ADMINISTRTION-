@@ -2,6 +2,8 @@
 {% include "employees/includes/it_support_sidebar.html" %}
 {% elif workspace_role == "TEACHER" %}
 {% include "employees/includes/teacher_sidebar.html" %}
+{% elif workspace_role == "SECRETARY" %}
+{% include "employees/includes/secretary_sidebar.html" %}
 {% else %}
 <p class="workspace-nav-label">Modules</p>
 <a

@@ -140,6 +140,16 @@ urlpatterns = [
         name="it_support_report_section",
     ),
     path(
+        "workspace/it_support/system-performance/metrics/",
+        views.it_support_system_performance_metrics,
+        name="it_support_system_performance_metrics",
+    ),
+    path(
+        "workspace/it_support/system-performance/",
+        views.it_support_system_performance,
+        name="it_support_system_performance",
+    ),
+    path(
         "workspace/it_support/<slug:module>/",
         views.it_support_module,
         name="it_support_module",
@@ -233,6 +243,12 @@ urlpatterns = [
         name="teacher_elearning_page",
     ),
     path("workspace/teacher/e-learning/", views.teacher_elearning, name="teacher_elearning"),
+    path(
+        "workspace/secretary/reports/<slug:section>/",
+        views.secretary_report_section,
+        name="secretary_report_section",
+    ),
+    path("workspace/secretary/reports/", views.secretary_reports, name="secretary_reports"),
     path("workspace/switch-role/", views.switch_workspace_role, name="switch_workspace_role"),
     path(
         "workspace/switch-role/employees/",
@@ -251,6 +267,7 @@ urlpatterns = [
     ),
     path("workspace/<slug:role>/", views.role_dashboard, name="role_dashboard"),
     path("settings/", views.system_settings, name="system_settings"),
+    path("settings/profile/", views.profile_settings, name="profile_settings"),
     path(
         "settings/academic-calendar/",
         views.academic_calendar_settings,

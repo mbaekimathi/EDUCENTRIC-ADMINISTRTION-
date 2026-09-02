@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% if selected_level %}
 {% include "employees/includes/page_nav_drawer.html" with label="Exam tools & levels" panel_id="exam-record-page-nav" nav_template="employees/includes/nav/exam_record_levels.html" collapsed=True %}

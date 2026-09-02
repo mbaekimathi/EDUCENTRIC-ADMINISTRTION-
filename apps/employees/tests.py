@@ -2,6 +2,7 @@ from datetime import date, time
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.curriculum.models import (
     AcademicClass,
@@ -355,6 +356,66 @@ class SchoolProfileSettingsTests(TestCase):
                 self.assertEqual(response.status_code, 200)
 
 
+class TeacherProfileSettingsTests(TestCase):
+    def setUp(self):
+        self.teacher = Employee.objects.create_user(
+            employee_code="482673",
+            password="ReliablePass456",
+            title=Employee.Title.MR,
+            first_name="ALI",
+            last_name="TEACHER",
+            email="ali.teacher@example.com",
+            phone_number="+254700000111",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.client.force_login(self.teacher)
+
+    def test_teacher_workspace_shows_profile_settings_not_system_settings(self):
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Profile settings")
+        self.assertContains(response, reverse("employees:profile_settings"))
+        self.assertNotContains(response, "System settings")
+        self.assertNotContains(response, reverse("employees:system_settings"))
+
+    def test_teacher_is_redirected_from_system_settings(self):
+        response = self.client.get(reverse("employees:system_settings"))
+        self.assertRedirects(response, reverse("employees:profile_settings"))
+
+    def test_teacher_can_update_profile_phone(self):
+        response = self.client.post(
+            reverse("employees:profile_settings"),
+            {
+                "form_type": "account",
+                "country_code": "KE",
+                "phone_national": "711222333",
+            },
+        )
+        self.assertRedirects(response, reverse("employees:profile_settings"))
+        self.teacher.refresh_from_db()
+        self.assertEqual(self.teacher.phone_number, "+254711222333")
+
+    def test_non_teacher_is_redirected_from_profile_settings(self):
+        admin = Employee.objects.create_user(
+            employee_code="123456",
+            password="ReliablePass456",
+            title=Employee.Title.MS,
+            first_name="AMINA",
+            last_name="OTIENO",
+            email="amina@example.com",
+            phone_number="+254700000000",
+            role=Employee.Role.HEAD_OF_INSTITUTION,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+        )
+        self.client.force_login(admin)
+        response = self.client.get(reverse("employees:profile_settings"))
+        self.assertRedirects(response, reverse("employees:system_settings"))
+
+
 class ITSupportWorkspaceTests(TestCase):
     def setUp(self):
         self.employee = Employee.objects.create_user(
@@ -400,6 +461,127 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "/workspace/it_support/financial-management/")
         self.assertContains(response, "/workspace/it_support/stock-management/")
         self.assertContains(response, "/workspace/it_support/reports/")
+
+    def test_it_support_dashboard_shows_system_performance_link_and_widget(self):
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "it_support"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "System performance")
+        self.assertContains(response, reverse("employees:it_support_system_performance"))
+        self.assertContains(response, reverse("employees:it_support_system_performance_metrics"))
+        self.assertContains(response, "data-system-performance")
+
+    def test_it_support_system_performance_page_loads(self):
+        response = self.client.get(reverse("employees:it_support_system_performance"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "System performance")
+        self.assertContains(response, reverse("employees:it_support_system_performance_metrics"))
+
+    def test_it_support_system_performance_metrics_returns_json(self):
+        response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("status", payload)
+        self.assertIn("database", payload)
+        self.assertIn("cache", payload)
+        self.assertIn("storage", payload)
+        self.assertIn("counts", payload)
+        self.assertIn("operations", payload)
+        self.assertIn("tables", payload)
+        self.assertIn("latency", payload)
+        self.assertIn("media", payload)
+        self.assertIn("active_sessions", payload)
+        self.assertIn("stress_timeline", payload)
+        self.assertEqual(payload["database"]["status"], "ok")
+        self.assertIn("students_total", payload["counts"])
+        self.assertIn("students_admitted_this_month", payload["operations"])
+        self.assertIn("employees", payload["active_sessions"]["totals"])
+
+    def test_active_sessions_include_logged_in_employee(self):
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.core.cache import cache
+
+        from apps.employees.live_sessions import LIVE_SESSION_ACTIVITY_KEY
+        from apps.employees.system_performance import ACTIVE_SESSIONS_CACHE_KEY
+        from apps.employees.workspace import ACTIVE_WORKSPACE_ROLE_SESSION_KEY
+
+        cache.delete(ACTIVE_SESSIONS_CACHE_KEY)
+
+        store = SessionStore()
+        store[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = Employee.Role.IT_SUPPORT
+        store["_auth_user_id"] = str(self.employee.pk)
+        store[LIVE_SESSION_ACTIVITY_KEY] = timezone.now().isoformat()
+        store.save()
+
+        response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
+        payload = response.json()
+        employee_names = [row["name"] for row in payload["active_sessions"]["employees"]]
+        self.assertIn(self.employee.display_name, employee_names)
+
+    def test_active_sessions_exclude_stale_employee_sessions(self):
+        from datetime import timedelta
+
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.core.cache import cache
+
+        from apps.employees.live_sessions import LIVE_SESSION_ACTIVITY_KEY
+        from apps.employees.system_performance import ACTIVE_SESSIONS_CACHE_KEY
+        from apps.employees.workspace import ACTIVE_WORKSPACE_ROLE_SESSION_KEY
+
+        cache.delete(ACTIVE_SESSIONS_CACHE_KEY)
+
+        store = SessionStore()
+        store[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = Employee.Role.IT_SUPPORT
+        store["_auth_user_id"] = str(self.employee.pk)
+        store[LIVE_SESSION_ACTIVITY_KEY] = (timezone.now() - timedelta(hours=2)).isoformat()
+        store.save()
+
+        response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
+        payload = response.json()
+        employee_names = [row["name"] for row in payload["active_sessions"]["employees"]]
+        self.assertNotIn(self.employee.display_name, employee_names)
+
+    def test_stress_event_recorded_when_system_is_degraded(self):
+        from django.contrib.sessions.backends.db import SessionStore
+
+        from apps.employees.live_sessions import LIVE_SESSION_ACTIVITY_KEY
+        from apps.employees.system_performance import ACTIVE_SESSIONS_CACHE_KEY, STRESS_EVENTS_KEY, get_system_performance_snapshot
+        from apps.employees.workspace import ACTIVE_WORKSPACE_ROLE_SESSION_KEY
+        from django.core.cache import cache
+
+        cache.delete(STRESS_EVENTS_KEY)
+        cache.delete(ACTIVE_SESSIONS_CACHE_KEY)
+        store = SessionStore()
+        store[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = Employee.Role.IT_SUPPORT
+        store["_auth_user_id"] = str(self.employee.pk)
+        store[LIVE_SESSION_ACTIVITY_KEY] = timezone.now().isoformat()
+        store.save()
+
+        snapshot = get_system_performance_snapshot()
+        self.assertIn("stress_timeline", snapshot)
+        self.assertTrue(snapshot["stress_timeline"]["events"])
+
+        event = snapshot["stress_timeline"]["events"][0]
+        self.assertIn("summary", event)
+        self.assertIn("reasons", event)
+        self.assertIn("sessions", event)
+        self.assertIn(self.employee.display_name, [row["name"] for row in event["sessions"]["employees"]])
+
+    def test_it_support_dashboard_renders_live_snapshot_values(self):
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "it_support"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "sys-perf-initial")
+        self.assertNotContains(response, "Checking…")
+        self.assertContains(response, "Users in session")
+        self.assertContains(response, "ms")
+
+    def test_teacher_cannot_access_system_performance_metrics(self):
+        self.client.force_login(self.teacher)
+        response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
+        self.assertEqual(response.status_code, 403)
 
     def test_it_support_module_pages_load(self):
         modules = (
@@ -1097,7 +1279,7 @@ class EmployeeManagementTests(TestCase):
         self.assertContains(response, "GRACE FINANCE")
         self.assertContains(response, "135790")
         self.assertContains(response, self.teacher.employment_number)
-        self.assertContains(response, "Employment no.")
+        self.assertContains(response, "Employment number")
         self.assertContains(response, "Employee code")
         self.assertNotContains(response, "employees in this role")
         self.assertNotContains(response, "Jump to role")
@@ -1218,6 +1400,66 @@ class EmployeeManagementTests(TestCase):
             reverse("employees:delete_workspace_employee", kwargs={"employee_id": self.support.id})
         )
         self.assertTrue(Employee.objects.filter(pk=self.support.id).exists())
+
+    def test_cannot_reuse_another_employees_number(self):
+        response = self.client.post(
+            reverse("employees:update_workspace_employee", kwargs={"employee_id": self.teacher.id}),
+            {
+                "title": self.teacher.title,
+                "first_name": self.teacher.first_name,
+                "last_name": self.teacher.last_name,
+                "email": self.teacher.email,
+                "phone_number": self.teacher.phone_number,
+                "employee_code": self.teacher.employee_code,
+                "employment_number": str(self.support.employment_number),
+                "role": self.teacher.role,
+                "approval_status": self.teacher.approval_status,
+            },
+        )
+        self.assertRedirects(response, reverse("employees:it_support_employee_management"))
+        self.teacher.refresh_from_db()
+        self.assertEqual(self.teacher.employment_number, 2)
+
+    def test_can_override_another_employees_number_on_confirmation(self):
+        support_number = self.support.employment_number
+        response = self.client.post(
+            reverse("employees:update_workspace_employee", kwargs={"employee_id": self.teacher.id}),
+            {
+                "title": self.teacher.title,
+                "first_name": self.teacher.first_name,
+                "last_name": self.teacher.last_name,
+                "email": self.teacher.email,
+                "phone_number": self.teacher.phone_number,
+                "employee_code": self.teacher.employee_code,
+                "employment_number": str(support_number),
+                "role": self.teacher.role,
+                "roles": [self.teacher.role],
+                "approval_status": self.teacher.approval_status,
+                "override_employment_number": "1",
+            },
+        )
+        self.assertRedirects(response, reverse("employees:it_support_employee_management"))
+        self.teacher.refresh_from_db()
+        self.support.refresh_from_db()
+        self.assertEqual(self.teacher.employment_number, support_number)
+        self.assertIsNone(self.support.employment_number)
+
+    def test_deleted_employment_number_is_not_reused(self):
+        used_number = self.teacher.employment_number
+        self.teacher.delete()
+        replacement = Employee.objects.create_user(
+            employee_code="246811",
+            password="ReliablePass456",
+            title=Employee.Title.MR,
+            first_name="NEW",
+            last_name="STAFF",
+            email="new.staff@example.com",
+            phone_number="+254700000444",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+        )
+        self.assertNotEqual(replacement.employment_number, used_number)
+        self.assertEqual(replacement.employment_number, 4)
 
 
 class StudentManagementTests(TestCase):
@@ -1423,42 +1665,6 @@ class StudentManagementTests(TestCase):
 
         empty = self.client.get(search_url, {"q": "ZZZNOMATCH"})
         self.assertEqual(empty.json()["students"], [])
-
-    def test_cannot_reuse_another_employees_number(self):
-        response = self.client.post(
-            reverse("employees:update_workspace_employee", kwargs={"employee_id": self.teacher.id}),
-            {
-                "title": self.teacher.title,
-                "first_name": self.teacher.first_name,
-                "last_name": self.teacher.last_name,
-                "email": self.teacher.email,
-                "phone_number": self.teacher.phone_number,
-                "employee_code": self.teacher.employee_code,
-                "employment_number": str(self.support.employment_number),
-                "role": self.teacher.role,
-                "approval_status": self.teacher.approval_status,
-            },
-        )
-        self.assertRedirects(response, reverse("employees:it_support_employee_management"))
-        self.teacher.refresh_from_db()
-        self.assertEqual(self.teacher.employment_number, 2)
-
-    def test_deleted_employment_number_is_not_reused(self):
-        used_number = self.teacher.employment_number
-        self.teacher.delete()
-        replacement = Employee.objects.create_user(
-            employee_code="246811",
-            password="ReliablePass456",
-            title=Employee.Title.MR,
-            first_name="NEW",
-            last_name="STAFF",
-            email="new.staff@example.com",
-            phone_number="+254700000444",
-            role=Employee.Role.TEACHER,
-            approval_status=Employee.ApprovalStatus.APPROVED,
-        )
-        self.assertNotEqual(replacement.employment_number, used_number)
-        self.assertEqual(replacement.employment_number, 4)
 
 
 class ClassSubjectAllocationTests(TestCase):

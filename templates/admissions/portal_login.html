@@ -20,7 +20,7 @@
       <form method="post" class="portal-form auth-form" id="student-form">
         {% csrf_token %}
         <input type="hidden" name="portal_type" value="student">
-        {% if student_form.non_field_errors %}<div class="notice error">{{ student_form.non_field_errors|striptags }}</div>{% endif %}
+        {% if student_form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=student_form.non_field_errors|striptags %}{% endif %}
         <div class="field">
           <label for="{{ student_form.assessment_number.id_for_label }}">Assessment number</label>
           {{ student_form.assessment_number }}
@@ -41,7 +41,7 @@
       <form method="post" class="portal-form auth-form" id="parent-form" hidden>
         {% csrf_token %}
         <input type="hidden" name="portal_type" value="parent">
-        {% if parent_form.non_field_errors %}<div class="notice error">{{ parent_form.non_field_errors|striptags }}</div>{% endif %}
+        {% if parent_form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=parent_form.non_field_errors|striptags %}{% endif %}
         <div class="field">
           <label for="{{ parent_form.phone_number.id_for_label }}">Phone number</label>
           {{ parent_form.phone_number }}

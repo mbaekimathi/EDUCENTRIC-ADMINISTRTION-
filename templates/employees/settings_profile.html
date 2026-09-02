@@ -1,0 +1,219 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Profile settings | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Profile settings{% endblock %}
+{% block header_title %}Your account{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/workspace_role_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<section class="settings-panel">
+  <div class="settings-profile-card">
+    {% if request.user.profile_image %}
+    <img class="school-logo-preview" src="{{ request.user.profile_image.url }}" alt="">
+    {% else %}
+    <span class="workspace-avatar workspace-avatar-fallback" aria-hidden="true">{{ request.user.first_name|default:"E"|slice:":1"|upper }}</span>
+    {% endif %}
+    <div>
+      <h3>{{ request.user.display_name }}</h3>
+      <p>{{ workspace_role_label }} · {{ request.user.employee_code }}{% if request.user.email %} · {{ request.user.email }}{% endif %}</p>
+    </div>
+  </div>
+</section>
+
+<form method="post" enctype="multipart/form-data" class="school-profile-form" id="profile-account-form" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="form_type" value="account">
+
+  <section class="settings-panel school-profile-panel">
+    <div>
+      <h3 class="school-profile-section-title">Contact and photo</h3>
+      <p class="settings-empty">Update the phone number and profile photo shown in your workspace.</p>
+    </div>
+
+    {% if account_form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=account_form.non_field_errors|striptags %}{% endif %}
+
+    <div class="form-grid-2">
+      <div class="field span-two">
+        <label for="phone-national">Phone</label>
+        <div class="phone-input phone-input-unified" data-phone-widget>
+          <div class="phone-country" data-country-picker>
+            <select
+              name="country_code"
+              id="{{ account_form.country_code.id_for_label }}"
+              class="visually-hidden"
+              data-phone-country
+              tabindex="-1"
+              aria-hidden="true"
+            >
+              {% for value, label in account_form.country_code.field.choices %}
+                <option value="{{ value }}" {% if phone_country == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="phone-country-trigger" data-country-trigger aria-haspopup="listbox" aria-expanded="false" aria-label="Select country">
+              <img class="phone-flag" data-phone-flag src="https://flagcdn.com/w40/ke.png" srcset="https://flagcdn.com/w80/ke.png 2x" width="28" height="20" alt="">
+              <span class="phone-country-caret" aria-hidden="true"></span>
+            </button>
+            <ul class="phone-country-menu" data-country-menu role="listbox" hidden>
+              {% for country in phone_countries_json %}
+                <li role="option" data-iso="{{ country.iso }}" {% if country.iso == phone_country %}aria-selected="true"{% endif %}>
+                  <img src="{{ country.flag_src }}" srcset="{{ country.flag_srcset }}" width="28" height="20" alt="">
+                  <span class="phone-option-name">{{ country.name }}</span>
+                  <span class="phone-option-dial">+{{ country.dial }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <span class="phone-dial" data-phone-dial>+254</span>
+          <input
+            type="tel"
+            id="phone-national"
+            name="phone_national"
+            class="phone-national"
+            inputmode="tel"
+            autocomplete="tel-national"
+            placeholder="7XX XXX XXX"
+            value="{{ request.POST.phone_national|default:phone_national }}"
+            data-phone-national
+          >
+        </div>
+        {% for error in account_form.country_code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field span-two">
+        <label for="{{ account_form.profile_image.id_for_label }}">{{ account_form.profile_image.label }}</label>
+        {{ account_form.profile_image }}
+        {% for error in account_form.profile_image.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      {% if request.user.profile_image %}
+      <div class="field span-two">
+        <label class="checkbox-label">
+          {{ account_form.clear_profile_image }}
+          {{ account_form.clear_profile_image.label }}
+        </label>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="school-profile-actions">
+    <button type="submit" class="primary-button">Save profile</button>
+  </div>
+</form>
+
+<form method="post" class="school-profile-form" id="profile-password-form" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="form_type" value="password">
+
+  <section class="settings-panel school-profile-panel">
+    <div>
+      <h3 class="school-profile-section-title">Password</h3>
+      <p class="settings-empty">Change the password you use to sign in.</p>
+    </div>
+
+    {% if password_form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=password_form.non_field_errors|striptags %}{% endif %}
+
+    <div class="form-grid-2">
+      <div class="field span-two">
+        <label for="{{ password_form.old_password.id_for_label }}">Current password</label>
+        {{ password_form.old_password }}
+        {% for error in password_form.old_password.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ password_form.new_password1.id_for_label }}">New password</label>
+        {{ password_form.new_password1 }}
+        {% if password_form.new_password1.help_text %}<small class="field-hint">{{ password_form.new_password1.help_text }}</small>{% endif %}
+        {% for error in password_form.new_password1.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ password_form.new_password2.id_for_label }}">Confirm new password</label>
+        {{ password_form.new_password2 }}
+        {% for error in password_form.new_password2.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <div class="school-profile-actions">
+    <button type="submit" class="primary-button">Update password</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block workspace_scripts %}
+{{ phone_countries_json|json_script:"phone-countries-data" }}
+<script>
+(function () {
+  const countries = JSON.parse(document.getElementById("phone-countries-data").textContent);
+  const byIso = Object.fromEntries(countries.map((item) => [item.iso, item]));
+  const widget = document.querySelector("[data-phone-widget]");
+  if (!widget) return;
+
+  const countrySelect = widget.querySelector("[data-phone-country]");
+  const nationalInput = widget.querySelector("[data-phone-national]");
+  const dialLabel = widget.querySelector("[data-phone-dial]");
+  const flagImage = widget.querySelector("[data-phone-flag]");
+  const picker = widget.querySelector("[data-country-picker]");
+  const trigger = widget.querySelector("[data-country-trigger]");
+  const menu = widget.querySelector("[data-country-menu]");
+
+  function digitsOnly(value) {
+    return String(value || "").replace(/\D/g, "");
+  }
+
+  function currentCountry() {
+    return byIso[countrySelect.value] || byIso.KE;
+  }
+
+  function formatNational(digits, country) {
+    const clean = digits.slice(0, country.nsn);
+    if (clean.length <= 3) return clean;
+    if (clean.length <= 6) return `${clean.slice(0, 3)} ${clean.slice(3)}`;
+    return `${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6)}`;
+  }
+
+  function setMenuOpen(open) {
+    menu.hidden = !open;
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    picker.classList.toggle("is-open", open);
+  }
+
+  function selectCountry(iso) {
+    countrySelect.value = (byIso[iso] || byIso.KE).iso;
+    setMenuOpen(false);
+    syncPhone();
+  }
+
+  function syncPhone() {
+    const country = currentCountry();
+    let digits = digitsOnly(nationalInput.value);
+    if (digits.startsWith(country.dial)) digits = digits.slice(country.dial.length);
+    while (digits.startsWith("0")) digits = digits.slice(1);
+    digits = digits.slice(0, country.nsn);
+
+    nationalInput.value = formatNational(digits, country);
+    nationalInput.placeholder = country.placeholder;
+    dialLabel.textContent = `+${country.dial}`;
+    flagImage.src = country.flag_src;
+    flagImage.srcset = country.flag_srcset;
+    flagImage.alt = `${country.name} flag`;
+    menu.querySelectorAll("[data-iso]").forEach((item) => {
+      item.setAttribute("aria-selected", item.dataset.iso === country.iso ? "true" : "false");
+    });
+  }
+
+  trigger.addEventListener("click", () => setMenuOpen(menu.hidden));
+  menu.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-iso]");
+    if (option) selectCountry(option.dataset.iso);
+  });
+  document.addEventListener("click", (event) => {
+    if (!picker.contains(event.target)) setMenuOpen(false);
+  });
+  nationalInput.addEventListener("input", syncPhone);
+  document.getElementById("profile-account-form").addEventListener("submit", syncPhone);
+  setMenuOpen(false);
+  syncPhone();
+})();
+</script>
+{% endblock %}

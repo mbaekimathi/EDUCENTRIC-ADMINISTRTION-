@@ -20,8 +20,7 @@
 })();
 </script>
 <div class="exam-tool-page elr-report-page exam-report-builder-page{% if has_report %} has-report{% endif %}">
-  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
+  
   {% if has_report %}
   <div class="teacher-page-bar no-print" aria-label="Report summary">
     <div class="teacher-page-bar-stats">
@@ -44,7 +43,7 @@
   </div>
   {% endif %}
 
-  {% if report_error %}<div class="notice error no-print">{{ report_error }}</div>{% endif %}
+  {% if report_error %}{% include "partials/notify_trigger.html" with type="error" message=report_error %}{% endif %}
 
   {% if not allocations %}
   <section class="exam-tool-empty no-print">

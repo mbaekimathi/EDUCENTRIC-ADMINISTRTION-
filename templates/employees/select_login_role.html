@@ -13,7 +13,7 @@
         <p class="subtle">Signed in as {{ employee_name }}</p>
       </div>
 
-      {% if error_message %}<div class="notice error">{{ error_message }}</div>{% endif %}
+      {% if error_message %}{% include "partials/notify_trigger.html" with type="error" message=error_message %}{% endif %}
 
       <form method="post" class="auth-form role-select-form" novalidate>
         {% csrf_token %}

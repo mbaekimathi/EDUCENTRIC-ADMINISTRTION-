@@ -19,7 +19,7 @@
 })();
 </script>
 <div class="exam-tool-page exam-report-builder-page exam-report-page{% if report and not report.error %} has-report{% endif %}">
-  {% if report_error %}<div class="notice error">{{ report_error }}</div>{% endif %}
+  {% if report_error %}{% include "partials/notify_trigger.html" with type="error" message=report_error %}{% endif %}
 
   <details class="exam-report-builder-details exam-report-panel no-print"{% if not report or report.error %} open{% endif %}>
     <summary class="exam-report-builder-summary">

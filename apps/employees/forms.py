@@ -1,9 +1,11 @@
 from django import forms
 from django.contrib.auth import authenticate
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from .models import Employee, IssuedEmploymentNumber, SchoolProfile
-from .phone_countries import PHONE_COUNTRIES, country_by_iso, normalize_phone
+from .phone_countries import PHONE_COUNTRIES, country_by_iso, normalize_phone, parse_stored_phone
 
 
 def uppercase_value(value):
@@ -38,6 +40,7 @@ class UppercaseFieldsMixin:
 
 class EmployeeLoginForm(forms.Form):
     employee_code = forms.CharField(
+        label="Employment number",
         min_length=6,
         max_length=6,
         widget=forms.TextInput(
@@ -89,7 +92,7 @@ class EmployeeLoginForm(forms.Form):
                         raise forms.ValidationError(
                             "Your account is approved but not activated yet. Ask an administrator to activate it."
                         )
-                raise forms.ValidationError("Your employee code or password is incorrect.")
+                raise forms.ValidationError("Your employment number or password is incorrect.")
         return cleaned_data
 
     def get_user(self):
@@ -355,6 +358,9 @@ class EmployeeRegistrationForm(UserCreationForm):
             "phone_number",
             "employee_code",
         )
+        labels = {
+            "employee_code": "Employment number",
+        }
         widgets = {
             "title": forms.Select(attrs={"class": "uppercase-input"}),
             "first_name": forms.TextInput(attrs={"class": "uppercase-input"}),
@@ -437,6 +443,11 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
         label="Roles",
         help_text="Select every workspace role this employee should have.",
     )
+    override_employment_number = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.HiddenInput,
+    )
 
     class Meta:
         model = Employee
@@ -453,6 +464,8 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
         )
         labels = {
             "role": "Primary role",
+            "employee_code": "Employment number",
+            "employment_number": "Employee code",
         }
         help_texts = {
             "role": "Default workspace after sign-in when more than one role is assigned.",
@@ -495,6 +508,32 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
         elif self.instance and self.instance.role:
             self.fields["roles"].initial = [self.instance.role]
 
+    def _override_requested(self):
+        if not self.data:
+            return False
+        value = self.data.get("override_employment_number")
+        if value is True:
+            return True
+        return str(value).lower() in ("1", "true", "on", "yes")
+
+    def validate_unique(self):
+        exclude = self._get_validation_exclusions()
+        if self._override_requested():
+            number = self.cleaned_data.get("employment_number")
+            if number and self.instance.pk:
+                conflict = (
+                    Employee.objects.filter(employment_number=number)
+                    .exclude(pk=self.instance.pk)
+                    .first()
+                )
+                if conflict:
+                    self._employment_number_conflict = conflict
+                    exclude.add("employment_number")
+        try:
+            self.instance.validate_unique(exclude=exclude)
+        except ValidationError as exc:
+            self._update_errors(exc)
+
     def clean_title(self):
         title = (self.cleaned_data.get("title") or "").strip().upper()
         valid = {value for value, _label in Employee.Title.choices}
@@ -509,12 +548,14 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
         assigned = Employee.objects.filter(employment_number=number)
         if self.instance.pk:
             assigned = assigned.exclude(pk=self.instance.pk)
-        if assigned.exists():
-            raise forms.ValidationError("This employment number is already assigned to another employee.")
         already_issued = IssuedEmploymentNumber.objects.filter(number=number).exists()
-        if already_issued and self.instance.employment_number != number:
+        if (
+            already_issued
+            and self.instance.employment_number != number
+            and not assigned.exists()
+        ):
             raise forms.ValidationError(
-                "This employment number has already been used and cannot be reused."
+                "This employee code has already been used and cannot be reused."
             )
         return number
 
@@ -533,15 +574,116 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
             )
         elif roles and not primary:
             cleaned_data["role"] = roles[0]
+
+        number = cleaned_data.get("employment_number")
+        override = self._override_requested()
+        cleaned_data["override_employment_number"] = override
+        if number and self.instance.pk:
+            conflict = (
+                Employee.objects.filter(employment_number=number)
+                .exclude(pk=self.instance.pk)
+                .first()
+            )
+            if conflict and not override:
+                self.add_error(
+                    "employment_number",
+                    "This employee code is already assigned to another employee.",
+                )
+            elif conflict and override:
+                self._employment_number_conflict = conflict
         return cleaned_data
 
     def save(self, commit=True):
-        employee = super().save(commit=commit)
-        roles = self.cleaned_data.get("roles") or [employee.role]
+        roles = self.cleaned_data.get("roles") or [self.instance.role]
         primary = self.cleaned_data.get("role") or roles[0]
-        if commit:
-            employee.set_roles(roles, primary=primary)
+        conflict = getattr(self, "_employment_number_conflict", None)
+        override = self.cleaned_data.get("override_employment_number")
+        number = self.cleaned_data.get("employment_number")
+        if override and number and self.instance.pk and not conflict:
+            conflict = (
+                Employee.objects.filter(employment_number=number)
+                .exclude(pk=self.instance.pk)
+                .first()
+            )
+
+        def apply_roles(employee):
+            if commit:
+                employee.set_roles(roles, primary=primary)
+            else:
+                employee._pending_roles = roles
+                employee._pending_primary_role = primary
+            return employee
+
+        if conflict:
+            with transaction.atomic():
+                Employee.objects.filter(pk=conflict.pk).update(employment_number=None)
+                employee = super().save(commit=False)
+                employee._allow_reassigned_employment_number = True
+                if commit:
+                    employee.save()
+                return apply_roles(employee)
+
+        employee = super().save(commit=commit)
+        return apply_roles(employee)
+
+
+class EmployeeAccountSettingsForm(forms.ModelForm):
+    country_code = forms.ChoiceField(
+        choices=[(item["iso"], f"{item['name']} (+{item['dial']})") for item in PHONE_COUNTRIES],
+        initial="KE",
+        label="Country",
+    )
+    clear_profile_image = forms.BooleanField(required=False, label="Remove profile photo")
+
+    class Meta:
+        model = Employee
+        fields = ("profile_image",)
+        widgets = {
+            "profile_image": forms.ClearableFileInput(attrs={"accept": "image/*"}),
+        }
+        labels = {
+            "profile_image": "Profile photo",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        iso, _national = parse_stored_phone(getattr(self.instance, "phone_number", ""))
+        self.fields["country_code"].initial = iso
+
+    def clean(self):
+        cleaned_data = super().clean()
+        iso = cleaned_data.get("country_code") or "KE"
+        country = country_by_iso(iso)
+        phone = normalize_phone(self.data.get("phone_national", ""), country)
+        if not phone:
+            self.add_error("country_code", "Enter a valid phone number.")
         else:
-            employee._pending_roles = roles
-            employee._pending_primary_role = primary
+            cleaned_data["phone_number"] = phone
+        return cleaned_data
+
+    def save(self, commit=True):
+        employee = super().save(commit=False)
+        employee.phone_number = self.cleaned_data["phone_number"]
+        if self.cleaned_data.get("clear_profile_image"):
+            if employee.profile_image:
+                employee.profile_image.delete(save=False)
+            employee.profile_image = None
+        if commit:
+            employee.save()
         return employee
+
+
+class EmployeePasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["old_password"].widget.attrs.update(
+            {"placeholder": "Current password", "autocomplete": "current-password"}
+        )
+        self.fields["new_password1"].widget.attrs.update(
+            {"placeholder": "New password", "autocomplete": "new-password"}
+        )
+        self.fields["new_password2"].widget.attrs.update(
+            {"placeholder": "Confirm new password", "autocomplete": "new-password"}
+        )
+        self.fields["new_password1"].help_text = "Use at least 6 characters."
+        self.fields["new_password2"].help_text = ""

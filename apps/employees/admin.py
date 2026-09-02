@@ -1,8 +1,18 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from django.forms import Select
+from django.forms import ModelForm, Select
 
 from .models import Employee, EmployeeRole
+
+
+class EmployeeAdminForm(ModelForm):
+    class Meta:
+        model = Employee
+        fields = "__all__"
+        labels = {
+            "employee_code": "Employment number",
+            "employment_number": "Employee code",
+        }
 
 
 class EmployeeRoleInline(admin.TabularInline):
@@ -13,6 +23,7 @@ class EmployeeRoleInline(admin.TabularInline):
 @admin.register(Employee)
 class EmployeeAdmin(UserAdmin):
     model = Employee
+    form = EmployeeAdminForm
     list_display = (
         "employee_code",
         "employment_number",

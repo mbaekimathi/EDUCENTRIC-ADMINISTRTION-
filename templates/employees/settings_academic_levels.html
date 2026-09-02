@@ -19,7 +19,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/curriculum_settings.html" %}
 <div class="settings-toolbar">
@@ -160,8 +159,8 @@
     </div>
     <form method="post" class="app-modal-form" novalidate>
       {% csrf_token %}
-      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
-      {% if class_errors %}<div class="notice error">{% for err in class_errors %}{{ err }} {% endfor %}</div>{% endif %}
+      {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
+      {% if class_errors %}{% include "partials/notify_trigger.html" with type="error" message=class_errors|join:" " %}{% endif %}
 
       <div class="field">
         <label for="{{ form.name.id_for_label }}">Level name <span class="required">*</span></label>

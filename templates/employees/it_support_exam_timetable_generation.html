@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/exam_management.html" %}
 <div class="exam-tool-page exam-timetable-generation-page">
@@ -285,7 +284,7 @@
   });
   nextButton?.addEventListener("click", () => {
     if (!selectedLevels().length) {
-      window.alert("Select at least one viable academic level.");
+      window.EduNotify.error("Select at least one viable academic level.");
       return;
     }
     setStep(2);

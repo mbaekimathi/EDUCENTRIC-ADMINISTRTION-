@@ -10,8 +10,7 @@
 {% block workspace_content %}
 {% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="exam-tool-page learning-materials-page" data-learning-materials-page>
-  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
+  
   <div class="teacher-page-bar no-print" aria-label="Learning materials actions">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
@@ -113,7 +112,7 @@
     <form method="post" enctype="multipart/form-data" class="app-modal-form learning-material-form" novalidate data-learning-material-form>
       {% csrf_token %}
       <input type="hidden" name="form_action" value="upload">
-      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+      {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
 
       <div class="learning-material-simple-grid">
         <div class="field">

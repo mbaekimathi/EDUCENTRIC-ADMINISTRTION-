@@ -27,11 +27,10 @@
   </a>
 </section>
 <section class="admit-panel workspace-panel">
-  {% for message in messages %}<div class="notice success">{{ message }}</div>{% endfor %}
-
+  
   <form method="post" class="admit-form" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
-    {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+    {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
 
     <div class="admit-group">
       <h2 class="admit-group-title">Student</h2>

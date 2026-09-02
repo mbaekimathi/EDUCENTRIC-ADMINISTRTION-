@@ -10,8 +10,7 @@
 {% block workspace_content %}
 {% include "employees/includes/nav/teacher_elearning_attendance.html" %}
 <div class="subject-profile-page" data-subject-profile>
-  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
+  
   <section class="exam-record-bar subject-profile-bar">
     <div class="exam-record-bar-title">
       <h2 class="is-uppercase">{{ subject.name }}</h2>

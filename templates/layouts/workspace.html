@@ -54,12 +54,12 @@
       {% endif %}
       <a
         class="workspace-nav-link {% if active_nav == 'settings' %}is-active{% endif %}"
-        href="{% url 'employees:system_settings' %}"
+        href="{% if uses_profile_settings %}{% url 'employees:profile_settings' %}{% else %}{% url 'employees:system_settings' %}{% endif %}"
       >
         <span class="workspace-nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.4-3.5.9-1.6-1.7-3-1.9.4a7.2 7.2 0 0 0-1.5-.9l-.3-1.9H9.1l-.3 1.9c-.5.2-1 .5-1.5.9l-1.9-.4-1.7 3 .9 1.6a7 7 0 0 0 0 1.8l-.9 1.6 1.7 3 1.9-.4c.5.4 1 .7 1.5.9l.3 1.9h5.8l.3-1.9c.5-.2 1-.5 1.5-.9l1.9.4 1.7-3-.9-1.6a7 7 0 0 0 0-1.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </span>
-        System settings
+        {% if uses_profile_settings %}Profile settings{% else %}System settings{% endif %}
       </a>
       <a class="workspace-nav-link workspace-nav-signout" href="{% url 'employees:logout' %}">
         <span class="workspace-nav-icon" aria-hidden="true">
@@ -232,7 +232,7 @@
 
       <label class="role-switch-search" data-role-switch-search-wrap hidden>
         <span class="visually-hidden">Search employees</span>
-        <input type="search" placeholder="Search by name or employee code" data-role-switch-search autocomplete="off">
+        <input type="search" placeholder="Search by name or employment number" data-role-switch-search autocomplete="off">
       </label>
 
       <div class="role-switch-step is-active" data-role-switch-step="role">
@@ -270,6 +270,6 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{% static 'js/workspace.js' %}?v=20260902level-filter" defer></script>
+<script src="{% static 'js/workspace.js' %}?v=20260902profile-click" defer></script>
 {% block workspace_scripts %}{% endblock %}
 {% endblock %}

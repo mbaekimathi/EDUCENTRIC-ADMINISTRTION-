@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/exam_settings.html" %}
 <div class="settings-toolbar">
@@ -120,8 +119,8 @@
       {% if edit_profile %}<input type="hidden" name="profile_id" value="{{ edit_profile.id }}">{% endif %}
       {{ activity_formset.management_form }}
       <div class="schedule-profile-form-body">
-        {% if profile_form.non_field_errors %}<div class="notice error">{{ profile_form.non_field_errors|striptags }}</div>{% endif %}
-        {% if activity_formset.non_form_errors %}<div class="notice error">{{ activity_formset.non_form_errors|striptags }}</div>{% endif %}
+        {% if profile_form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=profile_form.non_field_errors|striptags %}{% endif %}
+        {% if activity_formset.non_form_errors %}{% include "partials/notify_trigger.html" with type="error" message=activity_formset.non_form_errors|striptags %}{% endif %}
 
         <section class="schedule-form-section">
           <h3>1. Who this profile is for</h3>

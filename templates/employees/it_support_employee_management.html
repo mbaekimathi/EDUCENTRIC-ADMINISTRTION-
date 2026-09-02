@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 <div class="exam-tool-page employee-mgmt-page">
   <section class="teacher-dash-actions is-nav-links" aria-label="Human resource tools">
@@ -54,7 +53,7 @@
     <label class="employee-mgmt-search">
       <span class="sr-only">Search employees</span>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm7.03 10.47 3.5 3.5-1.06 1.06-3.5-3.5 1.06-1.06z"/></svg>
-      <input type="search" placeholder="Search by name, code, email, phone, or role" data-employee-search autocomplete="off">
+      <input type="search" placeholder="Search by name, employment number, employee code, email, phone, or role" data-employee-search autocomplete="off">
     </label>
   </div>
 
@@ -74,8 +73,8 @@
           <thead>
             <tr>
               <th>Employee</th>
-              <th>Employment no.</th>
               <th>Employee code</th>
+              <th>Employment number</th>
               <th>Contact</th>
               <th>Approval</th>
               <th>Access</th>
@@ -107,8 +106,8 @@
                   </div>
                 </div>
               </td>
-              <td data-label="Employment no."><code class="employee-code">{{ employee.employment_number }}</code></td>
-              <td data-label="Employee code"><code class="employee-code is-uppercase">{{ employee.employee_code }}</code></td>
+              <td data-label="Employee code"><code class="employee-code">{{ employee.employment_number }}</code></td>
+              <td data-label="Employment number"><code class="employee-code is-uppercase">{{ employee.employee_code }}</code></td>
               <td data-label="Contact">
                 <div class="employee-contact-cell">
                   <span>{{ employee.email }}</span>
@@ -131,6 +130,7 @@
                     type="button"
                     class="record-action"
                     data-edit-employee
+                    data-employee-id="{{ employee.id }}"
                     data-title="{{ employee.title }}"
                     data-first-name="{{ employee.first_name }}"
                     data-last-name="{{ employee.last_name }}"
@@ -186,6 +186,7 @@
     </div>
     <form method="post" class="app-modal-form edit-employee-form" data-edit-employee-form>
       {% csrf_token %}
+      <input type="hidden" name="override_employment_number" value="0" data-override-employment-number>
       <div class="edit-employee-form-body">
         <section class="edit-employee-section" aria-labelledby="edit-employee-identity-heading">
           <div class="edit-employee-section-head">
@@ -202,11 +203,11 @@
               </select>
             </div>
             <div class="field">
-              <label for="edit-employment-number">Employment number <span class="required">*</span></label>
+              <label for="edit-employment-number">Employee code <span class="required">*</span></label>
               <input id="edit-employment-number" name="employment_number" type="number" min="1" step="1" required>
             </div>
             <div class="field">
-              <label for="edit-employee-code">Employee code <span class="required">*</span></label>
+              <label for="edit-employee-code">Employment number <span class="required">*</span></label>
               <input id="edit-employee-code" class="uppercase-input" name="employee_code" required maxlength="6" inputmode="numeric">
             </div>
             <div class="field">
@@ -282,6 +283,42 @@
     </form>
   </div>
 </div>
+
+<div
+  class="app-modal employee-code-confirm-modal"
+  id="employee-code-confirm-modal"
+  data-employee-code-confirm-modal
+  hidden
+>
+  <div class="app-modal-backdrop" data-employee-code-confirm-cancel></div>
+  <div
+    class="app-modal-dialog employee-code-confirm-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="employee-code-confirm-title"
+    aria-describedby="employee-code-confirm-message"
+  >
+    <div class="employee-code-confirm-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M12 8v5m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      </svg>
+    </div>
+    <div class="employee-code-confirm-body">
+      <p class="employee-code-confirm-kicker">Employee code conflict</p>
+      <h2 id="employee-code-confirm-title">Override existing assignment?</h2>
+      <p id="employee-code-confirm-message" class="employee-code-confirm-message" data-employee-code-confirm-message></p>
+      <div class="employee-code-confirm-notice" data-employee-code-confirm-notice hidden>
+        <strong>What happens next</strong>
+        <p data-employee-code-confirm-notice-text></p>
+      </div>
+    </div>
+    <div class="app-modal-actions employee-code-confirm-actions">
+      <button type="button" class="ghost-button" data-employee-code-confirm-cancel>Cancel</button>
+      <button type="button" class="primary-button is-danger" data-employee-code-confirm-accept>Override and save</button>
+    </div>
+  </div>
+</div>
+{{ employee_code_assignments|json_script:"employee-code-assignments" }}
 {% endblock %}
 
 {% block workspace_scripts %}
@@ -289,8 +326,19 @@
 (function () {
   const modal = document.querySelector("[data-edit-employee-modal]");
   const form = document.querySelector("[data-edit-employee-form]");
+  const overrideInput = document.querySelector("[data-override-employment-number]");
+  const confirmModal = document.querySelector("[data-employee-code-confirm-modal]");
+  const confirmMessage = document.querySelector("[data-employee-code-confirm-message]");
+  const confirmNotice = document.querySelector("[data-employee-code-confirm-notice]");
+  const confirmNoticeText = document.querySelector("[data-employee-code-confirm-notice-text]");
+  const confirmAccept = document.querySelector("[data-employee-code-confirm-accept]");
   const searchInput = document.querySelector("[data-employee-search]");
   const emptyState = document.querySelector("[data-employee-empty]");
+  const codeAssignments = JSON.parse(
+    document.getElementById("employee-code-assignments")?.textContent || "{}"
+  );
+  let editingEmployeeId = null;
+  let pendingSubmit = false;
   const fields = {
     title: document.querySelector("#edit-employee-title-field"),
     firstName: document.querySelector("#edit-employee-first-name"),
@@ -317,8 +365,31 @@
     }
   }
 
+  function setConfirmOpen(open) {
+    if (!confirmModal) return;
+    confirmModal.hidden = !open;
+    confirmModal.classList.toggle("is-open", open);
+    if (open) {
+      confirmAccept?.focus();
+    } else {
+      pendingSubmit = false;
+    }
+  }
+
+  function openCodeConflictConfirm(holder) {
+    if (!holder || !confirmMessage || !confirmNotice || !confirmNoticeText) return;
+    confirmMessage.textContent =
+      `Employee code ${fields.employmentNumber?.value || ""} is already assigned to ${holder.name}.`;
+    confirmNoticeText.textContent =
+      `${holder.name}'s employee code will be cleared (set to empty) if you continue.`;
+    confirmNotice.hidden = false;
+    pendingSubmit = true;
+    setConfirmOpen(true);
+  }
+
   function setOpen(open) {
     if (!modal) return;
+    if (!open) setConfirmOpen(false);
     modal.hidden = !open;
     modal.classList.toggle("is-open", open);
     document.body.classList.toggle("modal-open", open);
@@ -340,6 +411,9 @@
   document.querySelectorAll("[data-edit-employee]").forEach((button) => {
     button.addEventListener("click", () => {
       form.action = button.dataset.updateUrl;
+      editingEmployeeId = Number.parseInt(button.dataset.employeeId || "", 10) || null;
+      if (overrideInput) overrideInput.value = "0";
+      setConfirmOpen(false);
       fields.title.value = button.dataset.title || "";
       fields.firstName.value = button.dataset.firstName || "";
       fields.lastName.value = button.dataset.lastName || "";
@@ -371,8 +445,35 @@
     const selected = roleChecks().filter((input) => input.checked);
     if (!selected.length) {
       event.preventDefault();
-      alert("Select at least one role.");
+      window.EduNotify.error("Select at least one role.");
+      return;
     }
+
+    if (overrideInput?.value === "1") {
+      return;
+    }
+
+    const employeeCode = (fields.employmentNumber?.value || "").trim();
+    if (!employeeCode || !editingEmployeeId) {
+      return;
+    }
+
+    const holder = codeAssignments[employeeCode];
+    if (holder && holder.id !== editingEmployeeId) {
+      event.preventDefault();
+      openCodeConflictConfirm(holder);
+    }
+  });
+
+  confirmAccept?.addEventListener("click", () => {
+    if (!pendingSubmit || !form || !overrideInput) return;
+    overrideInput.value = "1";
+    setConfirmOpen(false);
+    form.submit();
+  });
+
+  confirmModal?.querySelectorAll("[data-employee-code-confirm-cancel]").forEach((button) => {
+    button.addEventListener("click", () => setConfirmOpen(false));
   });
 
   modal?.querySelectorAll("[data-edit-employee-close]").forEach((button) => {
@@ -380,7 +481,12 @@
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") setOpen(false);
+    if (event.key !== "Escape") return;
+    if (confirmModal && !confirmModal.hidden) {
+      setConfirmOpen(false);
+      return;
+    }
+    setOpen(false);
   });
 })();
 </script>

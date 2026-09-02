@@ -19,10 +19,12 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   </noscript>
   <link rel="preload" href="{% static 'css/app.css' %}?v=20260902perf" as="style">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260902perf">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260902notify">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block content %}{% endblock %}
+  {% include "partials/app_notifications.html" %}
+  <script src="{% static 'js/notifications.js' %}?v=20260902notify" defer></script>
   <script src="{% static 'js/core.js' %}?v=20260902perf" defer></script>
   {% block page_scripts %}{% endblock %}
 </body>

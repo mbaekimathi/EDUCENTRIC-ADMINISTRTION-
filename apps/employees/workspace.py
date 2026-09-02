@@ -104,6 +104,10 @@ def workspace_role_label(role):
     return dict(Employee.Role.choices).get(role, "")
 
 
+def uses_profile_settings(role):
+    return role == Employee.Role.TEACHER
+
+
 def employees_for_workspace_role(role):
     return (
         Employee.objects.filter(

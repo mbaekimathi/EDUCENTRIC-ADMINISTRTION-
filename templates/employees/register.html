@@ -14,7 +14,7 @@
 
       <form method="post" class="registration-form" id="registration-form" novalidate>
         {% csrf_token %}
-        {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+        {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
         {{ form.phone_number }}
 
         <div class="form-grid">
@@ -25,7 +25,7 @@
             {% for error in form.title.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
           </div>
           <div class="field">
-            <label for="{{ form.employee_code.id_for_label }}">Employee code</label>
+            <label for="{{ form.employee_code.id_for_label }}">{{ form.employee_code.label }}</label>
             {{ form.employee_code }}
             {% for error in form.employee_code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
           </div>

@@ -5,6 +5,7 @@ from .workspace import (
     can_choose_own_workspace_role,
     can_switch_workspace_role,
     prefetch_user_roles,
+    uses_profile_settings,
     user_role_values,
     workspace_role,
     workspace_role_label,
@@ -43,6 +44,7 @@ def workspace(request):
     return {
         "workspace_role": role,
         "workspace_role_label": workspace_role_label(role),
+        "uses_profile_settings": uses_profile_settings(role),
         "can_switch_workspace_role": can_switch,
         "can_choose_own_workspace_role": can_choose_own_workspace_role(user),
         "own_workspace_roles": [

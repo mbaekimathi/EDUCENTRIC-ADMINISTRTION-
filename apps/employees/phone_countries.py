@@ -119,3 +119,15 @@ def normalize_phone(national_raw, country):
     return f"+{dial}{digits}"
 
 
+def parse_stored_phone(phone):
+    """Best-effort split of a stored phone number into (iso, national_digits)."""
+    digits = digits_only(phone)
+    for country in sorted(PHONE_COUNTRIES, key=lambda item: len(item["dial"]), reverse=True):
+        dial = country["dial"]
+        if digits.startswith(dial) and len(digits) == len(dial) + country["nsn"]:
+            return country["iso"], digits[len(dial) :]
+    if len(digits) >= 9:
+        return "KE", digits[-9:]
+    return "KE", digits
+
+

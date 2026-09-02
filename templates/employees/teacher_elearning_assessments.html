@@ -10,8 +10,7 @@
 {% block workspace_content %}
 {% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="sa-hub-page exam-hub-page">
-  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
+  
   <section class="exam-tool-panel" aria-label="Register e-learning assessment">
     <header class="exam-tool-panel-head">
       <div>

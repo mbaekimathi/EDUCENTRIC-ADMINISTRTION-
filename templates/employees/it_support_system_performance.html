@@ -1,0 +1,179 @@
+{% extends "layouts/workspace.html" %}
+{% load static %}
+{% block title %}System performance | Edu-Centric{% endblock %}
+{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_title %}System performance{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page sys-perf-page">
+  {% include "employees/includes/nav/it_support.html" %}
+
+  <div class="sys-perf-layout">
+    {% include "employees/includes/system_performance_widget.html" with compact=False poll_interval=15000 %}
+
+    <div class="sys-perf-grid-2">
+      <section class="sys-perf-panel" aria-label="Response time trend" data-sys-perf-latency-section {% if not performance_snapshot.latency.history %}hidden{% endif %}>
+        <header class="sys-perf-panel__head">
+          <div>
+            <p class="sys-perf-eyebrow">Performance trend</p>
+            <h3 class="sys-perf-panel__title">Response time</h3>
+          </div>
+          <span class="sys-perf-panel__badge" data-sys-perf-latency-count>
+            {% if performance_snapshot.latency.summary.samples %}{{ performance_snapshot.latency.summary.samples }} samples{% else %}No samples yet{% endif %}
+          </span>
+        </header>
+        <div class="sys-perf-chart-wrap">
+          <div class="sys-perf-latency-chart" data-sys-perf-latency-chart>
+            {% for point in performance_snapshot.latency.history %}
+            <div class="sys-perf-latency-bar" title="DB {{ point.db_ms }} ms · Cache {{ point.cache_ms }} ms">
+              <span class="sys-perf-latency-bar-db" style="height: {{ point.db_height }}%"></span>
+              <span class="sys-perf-latency-bar-cache" style="height: {{ point.cache_height }}%"></span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="sys-perf-latency-legend">
+          <span><i class="sys-perf-swatch is-db"></i> Database <strong>{{ performance_snapshot.latency.summary.db_avg_ms|default:"—" }} ms</strong> avg</span>
+          <span><i class="sys-perf-swatch is-cache"></i> Cache <strong>{{ performance_snapshot.latency.summary.cache_avg_ms|default:"—" }} ms</strong> avg</span>
+        </div>
+      </section>
+
+      <section class="sys-perf-panel sys-perf-panel--accent" aria-label="System snapshot">
+        <header class="sys-perf-panel__head">
+          <div>
+            <p class="sys-perf-eyebrow">At a glance</p>
+            <h3 class="sys-perf-panel__title">Infrastructure snapshot</h3>
+          </div>
+        </header>
+        <div class="sys-perf-snapshot-grid">
+          <article class="sys-perf-snapshot-item">
+            <span class="sys-perf-snapshot-item__label">Database size</span>
+            <strong>{% if performance_snapshot.database.size_mb %}{{ performance_snapshot.database.size_mb }} MB{% else %}—{% endif %}</strong>
+            <span class="sys-perf-snapshot-item__meta">{{ performance_snapshot.database.table_count }} tables</span>
+          </article>
+          <article class="sys-perf-snapshot-item">
+            <span class="sys-perf-snapshot-item__label">Media storage</span>
+            <strong>{{ performance_snapshot.media.mb }} MB</strong>
+            <span class="sys-perf-snapshot-item__meta">{{ performance_snapshot.media.files }} files</span>
+          </article>
+          <article class="sys-perf-snapshot-item">
+            <span class="sys-perf-snapshot-item__label">Active students</span>
+            <strong>{{ performance_snapshot.counts.students_active }}</strong>
+            <span class="sys-perf-snapshot-item__meta">{{ performance_snapshot.counts.students_total }} total enrolled</span>
+          </article>
+          <article class="sys-perf-snapshot-item">
+            <span class="sys-perf-snapshot-item__label">Active staff</span>
+            <strong>{{ performance_snapshot.counts.employees_active }}</strong>
+            <span class="sys-perf-snapshot-item__meta">{{ performance_snapshot.counts.employees_pending }} pending approval</span>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    {% include "employees/includes/system_performance_sessions.html" %}
+    {% include "employees/includes/system_performance_stress.html" %}
+
+    <div class="sys-perf-grid-2">
+      <section class="sys-perf-panel" aria-label="Data volumes">
+        <header class="sys-perf-panel__head">
+          <div>
+            <p class="sys-perf-eyebrow">Records</p>
+            <h3 class="sys-perf-panel__title">Data volumes</h3>
+          </div>
+        </header>
+        <div class="sys-perf-data-list" data-sys-perf-counts>
+          <article class="sys-perf-data-row">
+            <div><strong>Students</strong><span class="sys-perf-data-row__sub">{{ performance_snapshot.counts.students_inactive }} inactive · {{ performance_snapshot.operations.portal_ready_students }} portal-ready</span></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.counts.students_active }} / {{ performance_snapshot.counts.students_total }}</span>
+          </article>
+          <article class="sys-perf-data-row">
+            <div><strong>Employees</strong><span class="sys-perf-data-row__sub">{{ performance_snapshot.counts.employees_pending }} pending · {{ performance_snapshot.operations.employees_suspended }} suspended</span></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.counts.employees_active }} / {{ performance_snapshot.counts.employees_total }}</span>
+          </article>
+          <article class="sys-perf-data-row">
+            <div><strong>Parents</strong></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.counts.parents_total }}</span>
+          </article>
+          <article class="sys-perf-data-row">
+            <div><strong>Classes</strong><span class="sys-perf-data-row__sub">{{ performance_snapshot.counts.learning_areas }} learning areas</span></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.counts.classes_active }}</span>
+          </article>
+          <article class="sys-perf-data-row">
+            <div><strong>Exam records</strong><span class="sys-perf-data-row__sub">{{ performance_snapshot.counts.attendance_sessions }} attendance sessions</span></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.counts.exam_generations }}</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="sys-perf-panel" aria-label="Recent activity">
+        <header class="sys-perf-panel__head">
+          <div>
+            <p class="sys-perf-eyebrow">Activity</p>
+            <h3 class="sys-perf-panel__title">Recent operations</h3>
+          </div>
+        </header>
+        <div class="sys-perf-data-list" data-sys-perf-operations>
+          <article class="sys-perf-data-row">
+            <div><strong>Admissions this month</strong></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.operations.students_admitted_this_month }}</span>
+          </article>
+          <article class="sys-perf-data-row">
+            <div><strong>Attendance sessions this week</strong></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.operations.attendance_sessions_this_week }}</span>
+          </article>
+          <article class="sys-perf-data-row">
+            <div><strong>Pending employee approvals</strong></div>
+            <span class="sys-perf-data-row__value">{{ performance_snapshot.counts.employees_pending }}</span>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <section class="sys-perf-panel" aria-label="Largest database tables" data-sys-perf-tables-section {% if not performance_snapshot.tables %}hidden{% endif %}>
+      <header class="sys-perf-panel__head">
+        <div>
+          <p class="sys-perf-eyebrow">Storage breakdown</p>
+          <h3 class="sys-perf-panel__title">Largest database tables</h3>
+        </div>
+        <span class="sys-perf-panel__badge">{{ performance_snapshot.tables|length }} shown</span>
+      </header>
+      <div class="sys-perf-table-grid" data-sys-perf-tables>
+        {% for table in performance_snapshot.tables %}
+        <article class="sys-perf-table-card">
+          <strong class="sys-perf-table-card__name">{{ table.name }}</strong>
+          <span class="sys-perf-table-card__rows">{{ table.rows|floatformat:0 }} rows</span>
+          {% if table.size_mb %}<span class="sys-perf-table-card__size">{{ table.size_mb }} MB</span>{% endif %}
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="sys-perf-panel sys-perf-details" aria-label="Environment" data-sys-perf-details>
+      <header class="sys-perf-panel__head">
+        <div>
+          <p class="sys-perf-eyebrow">Runtime</p>
+          <h3 class="sys-perf-panel__title">Environment</h3>
+        </div>
+      </header>
+      <div class="sys-perf-env-grid">
+        <article class="sys-perf-env-item"><span>Database</span><strong data-sys-perf-app-db>{{ performance_snapshot.database.name }} @ {{ performance_snapshot.database.host }}{% if performance_snapshot.database.port %}:{{ performance_snapshot.database.port }}{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Cache backend</span><strong data-sys-perf-app-cache>{{ performance_snapshot.app.cache_backend }}</strong></article>
+        <article class="sys-perf-env-item"><span>Session engine</span><strong data-sys-perf-app-session>{{ performance_snapshot.app.session_engine }}</strong></article>
+        <article class="sys-perf-env-item"><span>Runtime</span><strong data-sys-perf-app-runtime>Django {{ performance_snapshot.app.django_version }} · Python {{ performance_snapshot.app.python_version }}</strong></article>
+        <article class="sys-perf-env-item"><span>Timezone</span><strong data-sys-perf-app-timezone>{{ performance_snapshot.app.timezone }}</strong></article>
+        <article class="sys-perf-env-item"><span>Debug mode</span><strong data-sys-perf-app-debug>{% if performance_snapshot.app.debug %}On{% else %}Off{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Storage path</span><strong data-sys-perf-disk-path>{{ performance_snapshot.storage.media.path }}</strong></article>
+        <article class="sys-perf-env-item"><span>Platform</span><strong data-sys-perf-app-platform>{{ performance_snapshot.app.platform }}</strong></article>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/system_performance.js' %}?v=20260902e" defer></script>
+{% endblock %}

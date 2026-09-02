@@ -1,0 +1,119 @@
+<section class="sys-perf-panel sys-perf-stress" aria-label="Peak stress moments" data-sys-perf-stress-section id="stress-timeline">
+  <header class="sys-perf-panel__head">
+    <div>
+      <p class="sys-perf-eyebrow">Load history</p>
+      <h3 class="sys-perf-panel__title">Peak stress moments</h3>
+    </div>
+    <span class="sys-perf-panel__badge" data-sys-perf-stress-count>
+      {% if performance_snapshot.stress_timeline.events %}
+      {{ performance_snapshot.stress_timeline.events|length }} recorded
+      {% else %}
+      No stress events yet
+      {% endif %}
+    </span>
+  </header>
+
+  {% if performance_snapshot.stress_timeline.peak %}
+  <article class="sys-perf-stress-peak" data-sys-perf-stress-peak>
+    <div class="sys-perf-stress-peak__score">
+      <span class="sys-perf-stress-peak__label">Highest load</span>
+      <strong>{{ performance_snapshot.stress_timeline.peak.score }}</strong>
+    </div>
+    <div class="sys-perf-stress-peak__copy">
+      <p>{{ performance_snapshot.stress_timeline.peak.summary }}</p>
+      <span class="sys-perf-stress-peak__time">{{ performance_snapshot.stress_timeline.peak.at_display }}</span>
+    </div>
+  </article>
+  {% endif %}
+
+  <div class="sys-perf-stress-timeline" data-sys-perf-stress-timeline>
+    {% for event in performance_snapshot.stress_timeline.events %}
+    <article class="sys-perf-stress-event{% if event.is_peak %} is-peak{% endif %} is-{{ event.severity }}" data-stress-event>
+      <div class="sys-perf-stress-event__rail" aria-hidden="true"></div>
+      <div class="sys-perf-stress-event__content">
+        <header class="sys-perf-stress-event__head">
+          <div>
+            <time>{{ event.at_display }}</time>
+            {% if event.is_peak %}<span class="sys-perf-stress-badge">Peak</span>{% endif %}
+          </div>
+          <span class="sys-perf-stress-score">Score {{ event.score }}</span>
+        </header>
+        <details class="sys-perf-stress-details">
+          <summary class="sys-perf-stress-details__summary">
+            <span class="sys-perf-stress-details__label">View details</span>
+            <span class="sys-perf-stress-details__hint">{{ event.summary }}</span>
+          </summary>
+          <div class="sys-perf-stress-details__body">
+            <p class="sys-perf-stress-event__summary">{{ event.summary }}</p>
+            <div class="sys-perf-chip-row">
+              {% for reason in event.reasons %}
+              <span class="sys-perf-chip" title="{{ reason.detail }}">{{ reason.label }}</span>
+              {% endfor %}
+            </div>
+            <div class="sys-perf-metric-chips">
+              <span class="sys-perf-metric-chip"><em>DB</em> {{ event.metrics.db_ms|default:"—" }} ms</span>
+              <span class="sys-perf-metric-chip"><em>Cache</em> {{ event.metrics.cache_ms|default:"—" }} ms</span>
+              <span class="sys-perf-metric-chip"><em>Disk</em> {{ event.metrics.disk_pct|default:"—" }}%</span>
+              <span class="sys-perf-metric-chip"><em>Sessions</em> {{ event.metrics.sessions_scanned|default:"0" }}</span>
+            </div>
+            <div class="sys-perf-stress-sessions">
+              <h4 class="sys-perf-stress-sessions__title">
+                Users in session —
+                {{ event.sessions.totals.employees }} staff,
+                {{ event.sessions.totals.students }} students,
+                {{ event.sessions.totals.parents }} parents
+              </h4>
+              <div class="sys-perf-sessions-grid is-nested">
+            <section class="sys-perf-session-col">
+              <h4>Employees</h4>
+              <div class="sys-perf-user-list">
+                {% for user in event.sessions.employees %}
+                <article class="sys-perf-user-card is-compact">
+                  <div class="sys-perf-user-card__avatar is-employee" aria-hidden="true">{{ user.name|slice:":1" }}</div>
+                  <div class="sys-perf-user-card__body">
+                    <strong>{{ user.name }}</strong>
+                    <span class="sys-perf-user-card__sub">{{ user.role }} · {{ user.employee_code }}</span>
+                  </div>
+                </article>
+                {% empty %}<p class="sys-perf-empty">None</p>{% endfor %}
+              </div>
+            </section>
+            <section class="sys-perf-session-col">
+              <h4>Students</h4>
+              <div class="sys-perf-user-list">
+                {% for user in event.sessions.students %}
+                <article class="sys-perf-user-card is-compact">
+                  <div class="sys-perf-user-card__avatar is-student" aria-hidden="true">{{ user.name|slice:":1" }}</div>
+                  <div class="sys-perf-user-card__body">
+                    <strong>{{ user.name }}</strong>
+                    <span class="sys-perf-user-card__sub">{{ user.class_group }} · {{ user.admission_number }}</span>
+                  </div>
+                </article>
+                {% empty %}<p class="sys-perf-empty">None</p>{% endfor %}
+              </div>
+            </section>
+            <section class="sys-perf-session-col">
+              <h4>Parents</h4>
+              <div class="sys-perf-user-list">
+                {% for user in event.sessions.parents %}
+                <article class="sys-perf-user-card is-compact">
+                  <div class="sys-perf-user-card__avatar is-parent" aria-hidden="true">{{ user.name|slice:":1" }}</div>
+                  <div class="sys-perf-user-card__body">
+                    <strong>{{ user.name }}</strong>
+                    <span class="sys-perf-user-card__sub">{{ user.phone_number }}</span>
+                  </div>
+                </article>
+                {% empty %}<p class="sys-perf-empty">None</p>{% endfor %}
+              </div>
+            </section>
+          </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </article>
+    {% empty %}
+    <p class="sys-perf-empty sys-perf-empty--panel">No peak stress moments recorded yet. Events are captured when latency, disk usage, or concurrent users push the system into an elevated load state.</p>
+    {% endfor %}
+  </div>
+</section>

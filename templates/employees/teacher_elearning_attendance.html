@@ -10,8 +10,7 @@
 {% block workspace_content %}
 {% include "employees/includes/nav/teacher_elearning.html" %}
 <div class="sa-hub-page">
-  {% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
-
+  
   {% if level_groups %}
   <div class="sa-hub-scroll">
     {% for group in level_groups %}

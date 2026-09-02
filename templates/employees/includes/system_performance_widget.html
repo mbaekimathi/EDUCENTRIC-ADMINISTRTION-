@@ -1,0 +1,57 @@
+<section
+  class="sys-perf-widget{% if compact %} is-compact{% else %} is-analytics{% endif %}"
+  data-system-performance
+  data-metrics-url="{{ metrics_url }}"
+  data-poll-interval="{{ poll_interval|default:30000 }}"
+  aria-label="System performance"
+  aria-live="polite"
+>
+  <header class="sys-perf-widget-header">
+    <div class="sys-perf-widget-intro">
+      {% if not compact %}
+      <p class="sys-perf-eyebrow">Live analytics</p>
+      {% endif %}
+      <h2 class="sys-perf-widget-title">System performance</h2>
+      <p class="sys-perf-widget-updated" data-sys-perf-updated>
+        {% if performance_snapshot %}
+        <span class="sys-perf-sync-dot" aria-hidden="true"></span>
+        Updated {{ performance_snapshot.collected_at|date:"g:i:s A" }}
+        {% else %}
+        Loading live metrics…
+        {% endif %}
+      </p>
+    </div>
+    <div class="sys-perf-widget-actions">
+      <span
+        class="sys-perf-live {% if performance_snapshot.status == 'healthy' %}is-ok{% elif performance_snapshot.status == 'degraded' %}is-warn{% else %}is-bad{% endif %}"
+        data-sys-perf-status-pill
+        {% if not performance_snapshot %}hidden{% endif %}
+      >
+        <span class="sys-perf-live-dot" aria-hidden="true"></span>
+        <span data-sys-perf-status-label>
+          {% if performance_snapshot.status == "healthy" %}Healthy{% elif performance_snapshot.status == "degraded" %}Degraded{% else %}Critical{% endif %}
+        </span>
+      </span>
+      {% if compact and performance_snapshot.stress_timeline.peak %}
+      <a class="ghost-button sys-perf-btn" href="{% url 'employees:it_support_system_performance' %}#stress-timeline">Peak load</a>
+      {% endif %}
+      {% if compact %}
+      <a class="ghost-button sys-perf-btn" href="{% url 'employees:it_support_system_performance' %}">Open analytics</a>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if performance_snapshot %}
+  {% include "employees/includes/system_performance_stats.html" %}
+  {% else %}
+  <div class="sys-perf-kpi-grid" data-sys-perf-stats>
+    <article class="sys-perf-kpi is-loading" aria-busy="true"><div class="sys-perf-kpi__icon" aria-hidden="true"></div><div class="sys-perf-kpi__body"><span class="sys-perf-kpi__label">Database</span><strong class="sys-perf-kpi__value">—</strong><span class="sys-perf-kpi__meta">Checking…</span></div></article>
+    <article class="sys-perf-kpi is-loading" aria-busy="true"><div class="sys-perf-kpi__icon" aria-hidden="true"></div><div class="sys-perf-kpi__body"><span class="sys-perf-kpi__label">Cache</span><strong class="sys-perf-kpi__value">—</strong><span class="sys-perf-kpi__meta">Checking…</span></div></article>
+    <article class="sys-perf-kpi is-loading" aria-busy="true"><div class="sys-perf-kpi__icon" aria-hidden="true"></div><div class="sys-perf-kpi__body"><span class="sys-perf-kpi__label">Disk usage</span><strong class="sys-perf-kpi__value">—</strong><span class="sys-perf-kpi__meta">Checking…</span></div></article>
+    <article class="sys-perf-kpi is-loading" aria-busy="true"><div class="sys-perf-kpi__icon" aria-hidden="true"></div><div class="sys-perf-kpi__body"><span class="sys-perf-kpi__label">Users in session</span><strong class="sys-perf-kpi__value">—</strong><span class="sys-perf-kpi__meta">Checking…</span></div></article>
+  </div>
+  {% endif %}
+</section>
+{% if performance_snapshot %}
+{{ performance_snapshot|json_script:"sys-perf-initial" }}
+{% endif %}

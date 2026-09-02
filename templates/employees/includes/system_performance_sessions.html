@@ -1,0 +1,82 @@
+<section class="sys-perf-panel sys-perf-sessions" aria-label="Users in session" data-sys-perf-sessions-section>
+  <header class="sys-perf-panel__head">
+    <div>
+      <p class="sys-perf-eyebrow">Live presence</p>
+      <h3 class="sys-perf-panel__title">Users in session</h3>
+      <p class="sys-perf-panel__hint">Active in the last {{ performance_snapshot.active_sessions.window_minutes|default:"15" }} minutes</p>
+    </div>
+    <span class="sys-perf-panel__badge" data-sys-perf-sessions-count>
+      {{ performance_snapshot.active_sessions.totals.employees }} staff ·
+      {{ performance_snapshot.active_sessions.totals.students }} students ·
+      {{ performance_snapshot.active_sessions.totals.parents }} parents
+    </span>
+  </header>
+
+  <div class="sys-perf-sessions-grid">
+    <section class="sys-perf-session-col" aria-label="Employees in session">
+      <header class="sys-perf-session-col__head">
+        <h4>Employees</h4>
+        <span class="sys-perf-count-pill">{{ performance_snapshot.active_sessions.totals.employees }}</span>
+      </header>
+      <div class="sys-perf-user-list" data-sys-perf-session-employees>
+        {% for user in performance_snapshot.active_sessions.employees %}
+        <article class="sys-perf-user-card">
+          <div class="sys-perf-user-card__avatar is-employee" aria-hidden="true">{{ user.name|slice:":1" }}</div>
+          <div class="sys-perf-user-card__body">
+            <strong>{{ user.name }}</strong>
+            <span class="sys-perf-user-card__meta">{{ user.role }}</span>
+            <span class="sys-perf-user-card__sub">Code {{ user.employee_code }}{% if user.devices > 1 %} · {{ user.devices }} devices{% endif %} · {{ user.last_seen_display }}</span>
+          </div>
+        </article>
+        {% empty %}
+        <p class="sys-perf-empty">No employees currently in session.</p>
+        {% endfor %}
+        {% if performance_snapshot.active_sessions.truncated.employees %}
+        <p class="sys-perf-empty">Showing first {{ performance_snapshot.active_sessions.employees|length }} employees.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="sys-perf-session-col" aria-label="Students in session">
+      <header class="sys-perf-session-col__head">
+        <h4>Students</h4>
+        <span class="sys-perf-count-pill">{{ performance_snapshot.active_sessions.totals.students }}</span>
+      </header>
+      <div class="sys-perf-user-list" data-sys-perf-session-students>
+        {% for user in performance_snapshot.active_sessions.students %}
+        <article class="sys-perf-user-card">
+          <div class="sys-perf-user-card__avatar is-student" aria-hidden="true">{{ user.name|slice:":1" }}</div>
+          <div class="sys-perf-user-card__body">
+            <strong>{{ user.name }}</strong>
+            <span class="sys-perf-user-card__meta">{{ user.class_group }}</span>
+            <span class="sys-perf-user-card__sub">Adm {{ user.admission_number }}{% if not user.is_active or user.is_suspended %} · inactive{% endif %} · {{ user.last_seen_display }}</span>
+          </div>
+        </article>
+        {% empty %}
+        <p class="sys-perf-empty">No students currently in session.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="sys-perf-session-col" aria-label="Parents in session">
+      <header class="sys-perf-session-col__head">
+        <h4>Parents</h4>
+        <span class="sys-perf-count-pill">{{ performance_snapshot.active_sessions.totals.parents }}</span>
+      </header>
+      <div class="sys-perf-user-list" data-sys-perf-session-parents>
+        {% for user in performance_snapshot.active_sessions.parents %}
+        <article class="sys-perf-user-card">
+          <div class="sys-perf-user-card__avatar is-parent" aria-hidden="true">{{ user.name|slice:":1" }}</div>
+          <div class="sys-perf-user-card__body">
+            <strong>{{ user.name }}</strong>
+            <span class="sys-perf-user-card__meta">{{ user.phone_number }}</span>
+            <span class="sys-perf-user-card__sub">{{ user.children }} linked student{{ user.children|pluralize }}{% if not user.is_active %} · inactive{% endif %} · {{ user.last_seen_display }}</span>
+          </div>
+        </article>
+        {% empty %}
+        <p class="sys-perf-empty">No parents currently in session.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</section>

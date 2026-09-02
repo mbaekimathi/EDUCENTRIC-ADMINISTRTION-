@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block workspace_content %}
-{% for message in messages %}<div class="notice {{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
 
 {% include "employees/includes/nav/exam_settings.html" %}
 <p class="exam-back-row">
@@ -100,7 +99,7 @@
       {% if edit_band %}
       <input type="hidden" name="grade_band_id" value="{{ edit_band.id }}">
       {% endif %}
-      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+      {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
 
       <div class="form-grid-2">
         <div class="field">

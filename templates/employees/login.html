@@ -3,7 +3,7 @@
 {% block body_class %}auth-body{% endblock %}
 {% block content %}
 <main class="auth-shell">
-  {% include "partials/brand_panel.html" with eyebrow="Employee access" headline="Sign in to your<br>workspace." copy="Enter your employee code and password to continue." trust="Secure staff access" %}
+  {% include "partials/brand_panel.html" with eyebrow="Employee access" headline="Sign in to your<br>workspace." copy="Enter your employment number and password to continue." trust="Secure staff access" %}
 
   <section class="auth-panel">
     <div class="auth-card auth-card-elevated">
@@ -12,16 +12,13 @@
         <h2>Welcome back</h2>
       </div>
 
-      {% if messages %}
-        {% for message in messages %}<div class="notice success">{{ message }}</div>{% endfor %}
-      {% endif %}
-      {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+      {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
 
       <form method="post" class="auth-form" novalidate>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.GET.next }}">
         <div class="field">
-          <label for="{{ form.employee_code.id_for_label }}">Employee code</label>
+          <label for="{{ form.employee_code.id_for_label }}">{{ form.employee_code.label }}</label>
           {{ form.employee_code }}
           {% for error in form.employee_code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>

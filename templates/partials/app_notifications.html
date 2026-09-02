@@ -1,0 +1,6 @@
+{% if messages %}
+<script type="application/json" id="app-flash-messages">[
+{% for message in messages %}{"text": "{{ message|escapejs }}", "type": "{{ message.tags|default:'success' }}"}{% if not forloop.last %},{% endif %}
+{% endfor %}]</script>
+{% endif %}
+<div id="edu-notify-root" aria-hidden="true"></div>
