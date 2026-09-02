@@ -1,7 +1,7 @@
 {% extends "layouts/settings.html" %}
-{% block title %}Exam settings | Edu-Centric{% endblock %}
+{% block title %}Assessment settings | Edu-Centric{% endblock %}
 {% block header_eyebrow %}Curriculum settings{% endblock %}
-{% block header_title %}Exam settings{% endblock %}
+{% block header_title %}Assessment settings{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/exam_settings_sidebar.html" %}
@@ -10,18 +10,18 @@
 {% block workspace_content %}
 
 <div class="exam-tool-page">
-<section class="teacher-dash-actions exam-tools-grid is-nav-links" aria-label="Exam tools">
+<section class="teacher-dash-actions exam-tools-grid is-nav-links" aria-label="Assessment tools">
   <a class="teacher-dash-action" href="{% url 'employees:exam_timetable_settings' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">TS</span>
     <span class="teacher-dash-action-copy">
-      <strong>Exam timetable settings</strong>
-      <span>Create exam profiles for each academic category. Add breaks and activities; exam sessions are generated automatically.</span>
+      <strong>Assessment timetable settings</strong>
+      <span>Create assessment profiles for each academic category. Add breaks and activities; assessment sessions are generated automatically.</span>
     </span>
   </a>
   <a class="teacher-dash-action" href="{% url 'employees:exam_subject_combination_settings' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">SC</span>
     <span class="teacher-dash-action-copy">
-      <strong>Exam subject combinations</strong>
+      <strong>Assessment subject combinations</strong>
       <span>Set out-of marks per subject and combine two or more into a single graded subject.</span>
     </span>
   </a>
@@ -36,7 +36,7 @@
 
 {% if levels %}
 {% regroup levels by category as level_groups %}
-<div class="exam-hub-list" aria-label="Exam settings by academic level">
+<div class="exam-hub-list" aria-label="Assessment settings by academic level">
   <header class="settings-category-header">
     <h3 class="settings-category-title">Subject settings by level</h3>
     <span class="settings-category-count">{{ levels|length }} level{{ levels|length|pluralize }}</span>

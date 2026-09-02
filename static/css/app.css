@@ -11920,6 +11920,187 @@ body.is-reordering-exam-subjects [data-marks-input] {
   margin-top: 0.25rem;
 }
 
+.exam-mgmt-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid #dde6f4;
+  border-radius: 999px;
+  background: #f8fbff;
+}
+
+.exam-mgmt-tabs button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  background: transparent;
+  color: #475467;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.exam-mgmt-tabs button.is-active {
+  background: #1570ef;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(21, 112, 239, 0.25);
+}
+
+.exam-mgmt-tab-panel {
+  display: none;
+}
+
+.exam-mgmt-tab-panel.is-active {
+  display: block;
+}
+
+.exam-mgmt-class-subject-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.exam-mgmt-class-subject-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e4e7ec;
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.exam-mgmt-class-subject-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.exam-mgmt-class-subject-card__meta {
+  display: block;
+  margin-top: 0.2rem;
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.exam-mgmt-class-subject-card__foot {
+  margin: 0;
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.exam-mgmt-teacher-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.exam-mgmt-teacher-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e4e7ec;
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.exam-mgmt-teacher-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.exam-mgmt-teacher-card__identity strong {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.exam-mgmt-teacher-card__meta {
+  display: block;
+  margin-top: 0.2rem;
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.exam-mgmt-teacher-card__summary {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+}
+
+.exam-mgmt-teacher-card__summary .sys-perf-sparkline {
+  width: 120px;
+  height: 32px;
+}
+
+.exam-mgmt-teacher-allocations {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exam-mgmt-teacher-allocation {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid #edf2f7;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: #f8fbff;
+}
+
+.exam-mgmt-teacher-allocation__main strong {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.exam-mgmt-teacher-allocation__main span {
+  display: block;
+  margin-top: 0.15rem;
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.exam-mgmt-teacher-allocation__metrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.exam-mgmt-teacher-allocation__progress {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.exam-mgmt-teacher-allocation__progress strong {
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.exam-mgmt-teacher-allocation__progress strong small {
+  font-size: 0.72rem;
+}
+
+.exam-mgmt-teacher-allocation__progress > span:last-child {
+  color: #667085;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.exam-mgmt-teacher-allocation__metrics .sys-perf-sparkline {
+  width: 100px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 720px) {
   .exam-mgmt-schedule__item {
     grid-template-columns: 1fr 1fr;

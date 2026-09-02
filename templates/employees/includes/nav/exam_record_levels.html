@@ -1,9 +1,9 @@
-<section class="teacher-dash-actions is-nav-links exam-record-manage-actions" aria-label="Exam management">
+<section class="teacher-dash-actions is-nav-links exam-record-manage-actions" aria-label="Assessment management">
   <button type="button" class="teacher-dash-action" data-open-modal="exam-edit">
     <span class="teacher-dash-action-icon" aria-hidden="true">ED</span>
     <span class="teacher-dash-action-copy">
-      <strong>Edit exam</strong>
-      <span>Edit exam</span>
+      <strong>Edit assessment</strong>
+      <span>Edit assessment</span>
     </span>
   </button>
   {% if can_change_exam_status %}
@@ -25,12 +25,12 @@
   <button type="button" class="teacher-dash-action is-danger" data-open-modal="exam-delete">
     <span class="teacher-dash-action-icon" aria-hidden="true">DE</span>
     <span class="teacher-dash-action-copy">
-      <strong>Delete exam</strong>
-      <span>Delete exam</span>
+      <strong>Delete assessment</strong>
+      <span>Delete assessment</span>
     </span>
   </button>
 </section>
-<section class="teacher-dash-actions is-nav-links" aria-label="Exam levels">
+<section class="teacher-dash-actions is-nav-links" aria-label="Assessment levels">
   {% for level in academic_levels %}
   <a class="teacher-dash-action" href="{% url 'employees:exam_record_level' exam.id level.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|default:level.name|slice:":2" }}</span>

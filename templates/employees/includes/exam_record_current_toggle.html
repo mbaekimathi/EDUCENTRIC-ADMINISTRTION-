@@ -15,16 +15,20 @@
   >
   <label class="exam-current-toggle">
     <span class="exam-current-toggle-copy">
-      <strong>Current exam</strong>
+      <strong>Current assessment</strong>
       <span data-exam-current-hint>
-        {% if is_current_exam %}In session — only one exam can be current{% else %}Off — turn on to run this exam now{% endif %}
+        {% if is_current_exam %}
+          Active across in session, marking, and analysing
+        {% else %}
+          Off — turn on to make this the current assessment
+        {% endif %}
       </span>
     </span>
     <input
       type="checkbox"
       class="exam-current-toggle-input"
       {% if is_current_exam %}checked{% endif %}
-      aria-label="Set as current exam"
+      aria-label="Set as current assessment"
       data-exam-current-input
     >
     <span class="exam-current-toggle-track" aria-hidden="true"></span>
@@ -42,8 +46,8 @@
     value.value = input.checked ? "1" : "0";
     if (hint) {
       hint.textContent = input.checked
-        ? "In session — only one exam can be current"
-        : "Off — turn on to run this exam now";
+        ? "Active across in session, marking, and analysing"
+        : "Off — turn on to make this the current assessment";
     }
     form.submit();
   });
@@ -53,8 +57,8 @@
 <div class="exam-current-toggle-form is-readonly">
   <div class="exam-current-toggle is-disabled">
     <span class="exam-current-toggle-copy">
-      <strong>Current exam</strong>
-      <span>Published exams cannot be set as current</span>
+      <strong>Current assessment</strong>
+      <span>Published assessments cannot be set as current</span>
     </span>
     <span class="exam-current-toggle-track" aria-hidden="true"></span>
   </div>

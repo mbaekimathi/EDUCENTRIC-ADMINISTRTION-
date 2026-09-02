@@ -164,7 +164,7 @@ def profile_write_load():
             post_data,
         )
 
-    return profile_queries("exam mark save (40 students)", save_once)
+    return profile_queries("assessment mark save (40 students)", save_once)
 
 
 def profile_concurrent_writes(workers: int, rounds: int):
@@ -306,7 +306,7 @@ def main():
 
     print()
     print("-" * 60)
-    print("CONCURRENT WRITE TEST (exam marks)")
+    print("CONCURRENT WRITE TEST (assessment marks)")
     print("-" * 60)
     write_result = profile_concurrent_writes(workers=5, rounds=20)
     if write_result:

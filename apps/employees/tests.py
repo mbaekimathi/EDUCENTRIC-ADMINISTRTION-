@@ -623,7 +623,7 @@ class ITSupportWorkspaceTests(TestCase):
                 if slug == "curriculum-management":
                     self.assertContains(response, "Learning management")
                     self.assertContains(response, "E-learning management")
-                    self.assertContains(response, "Exam management")
+                    self.assertContains(response, "Assessment management")
                     self.assertContains(
                         response,
                         "/workspace/it_support/curriculum-management/learning-management/",
@@ -678,7 +678,7 @@ class ITSupportWorkspaceTests(TestCase):
                 self.assertNotContains(response, "workspace-nav-label")
                 if slug == "curriculum-reports":
                     self.assertContains(response, "Learning reports")
-                    self.assertContains(response, "Exam reports")
+                    self.assertContains(response, "Assessment reports")
                     self.assertContains(
                         response,
                         "/workspace/it_support/reports/curriculum-reports/learning-reports/",
@@ -722,10 +722,10 @@ class ITSupportWorkspaceTests(TestCase):
                         "/workspace/it_support/reports/curriculum-reports/exam-reports/",
                     )
                 if slug == "exam-reports":
-                    self.assertContains(response, "Exam reports")
-                    self.assertContains(response, "Generate exam report")
+                    self.assertContains(response, "Assessment reports")
+                    self.assertContains(response, "Generate assessment report")
                     self.assertContains(response, "Academic year")
-                    self.assertContains(response, "All exams")
+                    self.assertContains(response, "All assessments")
                     self.assertContains(response, "Academic level report")
                     self.assertContains(response, "Individual report")
                     self.assertContains(response, "Select academic year")
@@ -757,7 +757,7 @@ class ITSupportWorkspaceTests(TestCase):
             {"generate": "1", "year_id": "1", "report_kind": "academic_level"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Select an exam to generate the report.")
+        self.assertContains(response, "Select an assessment to generate the report.")
 
     def test_exam_report_raw_excel_export(self):
         from datetime import date
@@ -938,8 +938,8 @@ class ITSupportWorkspaceTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Allocate supervisors")
-        self.assertContains(response, "Generate exam timetable")
-        self.assertContains(response, "All exams")
+        self.assertContains(response, "Generate assessment timetable")
+        self.assertContains(response, "All assessments")
         self.assertNotContains(response, "Manual allocation")
         self.assertContains(
             response,
@@ -1000,9 +1000,9 @@ class ITSupportWorkspaceTests(TestCase):
             reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "All exams")
-        self.assertContains(response, "Registered exams")
-        self.assertContains(response, "No exams registered yet")
+        self.assertContains(response, "All assessments")
+        self.assertContains(response, "Registered assessments")
+        self.assertContains(response, "No assessments registered yet")
         self.assertNotContains(response, "workspace-nav-label")
         self.assertNotContains(
             response,
@@ -1184,7 +1184,7 @@ class ITSupportWorkspaceTests(TestCase):
             reverse("employees:role_dashboard", kwargs={"role": "teacher"})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Exam records")
+        self.assertContains(response, "Assessment records")
         self.assertContains(response, reverse("employees:teacher_exam_records"))
         self.assertContains(response, "Teacher workspace")
         self.assertContains(response, "View-only session as")
@@ -1259,7 +1259,7 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "View-only session as")
         self.assertContains(response, "Switch role")
-        self.assertContains(response, "Exam records")
+        self.assertContains(response, "Assessment records")
 
     def test_it_support_own_teacher_role_allows_teacher_posts(self):
         self.employee.set_roles(
@@ -1406,12 +1406,23 @@ class ExamManagementDashboardTests(TestCase):
         response = self._get_dashboard()
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Current exam")
+        self.assertContains(response, "Current assessment")
         self.assertContains(response, "Today's timetable")
         self.assertContains(response, "Grade 1 East")
         self.assertContains(response, "MATH")
         self.assertContains(response, "In session")
-        self.assertContains(response, "Class marks analytics")
+        self.assertNotContains(response, "Class marks analytics")
+        self.assertNotContains(response, "Marking progress")
+
+    def test_exam_management_dashboard_hides_timetable_when_marking(self):
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+
+        response = self._get_dashboard()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Today's timetable")
+        self.assertContains(response, "Marking progress")
 
     def test_exam_management_dashboard_shows_teacher_marking_progress(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -1448,9 +1459,12 @@ class ExamManagementDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Marking progress")
         self.assertContains(response, "ALI TEACHER")
+        self.assertContains(response, "Grade 1 East")
+        self.assertContains(response, "MATH")
         self.assertContains(response, "1 / 1 marks entered")
-        self.assertContains(response, "Class marks analytics")
-        self.assertContains(response, "100% entered")
+        self.assertContains(response, "100%")
+        self.assertContains(response, "sys-perf-sparkline")
+        self.assertNotContains(response, "Class marks analytics")
 
     def test_exam_management_dashboard_shows_class_analytics_when_analysing(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -1527,7 +1541,7 @@ class ExamManagementDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Published results")
         self.assertContains(response, "Grade 1 East")
-        self.assertContains(response, "Exam reports")
+        self.assertContains(response, "Assessment reports")
         self.assertContains(response, "75")
 
 
@@ -1965,7 +1979,7 @@ class StudentManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "PRECIOUS KENDI")
         self.assertContains(response, "Back to dashboard")
-        self.assertContains(response, "Exam records")
+        self.assertContains(response, "Assessment records")
         self.assertNotContains(response, "Back to register")
         self.assertNotContains(response, "Human resource management")
 
@@ -3452,9 +3466,9 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(response, 'data-open-modal="exam-timetable-generation"')
         self.assertContains(response, "Grade 1")
         self.assertContains(response, "is-blocked")
-        self.assertContains(response, "Exam starts on")
-        self.assertContains(response, "Exam ends on")
-        self.assertContains(response, "Exam name")
+        self.assertContains(response, "Assessment starts on")
+        self.assertContains(response, "Assessment ends on")
+        self.assertContains(response, "Assessment name")
         self.assertContains(response, 'name="exam_name"')
         self.assertContains(response, 'name="academic_year_id"')
         self.assertContains(response, "uppercase-input")
@@ -3487,7 +3501,7 @@ class ExamTimetableGenerationTests(TestCase):
         )
         response = self.client.get(self.url)
         self.assertContains(response, "is-blocked")
-        self.assertContains(response, "exam timetable settings")
+        self.assertContains(response, "assessment timetable settings")
 
     def test_fully_allocated_level_with_exam_profile_can_be_generated(self):
         ExamSupervisorAllocation.objects.create(
@@ -3532,7 +3546,7 @@ class ExamTimetableGenerationTests(TestCase):
         self._exam_profile()
         response = self._generate_post(exam_name="")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Enter a name for this exam.")
+        self.assertContains(response, "Enter a name for this assessment.")
         self.assertFalse(GeneratedExamTimetable.objects.exists())
 
         response = self._generate_post(exam_name="end exam")
@@ -3597,7 +3611,7 @@ class ExamTimetableGenerationTests(TestCase):
         self._exam_profile()
         response = self._generate_post(exam_start_date="2026-07-01")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "exam start date must fall inside")
+        self.assertContains(response, "assessment start date must fall inside")
         self.assertFalse(GeneratedExamSitting.objects.exists())
 
     def test_subjects_are_placed_once_and_end_date_is_automatic(self):
@@ -3726,7 +3740,7 @@ class ExamTimetableGenerationTests(TestCase):
             reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Registered exams")
+        self.assertContains(response, "Registered assessments")
         self.assertContains(response, "END EXAM")
         self.assertContains(response, "TERM 3")
         self.assertContains(response, "Grade 1")
@@ -3734,7 +3748,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(response, "Open")
         self.assertNotContains(response, ">Edit<")
         self.assertNotContains(response, ">Delete<")
-        self.assertNotContains(response, "No exams registered yet")
+        self.assertNotContains(response, "No assessments registered yet")
         generation = GeneratedExamTimetable.objects.get()
         detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
         self.assertContains(response, detail_url)
@@ -3744,7 +3758,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertContains(page, "END EXAM")
         self.assertContains(page, "Academic levels")
         self.assertContains(page, "Grade 1")
-        self.assertContains(page, "Back to all exams")
+        self.assertContains(page, "Back to all assessments")
         self.assertContains(page, "Open marks")
         self.assertContains(page, 'data-open-modal="exam-edit"')
         self.assertContains(page, 'data-open-modal="exam-status"')
@@ -4010,6 +4024,75 @@ class ExamTimetableGenerationTests(TestCase):
         generation.refresh_from_db()
         self.assertIsNotNone(generation.deadline)
 
+    def test_current_exam_toggle_stays_on_when_status_advances_to_analysing(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        generation = GeneratedExamTimetable.objects.get()
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
+
+        self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": detail_url},
+        )
+        self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.ANALYSING, "next": detail_url},
+        )
+
+        generation.refresh_from_db()
+        self.assertEqual(generation.status, GeneratedExamTimetable.Status.ANALYSING)
+        page = self.client.get(detail_url)
+        self.assertContains(page, 'data-exam-current-value" value="1"')
+
+    def test_current_exam_toggle_stays_on_when_status_advances_to_marking(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        generation = GeneratedExamTimetable.objects.get()
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
+
+        self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": detail_url},
+        )
+
+        page = self.client.get(detail_url)
+        self.assertContains(page, "data-exam-current-input")
+        self.assertContains(page, 'data-exam-current-value" value="1"')
+
+    def test_current_exam_toggle_turns_off_when_exam_is_published(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        generation = GeneratedExamTimetable.objects.get()
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
+
+        self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": detail_url},
+        )
+        self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.PUBLISHED, "next": detail_url},
+        )
+
+        page = self.client.get(detail_url)
+        self.assertNotContains(page, "data-exam-current-input")
+        self.assertContains(page, "Published exams cannot be set as current")
+
     def test_only_current_exam_can_change_status(self):
         ExamSupervisorAllocation.objects.create(
             academic_class=self.academic_class,
@@ -4037,7 +4120,7 @@ class ExamTimetableGenerationTests(TestCase):
         )
         self.assertRedirects(blocked, scheduled_url)
         scheduled_page = self.client.get(scheduled_url)
-        self.assertContains(scheduled_page, "Only one exam can be current at a time")
+        self.assertContains(scheduled_page, "Only one assessment can be current at a time")
         self.assertNotContains(scheduled_page, 'data-open-modal="exam-status"')
 
         allowed = self.client.post(
@@ -4117,7 +4200,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertNotContains(response, "Remove current")
 
         page = self.client.get(detail_url)
-        self.assertContains(page, "Current exam")
+        self.assertContains(page, "Current assessment")
         self.assertContains(page, "data-exam-current-toggle-form")
         self.assertContains(page, "data-exam-current-input")
 
@@ -4191,7 +4274,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
         page = self.client.get(records_url)
         self.assertContains(page, "NEXT EXAM")
-        self.assertContains(page, "is now the current exam")
+        self.assertContains(page, "is now the current assessment")
 
     def test_set_current_switches_between_in_session_exams(self):
         ExamSupervisorAllocation.objects.create(
@@ -4248,7 +4331,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
         detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
         page = self.client.get(detail_url)
-        self.assertContains(page, "Current exam")
+        self.assertContains(page, "Current assessment")
         self.assertContains(page, "data-exam-current-input")
 
     def test_exam_record_can_be_deleted(self):
@@ -4413,7 +4496,7 @@ class TeacherExamRecordsTests(TestCase):
             reverse("employees:role_dashboard", kwargs={"role": "teacher"})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Exam records")
+        self.assertContains(response, "Assessment records")
         self.assertContains(response, reverse("employees:teacher_exam_records"))
         self.assertContains(response, "Subject attendance")
         self.assertContains(response, reverse("employees:teacher_subject_attendance"))
@@ -5238,14 +5321,14 @@ class TeacherExamRecordsTests(TestCase):
     def test_exam_records_lists_all_exams(self):
         response = self.client.get(reverse("employees:teacher_exam_records"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Registered exams")
-        self.assertContains(response, "2026 TERM 3 exam")
+        self.assertContains(response, "Registered assessments")
+        self.assertContains(response, "2026 TERM 3 assessment")
         self.assertContains(
             response,
             reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": self.exam.id}),
         )
         self.assertNotContains(response, "Grade 1 East")
-        self.assertNotContains(response, "No exams are registered yet.")
+        self.assertNotContains(response, "No assessments are registered yet.")
         self.assertNotContains(response, "Session timetable")
         self.assertNotContains(response, reverse("employees:teacher_subject_attendance"))
         self.assertNotContains(response, "workspace-nav-label")
@@ -5259,7 +5342,7 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(response, "Subjects to teach")
         self.assertContains(response, "Mathematics")
         self.assertContains(response, "MATH")
-        self.assertContains(response, "Exam analytics")
+        self.assertContains(response, "Assessment analytics")
         self.assertContains(
             response,
             reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id}),
@@ -5453,7 +5536,7 @@ class TeacherExamRecordsTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Exam analytics")
+        self.assertContains(response, "Assessment analytics")
         self.assertContains(response, "Grade 1 East")
         self.assertContains(response, "ANN EAST")
         self.assertContains(response, "42")
@@ -5568,7 +5651,7 @@ class TeacherExamRecordsTests(TestCase):
         )
         response = self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "25"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Marks can only be edited while this exam is in Marking status.")
+        self.assertContains(response, "Marks can only be edited while this assessment is in Marking status.")
         self.assertFalse(ExamMark.objects.filter(student=student, learning_area=self.subject).exists())
 
     def test_teacher_can_enter_marks_and_convert(self):
@@ -5695,7 +5778,7 @@ class TeacherExamRecordsTests(TestCase):
     def test_empty_exam_list_when_none_are_registered(self):
         self.exam.delete()
         response = self.client.get(reverse("employees:teacher_exam_records"))
-        self.assertContains(response, "No exams are registered yet.")
+        self.assertContains(response, "No assessments are registered yet.")
 
     def test_other_roles_cannot_open_teacher_exam_records(self):
         self.client.force_login(self.accountant)

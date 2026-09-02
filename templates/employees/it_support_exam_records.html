@@ -1,7 +1,7 @@
 {% extends "layouts/workspace.html" %}
-{% block title %}All exams | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Exam management{% endblock %}
-{% block header_title %}All exams{% endblock %}
+{% block title %}All assessments | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Assessment management{% endblock %}
+{% block header_title %}All assessments{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/exam_management_sidebar.html" %}
@@ -10,11 +10,11 @@
 {% block workspace_content %}
 {% include "employees/includes/nav/exam_management.html" %}
 <div class="sa-hub-page exam-hub-page all-exams-page">
-  <div class="teacher-page-bar" aria-label="All exams overview">
+  <div class="teacher-page-bar" aria-label="All assessments overview">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
         <strong>{{ exam_count }}</strong>
-        <span>Exam{{ exam_count|pluralize }}</span>
+        <span>Assessment{{ exam_count|pluralize }}</span>
       </div>
       <div class="teacher-page-bar-stat">
         <strong>{{ exam_groups|length }}</strong>
@@ -32,14 +32,14 @@
         class="primary-button"
         href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
       >
-        Generate exam timetable
+        Generate assessment timetable
       </a>
     </div>
   </div>
 
   {% if exam_groups %}
   <div class="sa-hub-scroll all-exams-scroll">
-    <p class="sr-only">Registered exams</p>
+    <p class="sr-only">Registered assessments</p>
     {% for group in exam_groups %}
     <section class="all-exams-year" aria-label="{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}">
       <header class="all-exams-year-head">
@@ -49,16 +49,16 @@
             {% if group.year %}
               {{ group.year.start_date|date:"j M Y" }} – {{ group.year.end_date|date:"j M Y" }}
             {% else %}
-              Exams without an academic year
+              Assessments without an academic year
             {% endif %}
           </p>
         </div>
-        <span class="all-exams-year-count">{{ group.exams|length }} exam{{ group.exams|length|pluralize }}</span>
+        <span class="all-exams-year-count">{{ group.exams|length }} assessment{{ group.exams|length|pluralize }}</span>
       </header>
 
       <div class="all-exams-list-shell">
         <div class="all-exams-list-head" aria-hidden="true">
-          <span>Exam</span>
+          <span>Assessment</span>
           <span>Term</span>
           <span>Dates</span>
           <span>Sittings</span>
@@ -114,13 +114,13 @@
   {% else %}
   <section class="all-exams-empty">
     <span class="all-exams-empty-icon" aria-hidden="true">EX</span>
-    <strong>No exams registered yet</strong>
-    <p>Generate an exam timetable to create the first registered exam.</p>
+    <strong>No assessments registered yet</strong>
+    <p>Generate an assessment timetable to create the first registered assessment.</p>
     <a
       class="primary-button"
       href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
     >
-      Generate exam timetable
+      Generate assessment timetable
     </a>
   </section>
   {% endif %}

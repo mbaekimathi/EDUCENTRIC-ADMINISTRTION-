@@ -345,13 +345,13 @@ class ExamScheduleProfileForm(forms.ModelForm):
         if start and end and end <= start:
             self.add_error(
                 "last_exam_end_time",
-                "Exam end time must be later than first exam start time.",
+                "Assessment end time must be later than first assessment start time.",
             )
         duration = cleaned.get("exam_session_duration_minutes")
         if duration is not None and duration <= 0:
             self.add_error(
                 "exam_session_duration_minutes",
-                "Exam session duration must be greater than zero.",
+                "Assessment session duration must be greater than zero.",
             )
         return cleaned
 

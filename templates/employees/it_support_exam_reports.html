@@ -26,13 +26,13 @@
       <span class="exam-report-summary-lead">
         <span class="exam-report-summary-mark" aria-hidden="true">ER</span>
         <span>
-          <strong>Generate exam report</strong>
-          <small>Year, exam, type, and scope</small>
+          <strong>Generate assessment report</strong>
+          <small>Year, assessment, type, and scope</small>
         </span>
       </span>
       <span class="exam-report-builder-summary-action" aria-hidden="true">Edit options</span>
     </summary>
-    <section class="exam-tool-panel exam-report-builder" aria-label="Exam report options">
+    <section class="exam-tool-panel exam-report-builder" aria-label="Assessment report options">
       <header class="exam-tool-panel-head">
         <div>
           <h3>Report options</h3>
@@ -64,9 +64,9 @@
           </div>
 
           <div class="field exam-report-step" data-step="exam" hidden>
-            <label for="exam-report-exam">2. Exam</label>
+            <label for="exam-report-exam">2. Assessment</label>
             <select id="exam-report-exam" name="exam_id" class="uppercase-input">
-              <option value="">Select exam</option>
+              <option value="">Select assessment</option>
             </select>
           </div>
 
@@ -165,8 +165,8 @@
       {% else %}
       <div class="exam-tool-empty">
         <span class="exam-tool-empty-icon" aria-hidden="true">ER</span>
-        <strong>No exams registered</strong>
-        <p>Register an exam timetable first, then return here to generate reports.</p>
+        <strong>No assessments registered</strong>
+        <p>Register an assessment timetable first, then return here to generate reports.</p>
       </div>
       {% endif %}
     </section>
@@ -487,14 +487,14 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td class="is-left" colspan="{{ card.exam_columns|length|add:3 }}">No exam subjects are configured for this academic level.</td>
+                  <td class="is-left" colspan="{{ card.exam_columns|length|add:3 }}">No assessment subjects are configured for this academic level.</td>
                 </tr>
                 {% endfor %}
               </tbody>
               {% if card.exam_means %}
               <tfoot>
                 <tr>
-                  <th class="is-left">Exam mean</th>
+                  <th class="is-left">Assessment mean</th>
                   {% for mean in card.exam_means %}
                   <th class="src-mark">
                     {% if mean.percent != None %}
@@ -561,14 +561,14 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td class="is-left" colspan="4">No exam subjects are configured for this academic level.</td>
+                  <td class="is-left" colspan="4">No assessment subjects are configured for this academic level.</td>
                 </tr>
                 {% endfor %}
               </tbody>
               {% if card.mean_percent != None %}
               <tfoot>
                 <tr>
-                  <th class="is-left">Exam mean</th>
+                  <th class="is-left">Assessment mean</th>
                   <th>—</th>
                   <th class="src-mark src-avg-col">
                     <strong>{{ card.mean_percent }}</strong>
@@ -837,7 +837,7 @@
   }
 
   function fillExams(selectedId) {
-    setOptions(examSelect, currentExams(), "Select exam", selectedId);
+    setOptions(examSelect, currentExams(), "Select assessment", selectedId);
   }
 
   function fillLevels(selectedId) {

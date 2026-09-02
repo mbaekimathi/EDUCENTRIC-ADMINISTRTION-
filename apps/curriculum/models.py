@@ -420,13 +420,13 @@ class ExamSupervisorAllocation(models.Model):
                 name="unique_supervisor_allocation_per_class_and_subject",
             ),
         ]
-        verbose_name = "exam supervisor allocation"
-        verbose_name_plural = "exam supervisor allocations"
+        verbose_name = "assessment supervisor allocation"
+        verbose_name_plural = "assessment supervisor allocations"
 
     def clean(self):
         if self.supervisor_id and not self.supervisor.has_role("TEACHER"):
             raise ValidationError(
-                {"supervisor": "Only employees with the teacher role can be allocated as exam supervisors."}
+                {"supervisor": "Only employees with the teacher role can be allocated as assessment supervisors."}
             )
         if (
             self.academic_class_id
@@ -472,8 +472,8 @@ class ExamSubjectSetting(models.Model):
                 name="unique_exam_setting_per_level_and_learning_area",
             ),
         ]
-        verbose_name = "exam subject setting"
-        verbose_name_plural = "exam subject settings"
+        verbose_name = "assessment subject setting"
+        verbose_name_plural = "assessment subject settings"
 
     def __str__(self):
         return f"{self.academic_level.code}: {self.learning_area.code} / {self.out_of_marks}"
@@ -503,8 +503,8 @@ class CombinedExamSubject(models.Model):
                 name="unique_combined_exam_subject_code_per_level",
             ),
         ]
-        verbose_name = "combined exam subject"
-        verbose_name_plural = "combined exam subjects"
+        verbose_name = "combined assessment subject"
+        verbose_name_plural = "combined assessment subjects"
 
     @property
     def out_of_marks(self):
@@ -545,8 +545,8 @@ class CombinedExamSubjectComponent(models.Model):
                 name="unique_component_per_combined_exam_subject",
             ),
         ]
-        verbose_name = "combined exam subject component"
-        verbose_name_plural = "combined exam subject components"
+        verbose_name = "combined assessment subject component"
+        verbose_name_plural = "combined assessment subject components"
 
     def __str__(self):
         return (
@@ -562,10 +562,10 @@ class ExamScheduleProfile(models.Model):
         AcademicLevel,
         related_name="exam_schedule_profiles",
     )
-    first_exam_start_time = models.TimeField("first exam starts at")
-    last_exam_end_time = models.TimeField("exam end time")
+    first_exam_start_time = models.TimeField("first assessment starts at")
+    last_exam_end_time = models.TimeField("assessment end time")
     exam_session_duration_minutes = models.PositiveIntegerField(
-        "exam session duration (minutes)",
+        "assessment session duration (minutes)",
         default=120,
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -579,15 +579,15 @@ class ExamScheduleProfile(models.Model):
                 name="unique_exam_schedule_profile_per_category",
             ),
         ]
-        verbose_name = "exam schedule profile"
-        verbose_name_plural = "exam schedule profiles"
+        verbose_name = "assessment schedule profile"
+        verbose_name_plural = "assessment schedule profiles"
 
     def clean(self):
         super().clean()
         if self.exam_session_duration_minutes <= 0:
             raise ValidationError(
                 {
-                    "exam_session_duration_minutes": "Exam session duration must be greater than zero."
+                    "exam_session_duration_minutes": "Assessment session duration must be greater than zero."
                 }
             )
         if (
@@ -597,7 +597,7 @@ class ExamScheduleProfile(models.Model):
         ):
             raise ValidationError(
                 {
-                    "last_exam_end_time": "Exam end time must be later than first exam start time."
+                    "last_exam_end_time": "Assessment end time must be later than first assessment start time."
                 }
             )
 
@@ -618,8 +618,8 @@ class ExamScheduleActivity(models.Model):
 
     class Meta:
         ordering = ["start_time", "order", "name"]
-        verbose_name = "exam schedule activity"
-        verbose_name_plural = "exam schedule activities"
+        verbose_name = "assessment schedule activity"
+        verbose_name_plural = "assessment schedule activities"
 
     @property
     def end_time(self):
@@ -656,8 +656,8 @@ class ExamTimetableSession(models.Model):
                 name="unique_exam_session_name_per_profile",
             ),
         ]
-        verbose_name = "exam timetable session"
-        verbose_name_plural = "exam timetable sessions"
+        verbose_name = "assessment timetable session"
+        verbose_name_plural = "assessment timetable sessions"
 
     def clean(self):
         super().clean()
@@ -983,7 +983,7 @@ class GeneratedExamTimetable(models.Model):
         Status.ANALYSING,
     )
 
-    name = models.CharField("exam name", max_length=120, blank=True, default="")
+    name = models.CharField("assessment name", max_length=120, blank=True, default="")
     created_by = models.ForeignKey(
         "employees.Employee",
         on_delete=models.SET_NULL,
@@ -1021,8 +1021,8 @@ class GeneratedExamTimetable(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "generated exam timetable"
-        verbose_name_plural = "generated exam timetables"
+        verbose_name = "generated assessment timetable"
+        verbose_name_plural = "generated assessment timetables"
 
     def save(self, *args, **kwargs):
         self.name = (self.name or "").strip().upper()
@@ -1033,15 +1033,15 @@ class GeneratedExamTimetable(models.Model):
         if self.name:
             return self.name
         if self.academic_year_id and self.academic_term_id:
-            return f"{self.academic_year} {self.academic_term.name} exam"
-        return f"Exam timetable {self.created_at:%Y-%m-%d %H:%M}"
+            return f"{self.academic_year} {self.academic_term.name} assessment"
+        return f"Assessment timetable {self.created_at:%Y-%m-%d %H:%M}"
 
     def __str__(self):
         if self.name:
             return self.name
         if self.academic_year_id and self.academic_term_id:
-            return f"{self.academic_year} {self.academic_term.name} exam timetable"
-        return f"Exam timetable {self.created_at:%Y-%m-%d %H:%M}"
+            return f"{self.academic_year} {self.academic_term.name} assessment timetable"
+        return f"Assessment timetable {self.created_at:%Y-%m-%d %H:%M}"
 
 
 class GeneratedExamSitting(models.Model):
@@ -1080,8 +1080,8 @@ class GeneratedExamSitting(models.Model):
 
     class Meta:
         ordering = ["academic_level__order", "academic_class__order", "exam_date", "weekday", "start_time"]
-        verbose_name = "generated exam sitting"
-        verbose_name_plural = "generated exam sittings"
+        verbose_name = "generated assessment sitting"
+        verbose_name_plural = "generated assessment sittings"
 
     def __str__(self):
         return f"{self.academic_class}: {self.weekday} {self.period_name} {self.learning_area.code}"
@@ -1121,8 +1121,8 @@ class ExamMark(models.Model):
                 name="unique_exam_mark_per_student_and_subject",
             ),
         ]
-        verbose_name = "exam mark"
-        verbose_name_plural = "exam marks"
+        verbose_name = "assessment mark"
+        verbose_name_plural = "assessment marks"
 
     def __str__(self):
         return f"{self.student}: {self.learning_area.code} {self.marks}"

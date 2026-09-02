@@ -16,7 +16,7 @@
   <span class="workspace-nav-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
-  Exam analytics
+  Assessment analytics
 </a>
 
 <p class="workspace-nav-label">Subjects to teach</p>
@@ -32,5 +32,5 @@
   {{ item.subject.code }} · {{ item.academic_class.display_label }}
 </a>
 {% empty %}
-<p class="subtle workspace-nav-empty">No subjects allocated to you for this exam.</p>
+<p class="subtle workspace-nav-empty">No subjects allocated to you for this assessment.</p>
 {% endfor %}

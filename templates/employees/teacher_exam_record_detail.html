@@ -1,6 +1,6 @@
 {% extends "layouts/workspace.html" %}
 {% block title %}{{ exam_title }} | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Exam records{% endblock %}
+{% block header_eyebrow %}Assessment records{% endblock %}
 {% block header_title %}{{ exam_title }}{% endblock %}
 
 {% block sidebar_modules %}
@@ -52,7 +52,7 @@
         <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
         <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
         {% else %}
-        <span class="student-count-chip exam-marks-lock-chip" title="Marks can only be edited while this exam is in Marking status.">
+        <span class="student-count-chip exam-marks-lock-chip" title="Marks can only be edited while this assessment is in Marking status.">
           Locked · {{ exam.get_status_display }}
         </span>
         {% endif %}
@@ -61,7 +61,7 @@
     </header>
     {% if not marks_editable %}
     <div class="notice warning exam-marks-lock-notice teacher-marks-notice">
-      Marks are read-only while this exam is {{ exam.get_status_display|lower }}. Editing opens when status is Marking.
+      Marks are read-only while this assessment is {{ exam.get_status_display|lower }}. Editing opens when status is Marking.
     </div>
     {% endif %}
     {% if out_of_settings_changed %}
@@ -194,16 +194,16 @@
 </section>
 {% else %}
 <div class="exam-detail-page teacher-exam-detail-page">
-  <section class="exam-detail-hero teacher-exam-hero" aria-label="Exam overview">
+  <section class="exam-detail-hero teacher-exam-hero" aria-label="Assessment overview">
     <div class="exam-detail-hero-copy">
       <div class="teacher-exam-hero-lead">
         <span class="teacher-exam-hero-mark" aria-hidden="true">ER</span>
         <div class="teacher-exam-hero-titles">
-          <p class="exam-detail-kicker">Exam session</p>
+          <p class="exam-detail-kicker">Assessment session</p>
           <h2 class="is-uppercase">{{ exam_title }}</h2>
         </div>
       </div>
-      <div class="teacher-exam-meta-chips" aria-label="Exam details">
+      <div class="teacher-exam-meta-chips" aria-label="Assessment details">
         <span class="teacher-exam-meta-chip">
           {% if exam.academic_year %}{{ exam.academic_year.name }}{% else %}No year{% endif %}
         </span>
@@ -240,7 +240,7 @@
         {% endif %}
       </div>
       <a class="ghost-button teacher-exam-analytics-link" href="{% url 'employees:teacher_exam_analytics' exam.id %}">
-        Exam analytics
+        Assessment analytics
       </a>
     </div>
   </section>
@@ -285,7 +285,7 @@
   <section class="sa-hub-empty teacher-exam-empty">
     <span class="exam-tool-empty-icon" aria-hidden="true">SU</span>
     <strong>No allocated subjects</strong>
-    <p class="settings-empty">You have no subject allocations in the academic levels covered by this exam.</p>
+    <p class="settings-empty">You have no subject allocations in the academic levels covered by this assessment.</p>
   </section>
   {% endif %}
 </div>

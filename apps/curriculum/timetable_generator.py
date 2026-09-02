@@ -445,9 +445,9 @@ def exam_slots_from_profile(profile, exam_dates=None):
         profile.activities.all(),
         last_class_end=profile.last_exam_end_time,
         period_label="Session",
-        day_labels=["Exam day"],
-        start_caption="first exam",
-        end_caption="exam end time",
+        day_labels=["Assessment day"],
+        start_caption="first assessment",
+        end_caption="assessment end time",
     )
     if not preview["ready"]:
         return []

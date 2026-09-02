@@ -1,11 +1,11 @@
 {% if timetable_groups %}
-<section class="generated-timetable-list exam-tool-scroll" aria-label="Generated exam timetables">
+<section class="generated-timetable-list exam-tool-scroll" aria-label="Generated assessment timetables">
   {% for group in timetable_groups %}
-  <section class="exam-tool-panel" aria-label="{{ group.level.name }} exam timetables">
+  <section class="exam-tool-panel" aria-label="{{ group.level.name }} assessment timetables">
     <header class="exam-tool-panel-head">
       <div>
         <h3 class="is-uppercase">{{ group.level.name }}</h3>
-        <p>Generated exam sittings for this academic level</p>
+        <p>Generated assessment sittings for this academic level</p>
       </div>
       <span class="exam-tool-panel-count">{{ group.classes|length }} class{{ group.classes|length|pluralize }}</span>
     </header>
@@ -25,11 +25,11 @@
             {% if grid.start_date and grid.end_date %}
               · {{ grid.start_date|date:"d M Y" }}{% if grid.start_date != grid.end_date %} to {{ grid.end_date|date:"d M Y" }}{% endif %}
             {% endif %}
-            · {{ grid.sitting_count }} exam{{ grid.sitting_count|pluralize }} placed
+            · {{ grid.sitting_count }} assessment{{ grid.sitting_count|pluralize }} placed
           </p>
         </div>
       </header>
-      <div class="schedule-timetable-wrap is-scrollable-x" tabindex="0" aria-label="{{ grid.academic_class.name }} exam timetable">
+      <div class="schedule-timetable-wrap is-scrollable-x" tabindex="0" aria-label="{{ grid.academic_class.name }} assessment timetable">
         <table class="schedule-timetable generated-timetable">
           <thead>
             <tr>
@@ -81,7 +81,7 @@
 {% else %}
 <section class="exam-tool-empty">
   <span class="exam-tool-empty-icon" aria-hidden="true">TT</span>
-  <strong>No generated exam timetables yet</strong>
-  <p>Generate an exam timetable to see class sittings here.</p>
+  <strong>No generated assessment timetables yet</strong>
+  <p>Generate an assessment timetable to see class sittings here.</p>
 </section>
 {% endif %}

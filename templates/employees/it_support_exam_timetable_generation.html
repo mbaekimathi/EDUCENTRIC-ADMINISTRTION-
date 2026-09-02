@@ -1,7 +1,7 @@
 {% extends "layouts/workspace.html" %}
-{% block title %}Generate exam timetable | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Exam management{% endblock %}
-{% block header_title %}Generate exam timetable{% endblock %}
+{% block title %}Generate assessment timetable | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Assessment management{% endblock %}
+{% block header_title %}Generate assessment timetable{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/exam_management_sidebar.html" %}
@@ -11,7 +11,7 @@
 
 {% include "employees/includes/nav/exam_management.html" %}
 <div class="exam-tool-page exam-timetable-generation-page">
-  <div class="teacher-page-bar" aria-label="Generate exam timetable overview">
+  <div class="teacher-page-bar" aria-label="Generate assessment timetable overview">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
         <strong>{{ viable_count }}</strong>
@@ -23,10 +23,10 @@
         class="ghost-button"
         href="{% url 'employees:it_support_exam_page' 'exam-records' %}"
       >
-        All exams
+        All assessments
       </a>
       <button type="button" class="primary-button" data-open-modal="exam-timetable-generation">
-        Generate exam timetable
+        Generate assessment timetable
       </button>
     </div>
   </div>
@@ -44,13 +44,13 @@
   <div class="app-modal-backdrop" data-modal-close></div>
   <div class="app-modal-dialog app-modal-dialog-wide app-modal-dialog-generation" role="dialog" aria-modal="true" aria-labelledby="exam-timetable-generation-title">
     <div class="app-modal-header">
-      <h2 id="exam-timetable-generation-title">Generate exam timetable</h2>
+      <h2 id="exam-timetable-generation-title">Generate assessment timetable</h2>
       <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
     </div>
     <form method="post" class="app-modal-form" novalidate data-exam-generate-form>
       {% csrf_token %}
       <div class="generation-step" data-generate-panel="1">
-        <p class="subtle">1. Select academic levels with a green background. Those levels have active classes, subjects, and a matching exam timetable profile for sessions. Supervisors can be assigned before or after generation.</p>
+        <p class="subtle">1. Select academic levels with a green background. Those levels have active classes, subjects, and a matching assessment timetable profile for sessions. Supervisors can be assigned before or after generation.</p>
 
         {% if level_groups %}
         <div class="generation-level-list">
@@ -81,17 +81,17 @@
 
         <div class="app-modal-actions">
           <button type="button" class="ghost-button" data-modal-close>Cancel</button>
-          <button type="button" class="primary-button" data-generate-next {% if not viable_count %}disabled{% endif %}>Next: exam dates</button>
+          <button type="button" class="primary-button" data-generate-next {% if not viable_count %}disabled{% endif %}>Next: assessment dates</button>
         </div>
       </div>
 
       <div class="generation-step" data-generate-panel="2" hidden>
-        <p class="subtle">2. Choose the academic year and term, then the exam start date. The end date is set automatically from the exam profile sessions so each subject is placed once, with no repeats.</p>
+        <p class="subtle">2. Choose the academic year and term, then the assessment start date. The end date is set automatically from the assessment profile sessions so each subject is placed once, with no repeats.</p>
 
         {% if calendar_ready %}
         <div class="generation-calendar">
           <div class="field">
-            <label for="exam_name">Exam name <span class="required">*</span></label>
+            <label for="exam_name">Assessment name <span class="required">*</span></label>
             <input
               type="text"
               id="exam_name"
@@ -131,18 +131,18 @@
             </select>
           </div>
           <div class="field">
-            <label for="exam_start_date">Exam starts on <span class="required">*</span></label>
+            <label for="exam_start_date">Assessment starts on <span class="required">*</span></label>
             <input type="date" id="exam_start_date" name="exam_start_date" value="{{ exam_start_date }}" data-exam-start required>
           </div>
           <div class="field">
-            <span class="field-label">Exam ends on</span>
+            <span class="field-label">Assessment ends on</span>
             <output class="uppercase-input" data-exam-end-label>—</output>
             <small class="subtle">Calculated from the number of subjects and sessions per day. Dates stay inside the selected term.</small>
           </div>
         </div>
         <script type="application/json" data-exam-terms-by-year>{{ terms_by_year_json|safe }}</script>
         {% else %}
-        <p class="notice">Register academic years and terms in <a href="{{ calendar_settings_url }}">academic calendar settings</a> before generating an exam timetable.</p>
+        <p class="notice">Register academic years and terms in <a href="{{ calendar_settings_url }}">academic calendar settings</a> before generating an assessment timetable.</p>
         {% endif %}
 
         <div class="app-modal-actions">

@@ -1,7 +1,7 @@
 {% extends "layouts/workspace.html" %}
-{% block title %}Exam records | Edu-Centric{% endblock %}
+{% block title %}Assessment records | Edu-Centric{% endblock %}
 {% block header_eyebrow %}Teacher{% endblock %}
-{% block header_title %}Exam records{% endblock %}
+{% block header_title %}Assessment records{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/teacher_sidebar.html" %}
@@ -12,15 +12,15 @@
 <div class="sa-hub-page exam-hub-page">
   {% if exam_groups %}
   <div class="sa-hub-scroll">
-    <p class="sr-only">Registered exams</p>
+    <p class="sr-only">Registered assessments</p>
     {% for group in exam_groups %}
     <section class="sa-level-block" aria-label="{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}">
       <header class="sa-level-head">
         <div>
           <h3 class="is-uppercase">{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}</h3>
-          <p class="subtle">Registered exams for this academic year</p>
+          <p class="subtle">Registered assessments for this academic year</p>
         </div>
-        <span class="teacher-tt-badge">{{ group.exams|length }} exam{{ group.exams|length|pluralize }}</span>
+        <span class="teacher-tt-badge">{{ group.exams|length }} assessment{{ group.exams|length|pluralize }}</span>
       </header>
       <div class="exam-hub-grid">
         {% for exam in group.exams %}
@@ -51,8 +51,8 @@
   </div>
   {% else %}
   <section class="sa-hub-empty">
-    <strong>No exams registered</strong>
-    <p class="settings-empty">Registered exams will appear here once IT Support generates an exam timetable.</p>
+    <strong>No assessments registered</strong>
+    <p class="settings-empty">Registered assessments will appear here once IT Support generates an assessment timetable.</p>
   </section>
   {% endif %}
 </div>

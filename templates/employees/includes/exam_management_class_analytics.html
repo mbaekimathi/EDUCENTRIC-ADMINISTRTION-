@@ -14,7 +14,7 @@
     </div>
     <div class="exam-mgmt-panel__actions">
       {% if exam_dashboard.status == "PUBLISHED" %}
-      <a class="ghost-button" href="{% url 'employees:it_support_curriculum_report_page' 'exam-reports' %}">Exam reports</a>
+      <a class="ghost-button" href="{% url 'employees:it_support_curriculum_report_page' 'exam-reports' %}">Assessment reports</a>
       {% endif %}
       <span class="exam-mgmt-panel__badge">{{ exam_dashboard.class_analytics|length }} class{{ exam_dashboard.class_analytics|length|pluralize }}</span>
     </div>

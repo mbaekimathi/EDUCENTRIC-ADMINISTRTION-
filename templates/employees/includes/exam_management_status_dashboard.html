@@ -1,8 +1,8 @@
 {% if exam_dashboard.current_exam %}
-<section class="exam-mgmt-dashboard" aria-label="Current exam status">
+<section class="exam-mgmt-dashboard" aria-label="Current assessment status">
   <header class="exam-mgmt-dashboard__hero">
     <div class="exam-mgmt-dashboard__hero-main">
-      <p class="exam-mgmt-dashboard__kicker">Current exam</p>
+      <p class="exam-mgmt-dashboard__kicker">Current assessment</p>
       <h2 class="is-uppercase">{{ exam_dashboard.exam_title }}</h2>
       <p class="exam-mgmt-dashboard__meta">
         {% if exam_dashboard.current_exam.academic_year and exam_dashboard.current_exam.academic_term %}
@@ -17,12 +17,12 @@
       <span class="teacher-exam-status-chip" data-status="{{ exam_dashboard.status }}">
         {{ exam_dashboard.status_label }}
       </span>
-      <a class="ghost-button" href="{% url 'employees:exam_record_detail' exam_dashboard.current_exam.id %}">Open exam</a>
+      <a class="ghost-button" href="{% url 'employees:exam_record_detail' exam_dashboard.current_exam.id %}">Open assessment</a>
     </div>
   </header>
 
   {% if exam_dashboard.status == "IN_SESSION" %}
-  <section class="exam-mgmt-panel" aria-label="Today's exam timetable">
+  <section class="exam-mgmt-panel" aria-label="Today's assessment timetable">
     <header class="exam-mgmt-panel__head">
       <div>
         <h3>Today's timetable</h3>
@@ -64,8 +64,8 @@
     </div>
     {% else %}
     <div class="exam-mgmt-empty">
-      <strong>No exams today</strong>
-      <p>There are no exam sittings on today's date. Check the full timetable or upcoming days.</p>
+      <strong>No assessments today</strong>
+      <p>There are no assessment sittings on today's date. Check the full timetable or upcoming days.</p>
       <a class="ghost-button" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}">View timetables</a>
     </div>
     {% endif %}
@@ -73,56 +73,17 @@
   {% endif %}
 
   {% if exam_dashboard.status == "MARKING" %}
-  <section class="exam-mgmt-panel" aria-label="Teacher marking progress">
-    <header class="exam-mgmt-panel__head">
-      <div>
-        <h3>Marking progress</h3>
-        <p>Each teacher's completion rate toward 100% of allocated marks</p>
-        {% if exam_dashboard.marking_deadline %}
-        <p class="exam-mgmt-panel__hint">Deadline: {{ exam_dashboard.marking_deadline|date:"j M Y, H:i" }}</p>
-        {% endif %}
-      </div>
-      <span class="exam-mgmt-panel__badge">{{ exam_dashboard.teacher_progress|length }} teacher{{ exam_dashboard.teacher_progress|length|pluralize }}</span>
-    </header>
-
-    {% if exam_dashboard.teacher_progress %}
-    <div class="exam-mgmt-progress-grid">
-      {% for entry in exam_dashboard.teacher_progress %}
-      <article class="exam-mgmt-progress-card">
-        <div class="exam-mgmt-progress-card__head">
-          <div>
-            <strong class="is-uppercase">{{ entry.display_name }}</strong>
-            <span class="exam-mgmt-progress-card__meta">{{ entry.allocation_count }} class subject{{ entry.allocation_count|pluralize }}</span>
-          </div>
-          <strong class="exam-mgmt-progress-card__value">{{ entry.percent }}<small>%</small></strong>
-        </div>
-        <div class="exam-mgmt-progress-track" aria-hidden="true">
-          <span class="exam-mgmt-progress-fill" style="width: {{ entry.percent }}%;"></span>
-        </div>
-        <div class="exam-mgmt-progress-card__foot">
-          <span>{{ entry.entered }} / {{ entry.expected }} marks entered</span>
-          {% if entry.trend %}
-          {% include "employees/includes/system_performance_sparkline.html" with trend=entry.trend tone="is-marking" %}
-          {% endif %}
-        </div>
-      </article>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="exam-mgmt-empty">
-      <strong>No teacher allocations yet</strong>
-      <p>Assign class subject teachers before tracking marking progress.</p>
-    </div>
-    {% endif %}
-  </section>
+  {% include "employees/includes/exam_management_marking_progress.html" %}
   {% endif %}
 
+  {% if exam_dashboard.status == "ANALYSING" or exam_dashboard.status == "PUBLISHED" %}
   {% include "employees/includes/exam_management_class_analytics.html" %}
+  {% endif %}
 </section>
 {% else %}
 <section class="exam-mgmt-empty exam-mgmt-empty--page">
-  <strong>No exams registered yet</strong>
-  <p>Generate an exam timetable to start tracking exam status, timetables, marking, and results.</p>
-  <a class="primary-button" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1">Generate exam timetable</a>
+  <strong>No assessments registered yet</strong>
+  <p>Generate an assessment timetable to start tracking assessment status, timetables, marking, and results.</p>
+  <a class="primary-button" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1">Generate assessment timetable</a>
 </section>
 {% endif %}

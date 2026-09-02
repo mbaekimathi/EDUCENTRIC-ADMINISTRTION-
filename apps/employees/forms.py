@@ -146,7 +146,7 @@ class SchoolProfileForm(UppercaseFieldsMixin, forms.ModelForm):
             "knec_centre_number": "KNEC centre number",
         }
         help_texts = {
-            "school_logo": "Shown with the school name on exam reports and mark sheets.",
+            "school_logo": "Shown with the school name on assessment reports and mark sheets.",
         }
         widgets = {
             "official_name": forms.TextInput(
@@ -209,7 +209,7 @@ class SchoolProfileBrandingForm(UppercaseFieldsMixin, forms.ModelForm):
             "primary_color": "Primary colour",
         }
         help_texts = {
-            "school_logo": "Appears beside the school name on generated and printed exam reports.",
+            "school_logo": "Appears beside the school name on generated and printed assessment reports.",
         }
         widgets = {
             "school_logo": forms.ClearableFileInput(attrs={"accept": "image/*"}),

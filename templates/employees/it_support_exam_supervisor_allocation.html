@@ -1,6 +1,6 @@
 {% extends "layouts/workspace.html" %}
 {% block title %}Allocate supervisors | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Exam management{% endblock %}
+{% block header_eyebrow %}Assessment management{% endblock %}
 {% block header_title %}Allocate supervisors{% endblock %}
 
 {% block sidebar_modules %}
@@ -30,7 +30,7 @@
   </div>
 
   {% if not teachers %}
-  <p class="notice">No approved teachers are available yet. Register and approve employees with the teacher role to allocate exam supervisors.</p>
+  <p class="notice">No approved teachers are available yet. Register and approve employees with the teacher role to allocate assessment supervisors.</p>
   {% endif %}
 
   {% if level_groups %}
@@ -94,7 +94,7 @@
             </tbody>
           </table>
         </div>
-        <p class="exam-tool-note">Register classes for this level to allocate supervisors to exam subjects.</p>
+        <p class="exam-tool-note">Register classes for this level to allocate supervisors to assessment subjects.</p>
         {% else %}
         <div class="settings-table-panel">
           <table class="settings-table allocation-table allocation-table-supervisors">
@@ -149,7 +149,7 @@
   <section class="exam-tool-empty">
     <span class="exam-tool-empty-icon" aria-hidden="true">AL</span>
     <strong>No academic levels yet</strong>
-    <p>Register active academic levels before allocating exam supervisors.</p>
+    <p>Register active academic levels before allocating assessment supervisors.</p>
   </section>
   {% endif %}
 </div>

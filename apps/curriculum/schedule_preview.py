@@ -8,7 +8,7 @@ WEEKDAY_LABELS = {
     "FRI": "Friday",
     "SAT": "Saturday",
     "SUN": "Sunday",
-    "EXM": "Exam day",
+    "EXM": "Assessment day",
 }
 EXAM_DAY_CODE = "EXM"
 
@@ -308,5 +308,5 @@ def build_exam_session_preview(sessions):
         "blocks": blocks,
         "issues": _unique_issues(issues),
         "ready": bool(blocks),
-        "days": ["Exam day"],
+        "days": ["Assessment day"],
     }

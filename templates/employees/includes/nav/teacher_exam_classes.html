@@ -1,4 +1,4 @@
-<section class="teacher-dash-actions is-nav-links" aria-label="Exam subjects">
+<section class="teacher-dash-actions is-nav-links" aria-label="Assessment subjects">
   <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">SU</span>
     <span class="teacher-dash-action-copy">
@@ -9,8 +9,8 @@
   <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_analytics' exam.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">EA</span>
     <span class="teacher-dash-action-copy">
-      <strong>Exam analytics</strong>
-      <span>Exam analytics</span>
+      <strong>Assessment analytics</strong>
+      <span>Assessment analytics</span>
     </span>
   </a>
   {% for item in exam_subject_allocations %}

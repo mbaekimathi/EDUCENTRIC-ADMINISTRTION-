@@ -1,6 +1,6 @@
 {% extends "layouts/workspace.html" %}
 {% block title %}{{ exam_title }} | Edu-Centric{% endblock %}
-{% block header_eyebrow %}All exams{% endblock %}
+{% block header_eyebrow %}All assessments{% endblock %}
 {% block header_title %}{{ exam_title }}{% endblock %}
 
 {% block sidebar_modules %}
@@ -10,7 +10,7 @@
 {% block workspace_content %}
 
 {% if selected_level %}
-{% include "employees/includes/page_nav_drawer.html" with label="Exam tools & levels" panel_id="exam-record-page-nav" nav_template="employees/includes/nav/exam_record_levels.html" collapsed=True %}
+{% include "employees/includes/page_nav_drawer.html" with label="Assessment tools & levels" panel_id="exam-record-page-nav" nav_template="employees/includes/nav/exam_record_levels.html" collapsed=True %}
 {% else %}
 {% include "employees/includes/nav/exam_record_levels.html" %}
 {% endif %}
@@ -23,7 +23,7 @@
     <header class="exam-record-bar exam-detail-bar it-marks-bar">
       <div class="exam-detail-bar-main">
         <nav class="exam-detail-crumb" aria-label="Breadcrumb">
-          <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All exams</a>
+          <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All assessments</a>
           <span aria-hidden="true">/</span>
           <a href="{% url 'employees:exam_record_detail' exam.id %}">{{ exam_title }}</a>
           <span aria-hidden="true">/</span>
@@ -168,7 +168,7 @@
   <header class="exam-record-bar exam-detail-bar">
     <div class="exam-detail-bar-main">
       <nav class="exam-detail-crumb" aria-label="Breadcrumb">
-        <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All exams</a>
+        <a href="{% url 'employees:it_support_exam_page' 'exam-records' %}">All assessments</a>
         <span aria-hidden="true">/</span>
         <a href="{% url 'employees:exam_record_detail' exam.id %}">{{ exam_title }}</a>
         <span aria-hidden="true">/</span>
@@ -215,9 +215,9 @@
 </section>
 {% else %}
 <div class="exam-detail-page">
-  <section class="exam-detail-hero" aria-label="Exam overview">
+  <section class="exam-detail-hero" aria-label="Assessment overview">
     <div class="exam-detail-hero-copy">
-      <p class="exam-detail-kicker">Registered exam</p>
+      <p class="exam-detail-kicker">Registered assessment</p>
       <h2 class="is-uppercase">{{ exam_title }}</h2>
       <p>
         {% if exam.academic_year %}{{ exam.academic_year.name }}{% else %}No year{% endif %}
@@ -248,7 +248,7 @@
         </div>
       </div>
       <a class="ghost-button exam-detail-back" href="{% url 'employees:it_support_exam_page' 'exam-records' %}">
-        Back to all exams
+        Back to all assessments
       </a>
     </div>
   </section>
@@ -257,7 +257,7 @@
     <header class="exam-detail-levels-head">
       <div>
         <h3>Academic levels</h3>
-        <p>Open a level to review student marks for this exam.</p>
+        <p>Open a level to review student marks for this assessment.</p>
       </div>
       <span class="exam-detail-levels-count">{{ academic_levels|length }} level{{ academic_levels|length|pluralize }}</span>
     </header>
@@ -277,7 +277,7 @@
     </ul>
     {% else %}
     <div class="exam-detail-empty">
-      <strong>No levels on this exam</strong>
+      <strong>No levels on this assessment</strong>
       <p>Generate the timetable again with academic levels selected.</p>
     </div>
     {% endif %}

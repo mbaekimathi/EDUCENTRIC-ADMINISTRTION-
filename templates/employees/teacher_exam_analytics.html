@@ -1,6 +1,6 @@
 {% extends "layouts/workspace.html" %}
 {% block title %}{{ exam_title }} analytics | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Exam records{% endblock %}
+{% block header_eyebrow %}Assessment records{% endblock %}
 {% block header_title %}{{ exam_title }} analytics{% endblock %}
 
 {% block sidebar_modules %}
@@ -97,13 +97,13 @@
   </section>
   {% empty %}
   <section class="settings-panel">
-    <p class="settings-empty">No allocated classes are available for this exam.</p>
+    <p class="settings-empty">No allocated classes are available for this assessment.</p>
   </section>
   {% endfor %}
 </div>
 {% else %}
 <div class="sa-hub-page exam-hub-page">
-  <div class="teacher-page-bar" aria-label="Exam analytics classes">
+  <div class="teacher-page-bar" aria-label="Assessment analytics classes">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
         <strong>{{ exam_classes|length }}</strong>
@@ -161,7 +161,7 @@
     <header class="sa-level-head">
       <div>
         <h3 class="is-uppercase">Other classes</h3>
-        <p class="subtle">Classes on this exam that are not allocated to you</p>
+        <p class="subtle">Classes on this assessment that are not allocated to you</p>
       </div>
     </header>
     <div class="exam-hub-grid">
@@ -187,8 +187,8 @@
 
   {% if not exam_classes and not other_classes %}
   <section class="sa-hub-empty">
-    <strong>No classes on this exam</strong>
-    <p class="settings-empty">There are no active classes for the levels on this exam.</p>
+    <strong>No classes on this assessment</strong>
+    <p class="settings-empty">There are no active classes for the levels on this assessment.</p>
   </section>
   {% endif %}
 </div>

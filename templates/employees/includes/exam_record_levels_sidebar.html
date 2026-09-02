@@ -1,4 +1,4 @@
-<p class="workspace-nav-label">Exam</p>
+<p class="workspace-nav-label">Assessment</p>
 <button
   type="button"
   class="workspace-nav-link workspace-nav-action"
@@ -7,7 +7,7 @@
   <span class="workspace-nav-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3zM14 6l3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
-  Edit exam
+  Edit assessment
 </button>
 {% if can_change_exam_status %}
 <button
@@ -39,7 +39,7 @@
   <span class="workspace-nav-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
-  Delete exam
+  Delete assessment
 </button>
 <p class="workspace-nav-label">Academic levels</p>
 {% for level in academic_levels %}
@@ -54,5 +54,5 @@
   {{ level.name }}
 </a>
 {% empty %}
-<p class="subtle workspace-nav-empty">No academic levels are linked to this exam.</p>
+<p class="subtle workspace-nav-empty">No academic levels are linked to this assessment.</p>
 {% endfor %}

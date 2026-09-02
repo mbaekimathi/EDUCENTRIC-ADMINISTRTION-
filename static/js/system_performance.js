@@ -446,7 +446,7 @@
           <span class="sys-perf-data-row__value">${counts.classes_active || 0}</span>
         </article>
         <article class="sys-perf-data-row">
-          <div><strong>Exam records</strong><span class="sys-perf-data-row__sub">${counts.attendance_sessions || 0} attendance sessions</span></div>
+          <div><strong>Assessment records</strong><span class="sys-perf-data-row__sub">${counts.attendance_sessions || 0} attendance sessions</span></div>
           <span class="sys-perf-data-row__value">${counts.exam_generations || 0}</span>
         </article>`;
     }

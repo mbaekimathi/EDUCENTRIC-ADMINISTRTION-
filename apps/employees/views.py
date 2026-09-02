@@ -339,7 +339,7 @@ IT_SUPPORT_REPORT_SECTIONS = (
         "title": "Curriculum reports",
         "icon": "CR",
         "summary": "Academic performance, attendance, and curriculum insights.",
-        "copy": "Open curriculum reports covering learning, exams, and academic progress.",
+        "copy": "Open curriculum reports covering learning, assessments, and academic progress.",
     },
     {
         "slug": "financial-reports",
@@ -367,10 +367,10 @@ IT_SUPPORT_CURRICULUM_REPORT_PAGES = (
     },
     {
         "slug": "exam-reports",
-        "title": "Exam reports",
+        "title": "Assessment reports",
         "icon": "ER",
-        "summary": "Exam performance, coverage, and assessment reports.",
-        "copy": "Review exam reports for results, coverage, and assessment outcomes.",
+        "summary": "Assessment performance, coverage, and outcome reports.",
+        "copy": "Review assessment reports for results, coverage, and outcomes.",
     },
 )
 
@@ -380,7 +380,7 @@ SECRETARY_REPORT_SECTIONS = (
         "title": "Curriculum reports",
         "icon": "CR",
         "summary": "Academic performance, attendance, and curriculum insights.",
-        "copy": "Open curriculum reports covering learning, exams, and academic progress.",
+        "copy": "Open curriculum reports covering learning, assessments, and academic progress.",
     },
     {
         "slug": "financial-reports",
@@ -415,10 +415,10 @@ IT_SUPPORT_CURRICULUM_SECTIONS = (
     },
     {
         "slug": "exam-management",
-        "title": "Exam management",
+        "title": "Assessment management",
         "icon": "EM",
-        "summary": "Exam settings, timetables, supervisors, and grading.",
-        "copy": "Manage exam configuration, supervisors, timetables, and academic grading.",
+        "summary": "Assessment settings, timetables, supervisors, and grading.",
+        "copy": "Manage assessment configuration, supervisors, timetables, and academic grading.",
     },
 )
 
@@ -465,22 +465,22 @@ IT_SUPPORT_EXAM_PAGES = (
         "slug": "allocate-supervisors",
         "title": "Allocate supervisors",
         "icon": "AS",
-        "summary": "Auto-allocate exam supervisors for each academic level.",
+        "summary": "Auto-allocate assessment supervisors for each academic level.",
         "copy": "Shuffle supervisors across subjects for the academic level. Classes in the level sit as one group.",
     },
     {
         "slug": "exam-timetable-generation",
-        "title": "Generate exam timetable",
+        "title": "Generate assessment timetable",
         "icon": "EG",
-        "summary": "Build exam timetables from the exam profile.",
-        "copy": "Generate exam timetables from the exam timetable profile for each academic level. Supervisors can be assigned before or after generation.",
+        "summary": "Build assessment timetables from the assessment profile.",
+        "copy": "Generate assessment timetables from the assessment timetable profile for each academic level. Supervisors can be assigned before or after generation.",
     },
     {
         "slug": "exam-records",
-        "title": "All exams",
+        "title": "All assessments",
         "icon": "AE",
-        "summary": "Review every registered exam by academic year and term.",
-        "copy": "Every generated exam timetable is listed here so you can open and manage registered exams.",
+        "summary": "Review every registered assessment by academic year and term.",
+        "copy": "Every generated assessment timetable is listed here so you can open and manage registered assessments.",
     },
 )
 
@@ -2675,7 +2675,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             if not marks_editable:
                 error(
                     request,
-                    "Marks can only be edited while this exam is in Marking status.",
+                    "Marks can only be edited while this assessment is in Marking status.",
                 )
             else:
                 try:
@@ -4144,8 +4144,8 @@ def _exam_report_builder_catalog():
         year["exams"] = [
             {
                 "id": "all",
-                "name": "All exams",
-                "label": "All exams",
+                "name": "All assessments",
+                "label": "All assessments",
                 "year_id": year["id"],
                 "term": "",
                 "levels": merged_levels,
@@ -4202,7 +4202,7 @@ def _exam_report_selection(request):
     if not year_id:
         return selection, {"error": "Select an academic year to generate the report."}
     if exam_id != "all" and not exam_id.isdigit():
-        return selection, {"error": "Select an exam to generate the report."}
+        return selection, {"error": "Select an assessment to generate the report."}
 
     if year_id == "none":
         year_filter = {"academic_year__isnull": True}
@@ -4223,9 +4223,9 @@ def _exam_report_selection(request):
             .order_by("academic_term__order", "created_at")
         )
         if not exams:
-            return selection, {"error": "No exams are registered for the selected academic year."}
+            return selection, {"error": "No assessments are registered for the selected academic year."}
         exam = exams[0]
-        exam_title = f"All exams · {academic_year.name if academic_year else 'Unscheduled'}"
+        exam_title = f"All assessments · {academic_year.name if academic_year else 'Unscheduled'}"
     else:
         exam = (
             GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
@@ -4234,7 +4234,7 @@ def _exam_report_selection(request):
             .first()
         )
         if exam is None:
-            return selection, {"error": "The selected exam could not be found for that academic year."}
+            return selection, {"error": "The selected assessment could not be found for that academic year."}
         exams = [exam]
         exam_title = _exam_record_title(exam)
 
@@ -4257,7 +4257,7 @@ def _exam_report_selection(request):
     if leveled_exams and not any(
         _exam_includes_academic_level(item, level.id) for item in leveled_exams
     ):
-        return selection, {"error": "The selected academic level is not part of the chosen exam(s)."}
+        return selection, {"error": "The selected academic level is not part of the chosen assessment(s)."}
 
     selected_class = None
     selected_student = None
@@ -4331,7 +4331,7 @@ def _exam_report_selection(request):
             continue
         usable_exams.append(exam_item)
     if not usable_exams:
-        return selection, {"error": "No exam results were found for the selected scope."}
+        return selection, {"error": "No assessment results were found for the selected scope."}
 
     subjects = _exam_record_subjects(level, selected_class)
     school_profile = SchoolProfile.objects.filter(pk=1).first()
@@ -4383,7 +4383,7 @@ def _exam_report_selection(request):
             trend_exams=trend_exams or usable_exams,
         )
         if not report_cards and students:
-            return selection, {"error": "No exam results were found for the selected scope."}
+            return selection, {"error": "No assessment results were found for the selected scope."}
     else:
         if not students:
             return selection, {
@@ -4474,7 +4474,7 @@ def _build_individual_trend_chart(exam_columns, exam_means, subject_rows=None):
         grid.append({"value": tick, "y": y_for(tick)})
 
     title = "Performance by assessment"
-    subtitle = "Exam mean trend across assessments"
+    subtitle = "Assessment mean trend across assessments"
 
     if len(exam_points) >= 2:
         n = len(exam_points)
@@ -4522,7 +4522,7 @@ def _build_individual_trend_chart(exam_columns, exam_means, subject_rows=None):
     return {
         "mode": "bars",
         "title": title,
-        "subtitle": "Exam mean for the selected assessment",
+        "subtitle": "Assessment mean for the selected assessment",
         "width": width,
         "height": height,
         "plot_left": pad_l,
@@ -4734,7 +4734,7 @@ def _build_individual_multi_exam_report_cards(
                 "exam_title": (
                     exam_columns[0]["title"]
                     if len(exam_columns) == 1
-                    else f"{len(exam_columns)} exams"
+                    else f"{len(exam_columns)} assessments"
                 ),
                 "academic_year": exams[0].academic_year if exams else None,
                 "academic_term": exams[0].academic_term if len(exams) == 1 else None,
@@ -5134,31 +5134,40 @@ def _initial_exam_status():
 def _can_change_exam_status(exam):
     if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
         return False
-    active = _active_workflow_exam()
     if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
-        return active is None
-    return active is not None and active.pk == exam.pk
+        return _active_workflow_exam() is None
+    return exam.status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
 
 
 def _can_set_as_current_exam(exam):
     return exam.status != GeneratedExamTimetable.Status.PUBLISHED
 
 
-def _annotate_exam_workflow_flags(exam, current=None):
-    if current is None:
-        current = _in_session_exam()
-    exam.is_current_exam = exam.status == GeneratedExamTimetable.Status.IN_SESSION
+def _demote_other_active_exams(exam):
+    GeneratedExamTimetable.objects.exclude(pk=exam.pk).filter(
+        status__in=GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
+    ).update(status=GeneratedExamTimetable.Status.SCHEDULED)
+
+
+def _is_current_exam(exam):
+    return exam.status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
+
+
+def _annotate_exam_workflow_flags(exam, active=None):
+    exam.is_current_exam = _is_current_exam(exam)
     exam.can_set_current = _can_set_as_current_exam(exam)
     return exam
 
 
 def _current_exam_for_dashboard():
-    in_session = _in_session_exam()
-    if in_session is not None:
-        return in_session
-    active = _active_workflow_exam()
-    if active is not None:
-        return active
+    for status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
+        exam = (
+            GeneratedExamTimetable.objects.filter(status=status)
+            .order_by("-created_at")
+            .first()
+        )
+        if exam is not None:
+            return exam
     today = timezone.localdate()
     in_window = (
         GeneratedExamTimetable.objects.filter(start_date__lte=today, end_date__gte=today)
@@ -5220,9 +5229,49 @@ def _exam_today_schedule(generation, today=None):
     }
 
 
-def _exam_marking_teacher_progress(generation):
-    from apps.employees.system_performance import _build_sparkline
+def _exam_marking_mark_timeline(generation):
+    mark_rows = list(
+        ExamMark.objects.filter(generation=generation).values_list(
+            "student_id", "learning_area_id", "updated_at"
+        )
+    )
+    mark_keys = set()
+    mark_dates_by_key = defaultdict(list)
+    for student_id, subject_id, updated_at in mark_rows:
+        mark_keys.add((student_id, subject_id))
+        mark_dates_by_key[(student_id, subject_id)].append(timezone.localdate(updated_at))
+    return mark_keys, mark_dates_by_key
 
+
+def _exam_marking_progress_metrics(slot_keys, mark_keys, mark_dates_by_key):
+    expected = len(slot_keys)
+    entered = sum(1 for key in slot_keys if key in mark_keys)
+    percent = round((entered / expected) * 100) if expected else 0
+
+    all_dates = sorted(
+        {
+            mark_date
+            for key in slot_keys
+            for mark_date in mark_dates_by_key.get(key, [])
+        }
+    )
+    if not all_dates:
+        trend_values = [0, percent] if percent else [0]
+    else:
+        trend_values = []
+        for mark_date in all_dates:
+            count = sum(
+                1
+                for key in slot_keys
+                if key in mark_keys and any(item <= mark_date for item in mark_dates_by_key.get(key, []))
+            )
+            trend_values.append(round((count / expected) * 100) if expected else 0)
+        if not trend_values or trend_values[-1] != percent:
+            trend_values.append(percent)
+    return entered, expected, percent, trend_values
+
+
+def _exam_marking_allocation_slots(generation):
     level_ids = list(generation.academic_levels.values_list("id", flat=True))
     if not level_ids:
         return []
@@ -5241,11 +5290,9 @@ def _exam_marking_teacher_progress(generation):
         )
         .order_by("teacher__last_name", "teacher__first_name")
     )
-    teacher_slots = defaultdict(list)
-    teacher_map = {}
+    slots = []
     for allocation in allocations:
         teacher = allocation.teacher
-        teacher_map[teacher.id] = teacher
         level = allocation.academic_class.academic_level
         exam_subject_ids = {subject.id for subject in _exam_record_subjects(level, allocation.academic_class)}
         if allocation.learning_area_id not in exam_subject_ids:
@@ -5255,62 +5302,61 @@ def _exam_marking_teacher_progress(generation):
         )
         if not student_ids:
             continue
-        teacher_slots[teacher.id].append(
+        slots.append(
             {
-                "class_id": allocation.academic_class_id,
-                "subject_id": allocation.learning_area_id,
-                "student_ids": student_ids,
+                "teacher_id": teacher.id,
+                "teacher": teacher,
                 "class_name": allocation.academic_class.name,
                 "subject_code": allocation.learning_area.code,
+                "level_name": level.name,
+                "subject_id": allocation.learning_area_id,
+                "student_ids": student_ids,
             }
         )
-    if not teacher_slots:
+    return slots
+
+
+def _exam_marking_teacher_progress(generation):
+    from apps.employees.system_performance import _build_sparkline
+
+    slots = _exam_marking_allocation_slots(generation)
+    if not slots:
         return []
 
-    mark_rows = list(
-        ExamMark.objects.filter(generation=generation).values_list(
-            "student_id", "learning_area_id", "updated_at"
-        )
-    )
-    mark_keys = set()
-    mark_dates_by_key = defaultdict(list)
-    for student_id, subject_id, updated_at in mark_rows:
-        mark_keys.add((student_id, subject_id))
-        mark_dates_by_key[(student_id, subject_id)].append(timezone.localdate(updated_at))
+    mark_keys, mark_dates_by_key = _exam_marking_mark_timeline(generation)
+    teacher_slots = defaultdict(list)
+    teacher_map = {}
+    for slot in slots:
+        teacher_map[slot["teacher_id"]] = slot["teacher"]
+        teacher_slots[slot["teacher_id"]].append(slot)
 
     results = []
-    for teacher_id, slots in teacher_slots.items():
+    for teacher_id, teacher_slot_list in teacher_slots.items():
         teacher = teacher_map[teacher_id]
-        expected = sum(len(slot["student_ids"]) for slot in slots)
-        slot_keys = [
-            (student_id, slot["subject_id"])
-            for slot in slots
-            for student_id in slot["student_ids"]
-        ]
-        entered = sum(1 for key in slot_keys if key in mark_keys)
-        percent = round((entered / expected) * 100) if expected else 0
+        allocation_rows = []
+        all_slot_keys = []
 
-        all_dates = sorted(
-            {
-                mark_date
-                for key in slot_keys
-                for mark_date in mark_dates_by_key.get(key, [])
-            }
+        for slot in sorted(teacher_slot_list, key=lambda item: (item["class_name"], item["subject_code"])):
+            slot_keys = [(student_id, slot["subject_id"]) for student_id in slot["student_ids"]]
+            all_slot_keys.extend(slot_keys)
+            entered, expected, percent, trend_values = _exam_marking_progress_metrics(
+                slot_keys, mark_keys, mark_dates_by_key
+            )
+            allocation_rows.append(
+                {
+                    "class_name": slot["class_name"],
+                    "subject_code": slot["subject_code"],
+                    "level_name": slot["level_name"],
+                    "entered": entered,
+                    "expected": expected,
+                    "percent": percent,
+                    "trend": _build_sparkline(trend_values, width=100, height=28, pad=2),
+                }
+            )
+
+        entered, expected, percent, trend_values = _exam_marking_progress_metrics(
+            all_slot_keys, mark_keys, mark_dates_by_key
         )
-        if not all_dates:
-            trend_values = [0, percent] if percent else [0]
-        else:
-            trend_values = []
-            for mark_date in all_dates:
-                count = sum(
-                    1
-                    for key in slot_keys
-                    if key in mark_keys and any(item <= mark_date for item in mark_dates_by_key.get(key, []))
-                )
-                trend_values.append(round((count / expected) * 100) if expected else 0)
-            if not trend_values or trend_values[-1] != percent:
-                trend_values.append(percent)
-
         results.append(
             {
                 "teacher": teacher,
@@ -5319,10 +5365,87 @@ def _exam_marking_teacher_progress(generation):
                 "entered": entered,
                 "percent": percent,
                 "trend": _build_sparkline(trend_values, width=120, height=32, pad=2),
-                "allocation_count": len(slots),
+                "allocation_count": len(allocation_rows),
+                "allocations": allocation_rows,
             }
         )
     results.sort(key=lambda item: (-item["percent"], item["display_name"]))
+    return results
+
+
+def _exam_marking_mark_keys(generation):
+    return _exam_marking_mark_timeline(generation)[0]
+
+
+def _exam_marking_class_subject_progress(generation):
+    level_ids = list(generation.academic_levels.values_list("id", flat=True))
+    if not level_ids:
+        return []
+
+    allocations = list(
+        ClassSubjectAllocation.objects.filter(
+            academic_class__academic_level_id__in=level_ids,
+            academic_class__status=AcademicClass.Status.ACTIVE,
+            teacher__isnull=False,
+        )
+        .select_related(
+            "teacher",
+            "academic_class",
+            "academic_class__academic_level",
+            "learning_area",
+        )
+        .order_by(
+            "academic_class__academic_level__order",
+            "academic_class__order",
+            "academic_class__name",
+            "learning_area__display_order",
+            "learning_area__name",
+        )
+    )
+    if not allocations:
+        return []
+
+    mark_keys = _exam_marking_mark_keys(generation)
+    results = []
+    for allocation in allocations:
+        level = allocation.academic_class.academic_level
+        exam_subject_ids = {subject.id for subject in _exam_record_subjects(level, allocation.academic_class)}
+        if allocation.learning_area_id not in exam_subject_ids:
+            continue
+        student_ids = list(
+            _students_in_academic_level(level, allocation.academic_class).values_list("id", flat=True)
+        )
+        if not student_ids:
+            continue
+        expected = len(student_ids)
+        entered = sum(
+            1
+            for student_id in student_ids
+            if (student_id, allocation.learning_area_id) in mark_keys
+        )
+        percent = round((entered / expected) * 100) if expected else 0
+        teacher = allocation.teacher
+        results.append(
+            {
+                "academic_class": allocation.academic_class,
+                "class_name": allocation.academic_class.name,
+                "level_name": level.name,
+                "subject": allocation.learning_area,
+                "subject_code": allocation.learning_area.code,
+                "teacher": teacher,
+                "teacher_name": f"{teacher.first_name} {teacher.last_name}".strip(),
+                "expected": expected,
+                "entered": entered,
+                "percent": percent,
+            }
+        )
+    results.sort(
+        key=lambda item: (
+            -item["percent"],
+            item["class_name"],
+            item["subject_code"],
+        )
+    )
     return results
 
 
@@ -5377,7 +5500,6 @@ def _build_exam_management_dashboard():
         "exam_title": _exam_record_title(exam),
         "status": exam.status,
         "status_label": exam.get_status_display(),
-        "class_analytics": _exam_class_marks_analytics(exam),
     }
     if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
         dashboard["today_schedule"] = _exam_today_schedule(exam)
@@ -5385,6 +5507,11 @@ def _build_exam_management_dashboard():
         dashboard["teacher_progress"] = _exam_marking_teacher_progress(exam)
         if exam.deadline:
             dashboard["marking_deadline"] = exam.deadline
+    if exam.status in (
+        GeneratedExamTimetable.Status.ANALYSING,
+        GeneratedExamTimetable.Status.PUBLISHED,
+    ):
+        dashboard["class_analytics"] = _exam_class_marks_analytics(exam)
     return dashboard
 
 
@@ -6971,9 +7098,9 @@ def _grouped_registered_exams():
         .annotate(sitting_count=Count("sittings", distinct=True))
         .order_by("-academic_year__start_date", "academic_term__order", "-created_at")
     )
-    active = _in_session_exam()
+    active = _active_workflow_exam()
     for exam in generations:
-        _annotate_exam_workflow_flags(exam, current=active)
+        _annotate_exam_workflow_flags(exam)
     exam_groups = []
     for _year_id, exams in groupby(generations, key=lambda item: item.academic_year_id):
         exam_list = list(exams)
@@ -6983,7 +7110,7 @@ def _grouped_registered_exams():
                 "exams": exam_list,
             }
         )
-    return exam_groups, len(generations), active
+    return exam_groups, len(generations), _current_exam_for_dashboard()
 
 
 def exam_records(request, current):
@@ -7088,21 +7215,21 @@ def update_exam_record(request, exam_id):
     level_ids = [level_id for level_id in level_ids if level_id in valid_level_ids]
 
     if not exam_name:
-        error(request, "Enter a name for this exam.")
+        error(request, "Enter a name for this assessment.")
     elif academic_year is None:
         error(request, "Select a registered academic year.")
     elif term is None:
         error(request, "Select an academic term from the selected academic year.")
     elif start_date is None:
-        error(request, "Select when the exam starts.")
+        error(request, "Select when the assessment starts.")
     elif end_date is None:
-        error(request, "Select when the exam ends.")
+        error(request, "Select when the assessment ends.")
     elif end_date < start_date:
-        error(request, "Exam end date must be on or after the start date.")
+        error(request, "Assessment end date must be on or after the start date.")
     elif start_date < term.start_date or end_date > term.end_date:
         error(
             request,
-            f"Exam dates must fall inside {term.name} "
+            f"Assessment dates must fall inside {term.name} "
             f"({term.start_date:%d %b %Y} to {term.end_date:%d %b %Y}).",
         )
     elif not level_ids:
@@ -7140,7 +7267,7 @@ def update_exam_record_status(request, exam_id):
     else:
         level_id = None
     if status not in valid_statuses:
-        error(request, "Select a valid exam status.")
+        error(request, "Select a valid assessment status.")
         return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
 
     if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
@@ -7149,7 +7276,7 @@ def update_exam_record_status(request, exam_id):
 
     active = _active_workflow_exam()
     if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
-        if status != GeneratedExamTimetable.Status.IN_SESSION:
+        if status not in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
             error(request, "Scheduled exams can only be started by setting them to In session.")
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
         if active is not None:
@@ -7158,25 +7285,15 @@ def update_exam_record_status(request, exam_id):
                 f"Only one exam can be current at a time. Finish {active.display_name} before starting another.",
             )
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
-    elif active is None or active.pk != exam.pk:
-        error(request, "You can only change status for the current exam in session.")
+    elif exam.status not in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
+        error(request, "You can only change status for the current exam.")
         return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
 
-    if status == GeneratedExamTimetable.Status.IN_SESSION:
-        other_in_session = (
-            GeneratedExamTimetable.objects.exclude(pk=exam.pk)
-            .filter(status=GeneratedExamTimetable.Status.IN_SESSION)
-            .exists()
-        )
-        if other_in_session:
-            error(
-                request,
-                "Only one exam can be in session at a time. Advance the other exam first.",
-            )
-            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
-
-    exam.status = status
-    exam.save(update_fields=["status"])
+    with transaction.atomic():
+        if status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
+            _demote_other_active_exams(exam)
+        exam.status = status
+        exam.save(update_fields=["status"])
     label = dict(GeneratedExamTimetable.Status.choices).get(status, status)
     success(request, f"{exam.display_name} status set to {label.lower()}.")
     return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
@@ -7200,27 +7317,26 @@ def set_current_exam_record(request, exam_id):
         redirect_target = next_url
 
     if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
-        error(request, "Published exams cannot be set as current.")
+        error(request, "Published assessments cannot be set as current.")
         return redirect(redirect_target)
 
     is_current = request.POST.get("is_current") == "1"
 
     if not is_current:
-        if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
+        if exam.status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
             exam.status = GeneratedExamTimetable.Status.SCHEDULED
             exam.save(update_fields=["status"])
             success(request, f"{exam.display_name} is no longer the current exam.")
         return redirect(redirect_target)
 
-    if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
+    if _is_current_exam(exam):
         return redirect(redirect_target)
 
     with transaction.atomic():
-        GeneratedExamTimetable.objects.exclude(pk=exam.pk).filter(
-            status__in=GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
-        ).update(status=GeneratedExamTimetable.Status.SCHEDULED)
-        exam.status = GeneratedExamTimetable.Status.IN_SESSION
-        exam.save(update_fields=["status"])
+        _demote_other_active_exams(exam)
+        if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
+            exam.status = GeneratedExamTimetable.Status.IN_SESSION
+            exam.save(update_fields=["status"])
     success(request, f"{exam.display_name} is now the current exam.")
     return redirect(redirect_target)
 
@@ -7830,7 +7946,7 @@ def exam_record_detail(request, exam_id, level_id=None):
             "out_of_settings_changed": out_of_settings_changed,
             "manage_next_url": request.get_full_path(),
             "can_change_exam_status": _can_change_exam_status(generation),
-            "is_current_exam": generation.status == GeneratedExamTimetable.Status.IN_SESSION,
+            "is_current_exam": _is_current_exam(generation),
             "can_toggle_current": generation.status != GeneratedExamTimetable.Status.PUBLISHED,
             **_exam_record_manage_context(generation),
         },
@@ -7912,7 +8028,7 @@ def exam_supervisor_allocation(request, page=None):
         classes = list(level.classes.filter(status=AcademicClass.Status.ACTIVE).order_by("order", "name"))
         subjects = list(level.learning_areas.filter(status=LearningArea.Status.ACTIVE).order_by("display_order", "name"))
         if not teachers:
-            error(request, "No approved teachers are available to supervise exams.")
+            error(request, "No approved teachers are available to supervise assessments.")
         elif not classes:
             error(request, "Register classes for this level before allocating supervisors.")
         elif not subjects:
@@ -8025,13 +8141,13 @@ def _exam_timetable_generation_levels():
         elif not subjects:
             level.viability_reason = "Link at least one active subject."
         elif not profile:
-            level.viability_reason = "Add this level to an exam timetable settings profile."
+            level.viability_reason = "Add this level to an assessment timetable settings profile."
         elif not slots:
-            level.viability_reason = "Complete exam timetable settings so exam sessions can be generated."
+            level.viability_reason = "Complete assessment timetable settings so assessment sessions can be generated."
         else:
             profile_info = (
                 f"{profile.name}: {level.schedule_periods} session"
-                f"{'' if level.schedule_periods == 1 else 's'} from the exam profile."
+                f"{'' if level.schedule_periods == 1 else 's'} from the assessment profile."
             )
             if missing:
                 level.viability_reason = (
@@ -8390,13 +8506,13 @@ def exam_timetable_generation(request, page=None):
         academic_year = years_by_id.get(selected_year_id)
         academic_terms = list(academic_year.terms.all()) if academic_year else []
         if not selected_ids:
-            error(request, "Select at least one viable academic level to generate an exam timetable.")
+            error(request, "Select at least one viable academic level to generate an assessment timetable.")
             open_generate_modal = True
             generate_step = 1
         elif not calendar_ready:
             error(
                 request,
-                "Register an academic year and its terms in academic calendar settings before generating an exam timetable.",
+                "Register an academic year and its terms in academic calendar settings before generating an assessment timetable.",
             )
             open_generate_modal = True
             generate_step = 2
@@ -8415,17 +8531,17 @@ def exam_timetable_generation(request, page=None):
                 open_generate_modal = True
                 generate_step = 2
             elif not exam_name:
-                error(request, "Enter a name for this exam.")
+                error(request, "Enter a name for this assessment.")
                 open_generate_modal = True
                 generate_step = 2
             elif start is None:
-                error(request, "Select when the exam starts.")
+                error(request, "Select when the assessment starts.")
                 open_generate_modal = True
                 generate_step = 2
             elif start < term.start_date or start > term.end_date:
                 error(
                     request,
-                    f"The exam start date must fall inside {term.name} ({term.start_date:%d %b %Y} to {term.end_date:%d %b %Y}).",
+                    f"The assessment start date must fall inside {term.name} ({term.start_date:%d %b %Y} to {term.end_date:%d %b %Y}).",
                 )
                 open_generate_modal = True
                 generate_step = 2
@@ -8451,7 +8567,7 @@ def exam_timetable_generation(request, page=None):
                     names = ", ".join(level.name for level in overflow)
                     error(
                         request,
-                        f"Exams for {names} cannot fit inside {term.name} from {start:%d %b %Y}. "
+                        f"Assessments for {names} cannot fit inside {term.name} from {start:%d %b %Y}. "
                         f"Each subject needs one session, so choose an earlier start date.",
                     )
                     open_generate_modal = True
@@ -8933,7 +9049,7 @@ def school_profile_branding_settings(request):
         request,
         SchoolProfileBrandingForm,
         "Branding",
-        "Upload the school logo used on exam reports, then set motto, vision, mission, and colour.",
+        "Upload the school logo used on assessment reports, then set motto, vision, mission, and colour.",
         "employees:school_profile_branding_settings",
     )
 
@@ -9444,9 +9560,9 @@ def exam_timetable_settings(request):
                     profile.activities.all(),
                     last_class_end=profile.last_exam_end_time,
                     period_label="Session",
-                    day_labels=["Exam day"],
-                    start_caption="first exam",
-                    end_caption="exam end time",
+                    day_labels=["Assessment day"],
+                    start_caption="first assessment",
+                    end_caption="assessment end time",
                 )
                 profile.sessions.all().delete()
                 session_order = 0
@@ -9463,11 +9579,11 @@ def exam_timetable_settings(request):
                     )
             success(
                 request,
-                f"Exam timetable profile {profile.name} "
+                f"Assessment timetable profile {profile.name} "
                 f"{'updated' if edit_profile else 'registered'}.",
             )
             return redirect("employees:exam_timetable_settings")
-        error(request, "The exam timetable profile could not be saved. Check the details below.")
+        error(request, "The assessment timetable profile could not be saved. Check the details below.")
 
     profiles = list(
         ExamScheduleProfile.objects.prefetch_related(
@@ -9483,9 +9599,9 @@ def exam_timetable_settings(request):
             profile.activities.all(),
             last_class_end=profile.last_exam_end_time,
             period_label="Session",
-            day_labels=["Exam day"],
-            start_caption="first exam",
-            end_caption="exam end time",
+            day_labels=["Assessment day"],
+            start_caption="first assessment",
+            end_caption="assessment end time",
         )
     return render(
         request,
@@ -9514,7 +9630,7 @@ def delete_exam_timetable_profile(request, profile_id):
     profile = get_object_or_404(ExamScheduleProfile, pk=profile_id)
     name = profile.name
     profile.delete()
-    success(request, f"Exam timetable profile {name} deleted.")
+    success(request, f"Assessment timetable profile {name} deleted.")
     return redirect("employees:exam_timetable_settings")
 
 
@@ -9606,7 +9722,7 @@ def save_exam_subject_marks(request, level_id):
 
     success(
         request,
-        f"Exam marks saved for {level.name}. Existing student scores keep their previous "
+        f"Assessment marks saved for {level.name}. Existing student scores keep their previous "
         f"out-of values until those marks are edited.",
     )
     return _redirect_exam_level(level_id, request)
@@ -9618,7 +9734,7 @@ def reorder_exam_subjects(request, level_id):
     level = get_object_or_404(AcademicLevel, pk=level_id, status=AcademicLevel.Status.ACTIVE)
     ordered_ids = [value for value in request.POST.getlist("area_id") if value.isdigit()]
     if not ordered_ids or len(ordered_ids) != len(set(ordered_ids)):
-        error(request, "No exam subjects were provided to reorder.")
+        error(request, "No assessment subjects were provided to reorder.")
         return _redirect_exam_level(level_id)
 
     active_areas = {
@@ -9644,7 +9760,7 @@ def reorder_exam_subjects(request, level_id):
                 setting.display_order = index
                 setting.save(update_fields=["display_order", "updated_at"])
 
-    success(request, f"Exam subject order saved for {level.name}.")
+    success(request, f"Assessment subject order saved for {level.name}.")
     return _redirect_exam_level(level_id)
 
 
@@ -9708,7 +9824,7 @@ def delete_combined_exam_subject(request, combined_id):
     combined = get_object_or_404(CombinedExamSubject, pk=combined_id)
     level_id = combined.academic_level_id
     combined.delete()
-    success(request, "Combined exam subject removed.")
+    success(request, "Combined assessment subject removed.")
     return _redirect_exam_level(level_id, request)
 
 

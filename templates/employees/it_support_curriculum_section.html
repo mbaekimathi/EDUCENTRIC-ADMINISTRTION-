@@ -10,19 +10,19 @@
 {% block workspace_content %}
 <div class="exam-tool-page">
   {% if section.slug == 'exam-management' %}
-  <section class="teacher-dash-actions is-nav-links" aria-label="Exam management tools">
+  <section class="teacher-dash-actions is-nav-links" aria-label="Assessment management tools">
     <a class="teacher-dash-action" href="{% url 'employees:exam_settings' %}">
       <span class="teacher-dash-action-icon" aria-hidden="true">ES</span>
       <span class="teacher-dash-action-copy">
-        <strong>Exam settings</strong>
+        <strong>Assessment settings</strong>
         <span>Set subject marks, combined subjects, timetable sessions, and grading.</span>
       </span>
     </a>
     <a class="teacher-dash-action" href="{% url 'employees:exam_timetable_settings' %}">
       <span class="teacher-dash-action-icon" aria-hidden="true">TS</span>
       <span class="teacher-dash-action-copy">
-        <strong>Exam timetable settings</strong>
-        <span>Create exam profiles and generate exam sessions for each academic category.</span>
+        <strong>Assessment timetable settings</strong>
+        <span>Create assessment profiles and generate assessment sessions for each academic category.</span>
       </span>
     </a>
     <a class="teacher-dash-action" href="{% url 'employees:grading_system_settings' %}">

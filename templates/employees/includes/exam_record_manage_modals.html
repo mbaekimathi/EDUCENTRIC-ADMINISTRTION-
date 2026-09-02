@@ -7,9 +7,9 @@
         <svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3zM14 6l3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="exam-manage-dialog-heading">
-        <p class="exam-manage-dialog-kicker">Exam details</p>
-        <h2 id="exam-edit-title">Edit exam</h2>
-        <p class="exam-manage-dialog-lead">Update the registered exam name, calendar dates, and linked academic levels.</p>
+        <p class="exam-manage-dialog-kicker">Assessment details</p>
+        <h2 id="exam-edit-title">Edit assessment</h2>
+        <p class="exam-manage-dialog-lead">Update the registered assessment name, calendar dates, and linked academic levels.</p>
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-edit" aria-label="Close">×</button>
     </div>
@@ -22,7 +22,7 @@
           <section class="exam-manage-section">
             <h3 class="exam-manage-section-title">Identity</h3>
             <div class="field">
-              <label for="edit-exam-name">Exam name <span class="required">*</span></label>
+              <label for="edit-exam-name">Assessment name <span class="required">*</span></label>
               <input
                 id="edit-exam-name"
                 class="uppercase-input"
@@ -116,12 +116,12 @@
         <svg viewBox="0 0 24 24"><path d="M12 3v3M6.2 5.8 8.3 7.9M4 12H1M6.2 18.2l2.1-2.1M12 21v-3M17.8 18.2l-2.1-2.1M23 12h-3M17.8 5.8 15.7 7.9M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="exam-manage-dialog-heading">
-        <p class="exam-manage-dialog-kicker">Exam workflow</p>
-        <h2 id="exam-status-title">Set exam status</h2>
+        <p class="exam-manage-dialog-kicker">Assessment workflow</p>
+        <h2 id="exam-status-title">Set assessment status</h2>
         {% if exam.status == "SCHEDULED" %}
-        <p class="exam-manage-dialog-lead">Start this exam when you are ready. Only one exam can be in session at a time.</p>
+        <p class="exam-manage-dialog-lead">Start this assessment when you are ready. Only one assessment can be in session at a time.</p>
         {% else %}
-        <p class="exam-manage-dialog-lead">Move this exam through each stage as sittings, marking, and publishing progress.</p>
+        <p class="exam-manage-dialog-lead">Move this assessment through each stage as sittings, marking, and publishing progress.</p>
         {% endif %}
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-status" aria-label="Close">×</button>
@@ -135,14 +135,14 @@
           <span>Current</span>
           <strong>{{ exam.get_status_display }}</strong>
         </div>
-        <div class="exam-status-grid" role="radiogroup" aria-label="Exam status">
+        <div class="exam-status-grid" role="radiogroup" aria-label="Assessment status">
           {% if exam.status == "SCHEDULED" %}
           <label class="exam-status-card is-in-session is-selected">
             <input type="radio" name="status" value="IN_SESSION" checked required>
             <span class="exam-status-card-icon" aria-hidden="true">IN</span>
             <span class="exam-status-card-copy">
               <strong>In session</strong>
-              <span>Start exams in classes.</span>
+              <span>Start assessments in classes.</span>
             </span>
             <span class="exam-status-card-indicator" aria-hidden="true"></span>
           </label>
@@ -152,7 +152,7 @@
             <span class="exam-status-card-icon" aria-hidden="true">IN</span>
             <span class="exam-status-card-copy">
               <strong>In session</strong>
-              <span>Exams are currently running in classes.</span>
+              <span>Assessments are currently running in classes.</span>
             </span>
             <span class="exam-status-card-indicator" aria-hidden="true"></span>
           </label>
@@ -205,7 +205,7 @@
       <div class="exam-manage-dialog-heading">
         <p class="exam-manage-dialog-kicker">Marking window</p>
         <h2 id="exam-deadline-title">Set deadline</h2>
-        <p class="exam-manage-dialog-lead">Choose when marking for this exam should close.</p>
+        <p class="exam-manage-dialog-lead">Choose when marking for this assessment should close.</p>
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-deadline" aria-label="Close">×</button>
     </div>
@@ -245,7 +245,7 @@
           <span class="exam-manage-toggle-track" aria-hidden="true"></span>
           <span class="exam-manage-toggle-copy">
             <strong>Clear deadline</strong>
-            <span>Remove the closing time for this exam.</span>
+            <span>Remove the closing time for this assessment.</span>
           </span>
         </label>
       </div>
@@ -267,8 +267,8 @@
       </div>
       <div class="exam-manage-dialog-heading">
         <p class="exam-manage-dialog-kicker">Danger zone</p>
-        <h2 id="exam-delete-title">Delete exam</h2>
-        <p class="exam-manage-dialog-lead">This permanently removes the exam timetable, sittings, and all recorded marks.</p>
+        <h2 id="exam-delete-title">Delete assessment</h2>
+        <p class="exam-manage-dialog-lead">This permanently removes the assessment timetable, sittings, and all recorded marks.</p>
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-delete" aria-label="Close">×</button>
     </div>
@@ -285,8 +285,8 @@
         </div>
       </div>
       <div class="app-modal-actions exam-manage-dialog-actions">
-        <button type="button" class="ghost-button" data-modal-close="exam-delete">Keep exam</button>
-        <button type="submit" class="primary-button is-danger">Delete exam</button>
+        <button type="button" class="ghost-button" data-modal-close="exam-delete">Keep assessment</button>
+        <button type="submit" class="primary-button is-danger">Delete assessment</button>
       </div>
     </form>
   </div>

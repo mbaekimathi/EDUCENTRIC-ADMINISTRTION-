@@ -1,0 +1,69 @@
+<section class="exam-mgmt-panel" aria-label="Marking progress">
+  <header class="exam-mgmt-panel__head">
+    <div>
+      <h3>Marking progress</h3>
+      <p>Each teacher’s completion rate across every class and subject they are allocated to</p>
+      {% if exam_dashboard.marking_deadline %}
+      <p class="exam-mgmt-panel__hint">Deadline: {{ exam_dashboard.marking_deadline|date:"j M Y, H:i" }}</p>
+      {% endif %}
+    </div>
+    {% if exam_dashboard.teacher_progress %}
+    <span class="exam-mgmt-panel__badge">{{ exam_dashboard.teacher_progress|length }} teacher{{ exam_dashboard.teacher_progress|length|pluralize }}</span>
+    {% endif %}
+  </header>
+
+  {% if exam_dashboard.teacher_progress %}
+  <div class="exam-mgmt-teacher-grid">
+    {% for teacher in exam_dashboard.teacher_progress %}
+    <article class="exam-mgmt-teacher-card">
+      <header class="exam-mgmt-teacher-card__head">
+        <div class="exam-mgmt-teacher-card__identity">
+          <strong class="is-uppercase">{{ teacher.display_name }}</strong>
+          <span class="exam-mgmt-teacher-card__meta">
+            {{ teacher.allocation_count }} class subject{{ teacher.allocation_count|pluralize }}
+            · {{ teacher.entered }} / {{ teacher.expected }} marks entered
+          </span>
+        </div>
+        <div class="exam-mgmt-teacher-card__summary">
+          <strong class="exam-mgmt-progress-card__value">{{ teacher.percent }}<small>%</small></strong>
+          {% if teacher.trend %}
+          {% include "employees/includes/system_performance_sparkline.html" with trend=teacher.trend tone="is-marking" %}
+          {% endif %}
+        </div>
+      </header>
+      <div class="exam-mgmt-progress-track is-compact" aria-hidden="true">
+        <span class="exam-mgmt-progress-fill" style="width: {{ teacher.percent }}%;"></span>
+      </div>
+
+      <ul class="exam-mgmt-teacher-allocations">
+        {% for allocation in teacher.allocations %}
+        <li class="exam-mgmt-teacher-allocation">
+          <div class="exam-mgmt-teacher-allocation__main">
+            <strong class="is-uppercase">{{ allocation.class_name }}</strong>
+            <span>{{ allocation.subject_code }} · {{ allocation.level_name }}</span>
+          </div>
+          <div class="exam-mgmt-teacher-allocation__metrics">
+            <div class="exam-mgmt-teacher-allocation__progress">
+              <div class="exam-mgmt-progress-track is-compact" aria-hidden="true">
+                <span class="exam-mgmt-progress-fill" style="width: {{ allocation.percent }}%;"></span>
+              </div>
+              <strong>{{ allocation.percent }}<small>%</small></strong>
+              <span>{{ allocation.entered }} / {{ allocation.expected }}</span>
+            </div>
+            {% if allocation.trend %}
+            {% include "employees/includes/system_performance_sparkline.html" with trend=allocation.trend tone="is-marking" %}
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="exam-mgmt-empty">
+    <strong>No teacher allocations yet</strong>
+    <p>Assign class subject teachers before tracking marking progress.</p>
+  </div>
+  {% endif %}
+</section>

@@ -8,12 +8,12 @@ from apps.curriculum.exam_marks_import import import_exam_marks_csv
 
 class Command(BaseCommand):
     help = (
-        "Import student exam marks from a CSV export. Creates missing exam shells when needed, "
+        "Import student assessment marks from a CSV export. Creates missing exam shells when needed, "
         "and only inserts marks that do not already exist."
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("csv_path", type=str, help="Path to the exam marks CSV file")
+        parser.add_argument("csv_path", type=str, help="Path to the assessment marks CSV file")
         parser.add_argument(
             "--dry-run",
             action="store_true",

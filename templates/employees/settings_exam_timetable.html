@@ -1,7 +1,7 @@
 {% extends "layouts/settings.html" %}
-{% block title %}Exam timetable settings | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Exam settings{% endblock %}
-{% block header_title %}Exam timetable settings{% endblock %}
+{% block title %}Assessment timetable settings | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Assessment settings{% endblock %}
+{% block header_title %}Assessment timetable settings{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/exam_settings_sidebar.html" %}
@@ -12,11 +12,11 @@
 {% include "employees/includes/nav/exam_settings.html" %}
 <div class="settings-toolbar">
   <div class="settings-toolbar-copy">
-    <h2>Exam timetable profiles</h2>
-    <p class="subtle">Create a profile for each academic category. Add breaks and activities; exam sessions are generated automatically.</p>
+    <h2>Assessment timetable profiles</h2>
+    <p class="subtle">Create a profile for each academic category. Add breaks and activities; assessment sessions are generated automatically.</p>
   </div>
   <button type="button" class="primary-button settings-toolbar-action" data-open-modal="exam-profile">
-    Register exam profile
+    Register assessment profile
   </button>
 </div>
 
@@ -44,11 +44,11 @@
     </header>
     <div class="schedule-profile-summary">
       <div>
-        <span class="subtle">First exam</span>
+        <span class="subtle">First assessment</span>
         <strong>{{ profile.first_exam_start_time|time:"H:i" }}</strong>
       </div>
       <div>
-        <span class="subtle">Exam end</span>
+        <span class="subtle">Assessment end</span>
         <strong>{{ profile.last_exam_end_time|time:"H:i" }}</strong>
       </div>
       <div>
@@ -95,7 +95,7 @@
 </div>
 {% else %}
 <section class="settings-panel">
-  <p class="settings-empty">No exam timetable profiles yet. Register a profile, then add breaks and activities. Exam sessions are generated automatically.</p>
+  <p class="settings-empty">No assessment timetable profiles yet. Register a profile, then add breaks and activities. Assessment sessions are generated automatically.</p>
 </section>
 {% endif %}
 
@@ -109,8 +109,8 @@
   <div class="app-modal-dialog app-modal-dialog-wide schedule-profile-dialog" role="dialog" aria-modal="true" aria-labelledby="exam-profile-title">
     <div class="app-modal-header">
       <div>
-        <p class="schedule-profile-kicker">Exam timetable</p>
-        <h2 id="exam-profile-title">{% if edit_profile %}Edit exam profile{% else %}Register exam profile{% endif %}</h2>
+        <p class="schedule-profile-kicker">Assessment timetable</p>
+        <h2 id="exam-profile-title">{% if edit_profile %}Edit assessment profile{% else %}Register assessment profile{% endif %}</h2>
       </div>
       <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
     </div>
@@ -146,20 +146,20 @@
         </section>
 
         <section class="schedule-form-section">
-          <h3>2. Exam day</h3>
+          <h3>2. Assessment day</h3>
           <div class="schedule-day-times">
             <div class="field">
-              <label for="{{ profile_form.first_exam_start_time.id_for_label }}">First exam starts at <span class="required">*</span></label>
+              <label for="{{ profile_form.first_exam_start_time.id_for_label }}">First assessment starts at <span class="required">*</span></label>
               {{ profile_form.first_exam_start_time }}
               {% for error in profile_form.first_exam_start_time.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
             </div>
             <div class="field">
-              <label for="{{ profile_form.last_exam_end_time.id_for_label }}">Exam end time <span class="required">*</span></label>
+              <label for="{{ profile_form.last_exam_end_time.id_for_label }}">Assessment end time <span class="required">*</span></label>
               {{ profile_form.last_exam_end_time }}
               {% for error in profile_form.last_exam_end_time.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
             </div>
             <div class="field">
-              <label for="{{ profile_form.exam_session_duration_minutes.id_for_label }}">Exam session duration (minutes) <span class="required">*</span></label>
+              <label for="{{ profile_form.exam_session_duration_minutes.id_for_label }}">Assessment session duration (minutes) <span class="required">*</span></label>
               {{ profile_form.exam_session_duration_minutes }}
               {% for error in profile_form.exam_session_duration_minutes.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
             </div>
@@ -170,7 +170,7 @@
           <div class="schedule-activities-heading">
             <div>
               <h3>3. Breaks and activities</h3>
-              <p class="subtle">Add each break or special period. Exam sessions are generated in the remaining time.</p>
+              <p class="subtle">Add each break or special period. Assessment sessions are generated in the remaining time.</p>
             </div>
           </div>
           <div class="schedule-activity-rows" data-activity-rows>
@@ -215,9 +215,9 @@
 
         <section class="schedule-form-section">
           <h3>4. Timetable preview</h3>
-          <p class="subtle">Gaps between activities are filled with exam sessions of the set duration. Overlapping times are highlighted.</p>
+          <p class="subtle">Gaps between activities are filled with assessment sessions of the set duration. Overlapping times are highlighted.</p>
           <div class="schedule-preview-alerts" data-preview-alerts></div>
-          <p class="schedule-empty-hint" data-preview-empty>Enter first exam start time, exam end time, and session duration to preview the exam day.</p>
+          <p class="schedule-empty-hint" data-preview-empty>Enter first assessment start time, assessment end time, and session duration to preview the assessment day.</p>
           <div class="schedule-timetable-wrap" data-preview-timeline hidden></div>
         </section>
       </div>
@@ -455,7 +455,7 @@
     if (dayEnd <= firstStart) {
       issues.push({
         type: "collision",
-        message: "Exam end time must be later than first exam start time.",
+        message: "Assessment end time must be later than first assessment start time.",
       });
       return { blocks, issues: uniqueIssues(issues), ready: false };
     }
@@ -465,7 +465,7 @@
         item.collision = true;
         issues.push({
           type: "collision",
-          message: `${item.name} starts before first exam at ${formatMinutes(firstStart)}.`,
+          message: `${item.name} starts before first assessment at ${formatMinutes(firstStart)}.`,
         });
       }
     });
@@ -501,7 +501,7 @@
         item.collision = true;
         issues.push({
           type: "collision",
-          message: `${item.name} starts after exam end time (${formatMinutes(dayEnd)}).`,
+          message: `${item.name} starts after assessment end time (${formatMinutes(dayEnd)}).`,
         });
       }
       if (cursor < item.start) addSessionsUntil(Math.min(item.start, dayEnd));
@@ -524,7 +524,7 @@
     } else if (cursor > dayEnd) {
       issues.push({
         type: "collision",
-        message: `The day overruns exam end time by ${cursor - dayEnd} minutes (${formatMinutes(dayEnd)}–${formatMinutes(cursor)}).`,
+        message: `The day overruns assessment end time by ${cursor - dayEnd} minutes (${formatMinutes(dayEnd)}–${formatMinutes(cursor)}).`,
       });
       if (blocks.length) blocks[blocks.length - 1].collision = true;
     }
@@ -579,7 +579,7 @@
 
       const body = document.createElement("tbody");
       const row = document.createElement("tr");
-      row.appendChild(el("th", "", "Exam day")).scope = "row";
+      row.appendChild(el("th", "", "Assessment day")).scope = "row";
       preview.blocks.forEach((block) => {
         row.appendChild(
           el("td", `is-uppercase is-${block.kind}${block.collision ? " is-collision" : ""}`, block.label)
