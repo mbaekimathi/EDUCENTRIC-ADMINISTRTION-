@@ -20,6 +20,12 @@
         <strong>{{ exam_groups|length }}</strong>
         <span>Year{{ exam_groups|length|pluralize }}</span>
       </div>
+      {% if current_exam %}
+      <div class="teacher-page-bar-stat all-exams-current-stat">
+        <strong class="is-uppercase">{{ current_exam.display_name }}</strong>
+        <span>Current · {{ current_exam.get_status_display }}</span>
+      </div>
+      {% endif %}
     </div>
     <div class="teacher-page-bar-actions">
       <a
@@ -56,12 +62,13 @@
           <span>Term</span>
           <span>Dates</span>
           <span>Sittings</span>
+          <span>Status</span>
           <span>Actions</span>
         </div>
         <ul class="all-exams-list">
           {% for exam in group.exams %}
           <li>
-            <div class="all-exams-row">
+            <div class="all-exams-row{% if exam.is_current_exam %} is-current-exam{% endif %}">
               <div class="all-exams-col-exam">
                 <strong class="is-uppercase">{{ exam.display_name }}</strong>
                 {% with levels=exam.academic_levels.all %}
@@ -87,6 +94,11 @@
               </span>
               <span class="all-exams-col-sittings" data-label="Sittings">
                 <span class="all-exams-sitting-pill">{{ exam.sitting_count }}</span>
+              </span>
+              <span class="all-exams-col-status" data-label="Status">
+                <span class="teacher-exam-status-chip" data-status="{{ exam.status }}">
+                  {% if exam.is_current_exam %}Current · {% endif %}{{ exam.get_status_display }}
+                </span>
               </span>
               <div class="all-exams-row-actions" data-label="Actions">
                 <a class="record-action" href="{% url 'employees:exam_record_detail' exam.id %}">Open</a>

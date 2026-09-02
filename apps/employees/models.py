@@ -249,12 +249,13 @@ class Employee(AbstractUser):
             [
                 EmployeeRole(employee=self, role=role)
                 for role in desired - existing
-            ]
+            ],
+            ignore_conflicts=True,
         )
         if self.role != primary:
             type(self).objects.filter(pk=self.pk).update(role=primary)
             self.role = primary
-        self._cached_role_values = None
+        self._cached_role_values = cleaned
 
     def _ensure_primary_role_assignment(self):
         if not self.pk or not self.role:

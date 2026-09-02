@@ -50,6 +50,11 @@ urlpatterns = [
         name="update_exam_record_status",
     ),
     path(
+        "workspace/it_support/curriculum-management/exam-management/exam-records/<int:exam_id>/set-current/",
+        views.set_current_exam_record,
+        name="set_current_exam_record",
+    ),
+    path(
         "workspace/it_support/curriculum-management/exam-management/exam-records/<int:exam_id>/deadline/",
         views.update_exam_record_deadline,
         name="update_exam_record_deadline",
@@ -243,6 +248,21 @@ urlpatterns = [
         name="teacher_elearning_page",
     ),
     path("workspace/teacher/e-learning/", views.teacher_elearning, name="teacher_elearning"),
+    path(
+        "workspace/secretary/reports/curriculum-reports/exam-reports/students/",
+        views.secretary_exam_report_students,
+        name="secretary_exam_report_students",
+    ),
+    path(
+        "workspace/secretary/reports/curriculum-reports/exam-reports/export/",
+        views.secretary_exam_report_export,
+        name="secretary_exam_report_export",
+    ),
+    path(
+        "workspace/secretary/reports/curriculum-reports/<slug:page>/",
+        views.secretary_curriculum_report_page,
+        name="secretary_curriculum_report_page",
+    ),
     path(
         "workspace/secretary/reports/<slug:section>/",
         views.secretary_report_section,

@@ -31,7 +31,7 @@ from apps.curriculum.models import (
     LearningScheduleProfile,
 )
 
-from .models import Employee, SchoolProfile
+from .models import Employee, EmployeeRole, SchoolProfile
 
 
 class EmployeeAuthenticationTests(TestCase):
@@ -471,12 +471,19 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, reverse("employees:it_support_system_performance"))
         self.assertContains(response, reverse("employees:it_support_system_performance_metrics"))
         self.assertContains(response, "data-system-performance")
+        self.assertContains(response, "Performance trend")
+        self.assertContains(response, "Data volumes")
+        self.assertContains(response, "sys-perf-kpi__trend")
 
     def test_it_support_system_performance_page_loads(self):
         response = self.client.get(reverse("employees:it_support_system_performance"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "System performance")
         self.assertContains(response, reverse("employees:it_support_system_performance_metrics"))
+        self.assertContains(response, "Live system health")
+        self.assertContains(response, "Metric trends")
+        self.assertContains(response, "sys-perf-line-chart")
+        self.assertContains(response, "data-sys-perf-refresh")
 
     def test_it_support_system_performance_metrics_returns_json(self):
         response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
@@ -493,6 +500,10 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertIn("media", payload)
         self.assertIn("active_sessions", payload)
         self.assertIn("stress_timeline", payload)
+        self.assertIn("kpi_trends", payload)
+        self.assertIn("health", payload)
+        self.assertIn("trend_cards", payload)
+        self.assertIn("chart", payload["latency"])
         self.assertEqual(payload["database"]["status"], "ok")
         self.assertIn("students_total", payload["counts"])
         self.assertIn("students_admitted_this_month", payload["operations"])
@@ -578,8 +589,19 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "Users in session")
         self.assertContains(response, "ms")
 
+    def test_system_performance_snapshot_includes_kpi_trends(self):
+        from apps.employees.system_performance import get_system_performance_snapshot
+
+        snapshot = get_system_performance_snapshot()
+        self.assertIn("kpi_trends", snapshot)
+        self.assertIn("db", snapshot["kpi_trends"])
+        self.assertIn("cache", snapshot["kpi_trends"])
+        self.assertIn("disk", snapshot["kpi_trends"])
+        self.assertIn("sessions", snapshot["kpi_trends"])
+        self.assertIn("score", snapshot["health"])
+        self.assertEqual(len(snapshot["trend_cards"]), 4)
+
     def test_teacher_cannot_access_system_performance_metrics(self):
-        self.client.force_login(self.teacher)
         response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
         self.assertEqual(response.status_code, 403)
 
@@ -1165,7 +1187,7 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "Exam records")
         self.assertContains(response, reverse("employees:teacher_exam_records"))
         self.assertContains(response, "Teacher workspace")
-        self.assertContains(response, "Viewing session as")
+        self.assertContains(response, "View-only session as")
         self.assertContains(response, self.teacher.display_name)
         self.assertNotContains(response, "Human resource management")
         self.employee.refresh_from_db()
@@ -1202,6 +1224,69 @@ class ITSupportWorkspaceTests(TestCase):
         )
         self.assertContains(response, "Human resource management")
 
+    def test_it_support_with_own_teacher_role_can_switch_without_preview(self):
+        self.employee.set_roles(
+            [Employee.Role.IT_SUPPORT, Employee.Role.TEACHER],
+            primary=Employee.Role.IT_SUPPORT,
+        )
+        level = AcademicLevel.objects.create(name="Grade 2", code="G2", order=2)
+        academic_class = AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 2 East",
+            code="G2E",
+            order=1,
+            class_teacher=self.employee,
+        )
+        subject = LearningArea.objects.create(name="English", code="ENG")
+        subject.academic_levels.add(level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=academic_class,
+            learning_area=subject,
+            teacher=self.employee,
+        )
+
+        response = self.client.post(
+            reverse("employees:switch_workspace_role"),
+            {"role": Employee.Role.TEACHER},
+        )
+        self.assertRedirects(
+            response,
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"}),
+        )
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "View-only session as")
+        self.assertContains(response, "Switch role")
+        self.assertContains(response, "Exam records")
+
+    def test_it_support_own_teacher_role_allows_teacher_posts(self):
+        self.employee.set_roles(
+            [Employee.Role.IT_SUPPORT, Employee.Role.TEACHER],
+            primary=Employee.Role.IT_SUPPORT,
+        )
+        self.client.post(
+            reverse("employees:switch_workspace_role"),
+            {"role": Employee.Role.TEACHER},
+        )
+        response = self.client.post(reverse("employees:teacher_exam_records"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_previewing_teacher_blocks_teacher_posts(self):
+        self.client.post(
+            reverse("employees:switch_workspace_role"),
+            {"role": Employee.Role.TEACHER, "employee_id": self.teacher.id},
+        )
+        response = self.client.post(
+            reverse("employees:teacher_exam_records"),
+            follow=True,
+        )
+        self.assertContains(
+            response,
+            "Open this role as yourself for full access.",
+        )
+
     def test_other_roles_cannot_switch_workspace_role(self):
         teacher = Employee.objects.create_user(
             employee_code="135790",
@@ -1228,6 +1313,222 @@ class ITSupportWorkspaceTests(TestCase):
             response,
             reverse("employees:role_dashboard", kwargs={"role": "teacher"}),
         )
+
+
+class ExamManagementDashboardTests(TestCase):
+    def setUp(self):
+        self.employee = Employee.objects.create_user(
+            employee_code="246811",
+            password="ReliablePass456",
+            title=Employee.Title.MS,
+            first_name="KIM",
+            last_name="ITOTE",
+            email="exam.dashboard@example.com",
+            phone_number="+254700000112",
+            role=Employee.Role.IT_SUPPORT,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.teacher = Employee.objects.create_user(
+            employee_code="135792",
+            password="ReliablePass456",
+            title=Employee.Title.MR,
+            first_name="ALI",
+            last_name="TEACHER",
+            email="exam.dashboard.teacher@example.com",
+            phone_number="+254700000334",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.level = AcademicLevel.objects.create(name="Grade 1", code="G1", order=1)
+        self.academic_class = AcademicClass.objects.create(
+            academic_level=self.level,
+            name="Grade 1 East",
+            code="G1E",
+            order=1,
+        )
+        self.subject = LearningArea.objects.create(name="Mathematics", code="MATH")
+        self.subject.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+        )
+        self.year = AcademicYear.objects.create(
+            name="2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        self.term = AcademicTerm.objects.create(
+            academic_year=self.year,
+            name="TERM 1",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 1),
+            opening_date=date(2026, 1, 5),
+            midterm_date=date(2026, 2, 15),
+            closing_date=date(2026, 4, 1),
+            order=1,
+        )
+        self.exam = GeneratedExamTimetable.objects.create(
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 3, 10),
+            end_date=date(2026, 3, 12),
+            status=GeneratedExamTimetable.Status.IN_SESSION,
+        )
+        self.exam.academic_levels.add(self.level)
+        self.dashboard_url = reverse(
+            "employees:it_support_curriculum_section",
+            kwargs={"section": "exam-management"},
+        )
+        self.client.force_login(self.employee)
+
+    def _get_dashboard(self):
+        return self.client.get(self.dashboard_url)
+
+    def test_exam_management_dashboard_shows_today_timetable_when_in_session(self):
+        today = timezone.localdate()
+        GeneratedExamSitting.objects.create(
+            generation=self.exam,
+            academic_level=self.level,
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+            weekday="MON",
+            exam_date=today,
+            period_name="Morning",
+            start_time=time(8, 0),
+            end_time=time(10, 0),
+        )
+
+        response = self._get_dashboard()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Current exam")
+        self.assertContains(response, "Today's timetable")
+        self.assertContains(response, "Grade 1 East")
+        self.assertContains(response, "MATH")
+        self.assertContains(response, "In session")
+        self.assertContains(response, "Class marks analytics")
+
+    def test_exam_management_dashboard_shows_teacher_marking_progress(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000555",
+            email="pat.dashboard@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="G1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=self.subject,
+            marks=40,
+        )
+
+        response = self._get_dashboard()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Marking progress")
+        self.assertContains(response, "ALI TEACHER")
+        self.assertContains(response, "1 / 1 marks entered")
+        self.assertContains(response, "Class marks analytics")
+        self.assertContains(response, "100% entered")
+
+    def test_exam_management_dashboard_shows_class_analytics_when_analysing(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        self.exam.status = GeneratedExamTimetable.Status.ANALYSING
+        self.exam.save(update_fields=["status"])
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000556",
+            email="pat.analyse@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1002",
+            class_group="G1E",
+            assessment_number="A1002",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=self.subject,
+            marks=80,
+            out_of_marks=100,
+        )
+
+        response = self._get_dashboard()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Marks input analytics")
+        self.assertContains(response, "Grade 1 East")
+        self.assertContains(response, "100% entered")
+        self.assertContains(response, "Mean 80%")
+
+    def test_exam_management_dashboard_shows_published_results(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        self.exam.status = GeneratedExamTimetable.Status.PUBLISHED
+        self.exam.save(update_fields=["status"])
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000557",
+            email="pat.publish@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1003",
+            class_group="G1E",
+            assessment_number="A1003",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=self.subject,
+            marks=75,
+            out_of_marks=100,
+        )
+
+        response = self._get_dashboard()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Published results")
+        self.assertContains(response, "Grade 1 East")
+        self.assertContains(response, "Exam reports")
+        self.assertContains(response, "75")
 
 
 class EmployeeManagementTests(TestCase):
@@ -1340,11 +1641,42 @@ class EmployeeManagementTests(TestCase):
             self.teacher.role_values(),
             [Employee.Role.TEACHER, Employee.Role.ACCOUNTANT],
         )
+        self.assertEqual(
+            EmployeeRole.objects.filter(employee=self.teacher).count(),
+            2,
+        )
         response = self.client.get(reverse("employees:it_support_employee_management"))
         self.assertContains(response, "Accountant")
         self.assertContains(response, "Teacher")
         # Multi-role employee appears once in the flat directory.
         self.assertContains(response, "ALI TEACHER", count=1)
+
+    def test_partial_update_without_roles_preserves_existing_roles(self):
+        self.teacher.set_roles(
+            [Employee.Role.TEACHER, Employee.Role.ACCOUNTANT],
+            primary=Employee.Role.TEACHER,
+        )
+        response = self.client.post(
+            reverse("employees:update_workspace_employee", kwargs={"employee_id": self.teacher.id}),
+            {
+                "title": self.teacher.title,
+                "first_name": self.teacher.first_name,
+                "last_name": "KARIUKI",
+                "email": self.teacher.email,
+                "phone_number": self.teacher.phone_number,
+                "employee_code": self.teacher.employee_code,
+                "employment_number": str(self.teacher.employment_number),
+                "role": Employee.Role.TEACHER,
+                "approval_status": self.teacher.approval_status,
+            },
+        )
+        self.assertRedirects(response, reverse("employees:it_support_employee_management"))
+        self.teacher.refresh_from_db()
+        self.assertEqual(self.teacher.last_name, "KARIUKI")
+        self.assertCountEqual(
+            self.teacher.role_values(),
+            [Employee.Role.TEACHER, Employee.Role.ACCOUNTANT],
+        )
 
     def test_can_suspend_and_unsuspend_employee(self):
         response = self.client.post(
@@ -3631,6 +3963,7 @@ class ExamTimetableGenerationTests(TestCase):
         self._generate_post()
         generation = GeneratedExamTimetable.objects.get()
         detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
+        self.assertEqual(generation.status, GeneratedExamTimetable.Status.IN_SESSION)
 
         status_response = self.client.post(
             reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
@@ -3647,6 +3980,247 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertRedirects(deadline_response, detail_url)
         generation.refresh_from_db()
         self.assertIsNotNone(generation.deadline)
+
+    def test_only_current_exam_can_change_status(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        current_exam = GeneratedExamTimetable.objects.get()
+        scheduled_exam = GeneratedExamTimetable.objects.create(
+            name="NEXT EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+            status=GeneratedExamTimetable.Status.SCHEDULED,
+        )
+        scheduled_exam.academic_levels.add(self.level)
+        scheduled_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
+        current_url = reverse("employees:exam_record_detail", kwargs={"exam_id": current_exam.id})
+
+        blocked = self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": scheduled_exam.id}),
+            {"status": GeneratedExamTimetable.Status.IN_SESSION, "next": scheduled_url},
+        )
+        self.assertRedirects(blocked, scheduled_url)
+        scheduled_page = self.client.get(scheduled_url)
+        self.assertContains(scheduled_page, "Only one exam can be current at a time")
+        self.assertNotContains(scheduled_page, 'data-open-modal="exam-status"')
+
+        allowed = self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": current_exam.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": current_url},
+        )
+        self.assertRedirects(allowed, current_url)
+        current_exam.refresh_from_db()
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.MARKING)
+
+    def test_second_generated_exam_is_scheduled_when_one_is_active(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post(exam_name="FIRST EXAM")
+        first_exam = GeneratedExamTimetable.objects.get()
+        self.assertEqual(first_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+
+        self._generate_post(exam_name="SECOND EXAM", exam_start_date="2026-08-20")
+        second_exam = GeneratedExamTimetable.objects.exclude(pk=first_exam.pk).get()
+        self.assertEqual(second_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+
+    def test_scheduled_exam_can_start_when_no_other_active_exam(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        current_exam = GeneratedExamTimetable.objects.get()
+        current_url = reverse("employees:exam_record_detail", kwargs={"exam_id": current_exam.id})
+        self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": current_exam.id}),
+            {"status": GeneratedExamTimetable.Status.PUBLISHED, "next": current_url},
+        )
+
+        scheduled_exam = GeneratedExamTimetable.objects.create(
+            name="NEXT EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+            status=GeneratedExamTimetable.Status.SCHEDULED,
+        )
+        scheduled_exam.academic_levels.add(self.level)
+        scheduled_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
+
+        response = self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": scheduled_exam.id}),
+            {"status": GeneratedExamTimetable.Status.IN_SESSION, "next": scheduled_url},
+        )
+        self.assertRedirects(response, scheduled_url)
+        scheduled_exam.refresh_from_db()
+        self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+        self.assertEqual(
+            GeneratedExamTimetable.objects.filter(status=GeneratedExamTimetable.Status.IN_SESSION).count(),
+            1,
+        )
+
+    def test_exam_records_list_shows_set_current_controls(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        generation = GeneratedExamTimetable.objects.get()
+        records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": generation.id})
+        response = self.client.get(records_url)
+        self.assertNotContains(response, "Set current")
+        self.assertNotContains(response, "Remove current")
+
+        page = self.client.get(detail_url)
+        self.assertContains(page, "Current exam")
+        self.assertContains(page, "data-exam-current-toggle-form")
+        self.assertContains(page, "data-exam-current-input")
+
+    def test_set_current_exam_from_detail_page(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        current_exam = GeneratedExamTimetable.objects.get()
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": current_exam.id})
+        self.client.post(
+            reverse("employees:set_current_exam_record", kwargs={"exam_id": current_exam.id}),
+            {"is_current": "0", "next": detail_url},
+        )
+        current_exam.refresh_from_db()
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+
+        scheduled_exam = GeneratedExamTimetable.objects.create(
+            name="NEXT EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+            status=GeneratedExamTimetable.Status.SCHEDULED,
+        )
+        scheduled_exam.academic_levels.add(self.level)
+        scheduled_detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
+        response = self.client.post(
+            reverse("employees:set_current_exam_record", kwargs={"exam_id": scheduled_exam.id}),
+            {"is_current": "1", "next": scheduled_detail_url},
+        )
+        self.assertRedirects(response, scheduled_detail_url)
+        scheduled_exam.refresh_from_db()
+        self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+
+    def test_set_current_exam_from_list(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        current_exam = GeneratedExamTimetable.objects.get()
+        records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+        self.client.post(
+            reverse("employees:set_current_exam_record", kwargs={"exam_id": current_exam.id}),
+            {"is_current": "0", "next": records_url},
+        )
+        current_exam.refresh_from_db()
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+
+        scheduled_exam = GeneratedExamTimetable.objects.create(
+            name="NEXT EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+            status=GeneratedExamTimetable.Status.SCHEDULED,
+        )
+        scheduled_exam.academic_levels.add(self.level)
+        response = self.client.post(
+            reverse("employees:set_current_exam_record", kwargs={"exam_id": scheduled_exam.id}),
+            {"is_current": "1", "next": records_url},
+        )
+        self.assertRedirects(response, records_url)
+        scheduled_exam.refresh_from_db()
+        self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+        page = self.client.get(records_url)
+        self.assertContains(page, "NEXT EXAM")
+        self.assertContains(page, "is now the current exam")
+
+    def test_set_current_switches_between_in_session_exams(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post(exam_name="FIRST EXAM")
+        first_exam = GeneratedExamTimetable.objects.get()
+        self._generate_post(exam_name="SECOND EXAM", exam_start_date="2026-08-20")
+        second_exam = GeneratedExamTimetable.objects.exclude(pk=first_exam.pk).get()
+        records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+
+        response = self.client.post(
+            reverse("employees:set_current_exam_record", kwargs={"exam_id": second_exam.id}),
+            {"is_current": "1", "next": records_url},
+        )
+        self.assertRedirects(response, records_url)
+        first_exam.refresh_from_db()
+        second_exam.refresh_from_db()
+        self.assertEqual(first_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+        self.assertEqual(second_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+
+    def test_set_current_works_when_another_is_marking(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post()
+        current_exam = GeneratedExamTimetable.objects.get()
+        current_exam.status = GeneratedExamTimetable.Status.MARKING
+        current_exam.save(update_fields=["status"])
+        scheduled_exam = GeneratedExamTimetable.objects.create(
+            name="NEXT EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+            status=GeneratedExamTimetable.Status.SCHEDULED,
+        )
+        scheduled_exam.academic_levels.add(self.level)
+        records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+        response = self.client.post(
+            reverse("employees:set_current_exam_record", kwargs={"exam_id": scheduled_exam.id}),
+            {"is_current": "1", "next": records_url},
+        )
+        self.assertRedirects(response, records_url)
+        current_exam.refresh_from_db()
+        scheduled_exam.refresh_from_db()
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+        self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+        detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
+        page = self.client.get(detail_url)
+        self.assertContains(page, "Current exam")
+        self.assertContains(page, "data-exam-current-input")
 
     def test_exam_record_can_be_deleted(self):
         from apps.admissions.models import ParentGuardian, Student

@@ -121,12 +121,14 @@ from .forms import (
 from .models import Employee, SchoolProfile
 from .phone_countries import PHONE_COUNTRIES, parse_stored_phone
 from .workspace import (
+    ACTIVE_WORKSPACE_ROLE_SESSION_KEY,
     WORKSPACE_ROLE_SESSION_KEY,
     WORKSPACE_VIEW_EMPLOYEE_SESSION_KEY,
     can_switch_workspace_role,
     clear_active_workspace_role,
     clear_workspace_preview,
     employees_for_workspace_role,
+    is_workspace_preview,
     needs_login_role_selection,
     set_active_workspace_role,
     user_role_values,
@@ -374,25 +376,25 @@ IT_SUPPORT_CURRICULUM_REPORT_PAGES = (
 
 SECRETARY_REPORT_SECTIONS = (
     {
-        "slug": "admissions-reports",
-        "title": "Admissions reports",
-        "icon": "AD",
-        "summary": "New admissions, enrolment trends, and intake summaries.",
-        "copy": "Review admissions reports covering new students and enrolment activity.",
+        "slug": "curriculum-reports",
+        "title": "Curriculum reports",
+        "icon": "CR",
+        "summary": "Academic performance, attendance, and curriculum insights.",
+        "copy": "Open curriculum reports covering learning, exams, and academic progress.",
     },
     {
-        "slug": "student-records-reports",
-        "title": "Student records reports",
+        "slug": "financial-reports",
+        "title": "Financial reports",
+        "icon": "FR",
+        "summary": "Fees, billing, and financial summaries.",
+        "copy": "Open financial reports covering fees, payments, and school finance.",
+    },
+    {
+        "slug": "store-reports",
+        "title": "Store reports",
         "icon": "SR",
-        "summary": "Student roster summaries and enrolment status.",
-        "copy": "Review student records reports covering rosters and enrolment status.",
-    },
-    {
-        "slug": "parent-portal-reports",
-        "title": "Parent portal reports",
-        "icon": "PP",
-        "summary": "Parent credentials and portal access activity.",
-        "copy": "Review parent portal reports covering credentials and access activity.",
+        "summary": "Inventory, stock, and store operations.",
+        "copy": "Open store reports covering inventory levels and supply activity.",
     },
 )
 
@@ -677,8 +679,41 @@ def _require_secretary(request):
     return None
 
 
+def _require_curriculum_reports(request):
+    role = workspace_role(request)
+    if role not in (Employee.Role.IT_SUPPORT, Employee.Role.SECRETARY):
+        return redirect_to_role_dashboard(request), None
+    return None, role
+
+
+def _curriculum_report_urls(role):
+    if role == Employee.Role.SECRETARY:
+        return {
+            "curriculum_report_page_url": "employees:secretary_curriculum_report_page",
+            "exam_report_students_url": "employees:secretary_exam_report_students",
+            "exam_report_export_url": "employees:secretary_exam_report_export",
+        }
+    return {
+        "curriculum_report_page_url": "employees:it_support_curriculum_report_page",
+        "exam_report_students_url": "employees:it_support_exam_report_students",
+        "exam_report_export_url": "employees:it_support_exam_report_export",
+    }
+
+
+def _curriculum_reports_redirect(role):
+    if role == Employee.Role.SECRETARY:
+        return redirect("employees:secretary_report_section", section="curriculum-reports")
+    return redirect("employees:it_support_report_section", section="curriculum-reports")
+
+
 def _require_teacher_workspace(request):
     if workspace_role(request) != Employee.Role.TEACHER:
+        return redirect_to_role_dashboard(request)
+    if request.method == "POST" and is_workspace_preview(request):
+        error(
+            request,
+            "You are viewing another employee's session. Open this role as yourself for full access.",
+        )
         return redirect_to_role_dashboard(request)
     return None
 
@@ -1240,17 +1275,57 @@ def secretary_report_section(request, section):
     current = _secretary_report_section(section)
     if current is None:
         return redirect("employees:secretary_reports")
+    if current["slug"] == "curriculum-reports":
+        template = "employees/it_support_curriculum_reports.html"
+        extra_context = {
+            "curriculum_report_pages": IT_SUPPORT_CURRICULUM_REPORT_PAGES,
+            **_curriculum_report_urls(Employee.Role.SECRETARY),
+        }
+    else:
+        template = "employees/secretary_report_section.html"
+        extra_context = {}
     return render(
         request,
-        "employees/secretary_report_section.html",
+        template,
         {
             "active_nav": "dashboard",
             "active_module": "reports",
             "active_report": current["slug"],
             "section": current,
             "report_sections": SECRETARY_REPORT_SECTIONS,
+            **extra_context,
         },
     )
+
+
+@login_required
+def secretary_curriculum_report_page(request, page):
+    denied, role = _require_curriculum_reports(request)
+    if denied:
+        return denied
+    if role != Employee.Role.SECRETARY:
+        return redirect_to_role_dashboard(request)
+    return _render_curriculum_report_page(request, page, role)
+
+
+@login_required
+def secretary_exam_report_export(request):
+    denied, role = _require_curriculum_reports(request)
+    if denied:
+        return denied
+    if role != Employee.Role.SECRETARY:
+        return redirect_to_role_dashboard(request)
+    return _exam_report_export_response(request, role)
+
+
+@login_required
+def secretary_exam_report_students(request):
+    denied, role = _require_curriculum_reports(request)
+    if denied:
+        return denied
+    if role != Employee.Role.SECRETARY:
+        return JsonResponse({"students": []}, status=403)
+    return _exam_report_students_response(request)
 
 
 @login_required
@@ -2544,7 +2619,7 @@ def teacher_exam_records(request):
     denied = _require_teacher_workspace(request)
     if denied:
         return denied
-    exam_groups, exam_count = _grouped_registered_exams()
+    exam_groups, exam_count, _current_exam = _grouped_registered_exams()
     return render(
         request,
         "employees/teacher_exam_records.html",
@@ -3955,8 +4030,13 @@ def it_support_report_section(request, section):
         return redirect("employees:it_support_module", module="reports")
     if current["slug"] == "curriculum-reports":
         template = "employees/it_support_curriculum_reports.html"
+        extra_context = {
+            "curriculum_report_pages": IT_SUPPORT_CURRICULUM_REPORT_PAGES,
+            **_curriculum_report_urls(Employee.Role.IT_SUPPORT),
+        }
     else:
         template = "employees/it_support_report_section.html"
+        extra_context = {}
     return render(
         request,
         template,
@@ -3965,21 +4045,17 @@ def it_support_report_section(request, section):
             "active_report": current["slug"],
             "section": current,
             "report_sections": IT_SUPPORT_REPORT_SECTIONS,
-            "curriculum_report_pages": IT_SUPPORT_CURRICULUM_REPORT_PAGES,
+            **extra_context,
         },
     )
 
 
-@login_required
-def it_support_curriculum_report_page(request, page):
-    denied = _require_it_support(request)
-    if denied:
-        return denied
+def _render_curriculum_report_page(request, page, role):
     current = _it_support_curriculum_report_page(page)
     if current is None:
-        return redirect("employees:it_support_report_section", section="curriculum-reports")
+        return _curriculum_reports_redirect(role)
     if current["slug"] == "exam-reports":
-        return it_support_exam_reports(request, current)
+        return _render_exam_reports(request, current, role)
     return render(
         request,
         "employees/it_support_curriculum_report_page.html",
@@ -3989,8 +4065,19 @@ def it_support_curriculum_report_page(request, page):
             "active_curriculum_report": current["slug"],
             "page": current,
             "curriculum_report_pages": IT_SUPPORT_CURRICULUM_REPORT_PAGES,
+            **_curriculum_report_urls(role),
         },
     )
+
+
+@login_required
+def it_support_curriculum_report_page(request, page):
+    denied, role = _require_curriculum_reports(request)
+    if denied:
+        return denied
+    if role != Employee.Role.IT_SUPPORT:
+        return redirect_to_role_dashboard(request)
+    return _render_curriculum_report_page(request, page, role)
 
 
 def _exam_report_builder_catalog():
@@ -4700,11 +4787,7 @@ def _build_exam_report_cards(students, grade_bands):
     return cards
 
 
-@login_required
-def it_support_exam_reports(request, page):
-    denied = _require_it_support(request)
-    if denied:
-        return denied
+def _render_exam_reports(request, page, role):
     catalog = _cached_exam_report_builder_catalog()
     selection, report = _exam_report_selection(request)
     return render(
@@ -4722,29 +4805,34 @@ def it_support_exam_reports(request, page):
             "selection": selection,
             "report": report,
             "report_error": (report or {}).get("error") if report else "",
+            **_curriculum_report_urls(role),
         },
     )
 
 
 @login_required
-def it_support_exam_report_export(request):
-    denied = _require_it_support(request)
+def it_support_exam_reports(request, page):
+    denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
+    if role != Employee.Role.IT_SUPPORT:
+        return redirect_to_role_dashboard(request)
+    return _render_exam_reports(request, page, role)
+
+
+def _exam_report_export_response(request, role):
+    urls = _curriculum_report_urls(role)
+    exam_reports_url = reverse(
+        urls["curriculum_report_page_url"],
+        kwargs={"page": "exam-reports"},
+    )
     if (request.GET.get("generate") or "").strip() != "1":
-        return redirect(
-            reverse(
-                "employees:it_support_curriculum_report_page",
-                kwargs={"page": "exam-reports"},
-            )
-        )
+        return redirect(exam_reports_url)
     selection, report = _exam_report_selection(request)
     if not report or report.get("error"):
         query = request.GET.copy()
         query["generate"] = "1"
-        return redirect(
-            f"{reverse('employees:it_support_curriculum_report_page', kwargs={'page': 'exam-reports'})}?{query.urlencode()}"
-        )
+        return redirect(f"{exam_reports_url}?{query.urlencode()}")
     export_mode = (request.GET.get("export_mode") or "raw").strip()
     if export_mode not in {"raw", "graded"}:
         export_mode = "raw"
@@ -4757,10 +4845,7 @@ def it_support_exam_report_export(request):
     return response
 
 
-@login_required
-def it_support_exam_report_students(request):
-    if workspace_role(request) != Employee.Role.IT_SUPPORT:
-        return JsonResponse({"students": []}, status=403)
+def _exam_report_students_response(request):
     level_id = (request.GET.get("level_id") or "").strip()
     class_id = (request.GET.get("class_id") or "").strip()
     if not level_id.isdigit() or not class_id.isdigit():
@@ -4782,6 +4867,26 @@ def it_support_exam_report_students(request):
         for student in _students_in_academic_level(level, academic_class)
     ]
     return JsonResponse({"students": students})
+
+
+@login_required
+def it_support_exam_report_export(request):
+    denied, role = _require_curriculum_reports(request)
+    if denied:
+        return denied
+    if role != Employee.Role.IT_SUPPORT:
+        return redirect_to_role_dashboard(request)
+    return _exam_report_export_response(request, role)
+
+
+@login_required
+def it_support_exam_report_students(request):
+    denied, role = _require_curriculum_reports(request)
+    if denied:
+        return denied
+    if role != Employee.Role.IT_SUPPORT:
+        return JsonResponse({"students": []}, status=403)
+    return _exam_report_students_response(request)
 
 
 @login_required
@@ -4852,21 +4957,37 @@ def update_workspace_employee(request, employee_id):
             else:
                 error(request, " ".join(getattr(exc, "messages", [str(exc)])))
         else:
+            if employee.pk == request.user.pk:
+                active = request.session.get(ACTIVE_WORKSPACE_ROLE_SESSION_KEY)
+                assigned = employee.role_values()
+                if active not in assigned:
+                    set_active_workspace_role(request, employee.role)
+                if is_workspace_preview(request) and workspace_role(request) not in assigned:
+                    clear_workspace_preview(request)
+                    set_active_workspace_role(request, employee.role)
             conflict = getattr(form, "_employment_number_conflict", None)
+            role_summary = ", ".join(employee.role_labels())
             if form.cleaned_data.get("override_employment_number") and conflict:
                 success(
                     request,
                     f"{employee.display_name} was updated. "
+                    f"Assigned roles: {role_summary}. "
                     f"{conflict.display_name}'s employee code was cleared.",
                 )
             else:
-                success(request, f"{employee.display_name} was updated.")
+                success(
+                    request,
+                    f"{employee.display_name} was updated. Assigned roles: {role_summary}.",
+                )
     else:
         employment_error = form.errors.get("employment_number")
+        roles_error = form.errors.get("roles")
         error(
             request,
             employment_error[0]
             if employment_error
+            else roles_error[0]
+            if roles_error
             else "The employee could not be updated. Check the required fields.",
         )
     return redirect("employees:it_support_employee_management")
@@ -4985,6 +5106,288 @@ def delete_workspace_student(request, student_id):
     return _redirect_student_management()
 
 
+def _active_workflow_exam():
+    """Return the single exam currently progressing through the workflow."""
+    return (
+        GeneratedExamTimetable.objects.filter(
+            status__in=GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _in_session_exam():
+    return (
+        GeneratedExamTimetable.objects.filter(status=GeneratedExamTimetable.Status.IN_SESSION)
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _initial_exam_status():
+    if _active_workflow_exam() is not None:
+        return GeneratedExamTimetable.Status.SCHEDULED
+    return GeneratedExamTimetable.Status.IN_SESSION
+
+
+def _can_change_exam_status(exam):
+    if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
+        return False
+    active = _active_workflow_exam()
+    if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
+        return active is None
+    return active is not None and active.pk == exam.pk
+
+
+def _can_set_as_current_exam(exam):
+    return exam.status != GeneratedExamTimetable.Status.PUBLISHED
+
+
+def _annotate_exam_workflow_flags(exam, current=None):
+    if current is None:
+        current = _in_session_exam()
+    exam.is_current_exam = exam.status == GeneratedExamTimetable.Status.IN_SESSION
+    exam.can_set_current = _can_set_as_current_exam(exam)
+    return exam
+
+
+def _current_exam_for_dashboard():
+    in_session = _in_session_exam()
+    if in_session is not None:
+        return in_session
+    active = _active_workflow_exam()
+    if active is not None:
+        return active
+    today = timezone.localdate()
+    in_window = (
+        GeneratedExamTimetable.objects.filter(start_date__lte=today, end_date__gte=today)
+        .order_by("-created_at")
+        .first()
+    )
+    if in_window is not None:
+        return in_window
+    active = (
+        GeneratedExamTimetable.objects.exclude(status=GeneratedExamTimetable.Status.PUBLISHED)
+        .order_by("-created_at")
+        .first()
+    )
+    if active is not None:
+        return active
+    return GeneratedExamTimetable.objects.order_by("-created_at").first()
+
+
+def _exam_today_schedule(generation, today=None):
+    today = today or timezone.localdate()
+    sittings = list(
+        GeneratedExamSitting.objects.filter(generation=generation, exam_date=today)
+        .select_related(
+            "academic_class",
+            "academic_level",
+            "learning_area",
+            "supervisor",
+        )
+        .order_by("start_time", "academic_level__order", "academic_class__order", "academic_class__name")
+    )
+    if not sittings:
+        return None
+
+    periods = OrderedDict()
+    for sitting in sittings:
+        period_key = (sitting.period_name, to_minutes(sitting.start_time))
+        period = periods.setdefault(
+            period_key,
+            {
+                "name": sitting.period_name,
+                "start_label": sitting.start_time.strftime("%H:%M"),
+                "end_label": sitting.end_time.strftime("%H:%M"),
+                "sittings": [],
+            },
+        )
+        period["sittings"].append(
+            {
+                "academic_class": sitting.academic_class,
+                "learning_area": sitting.learning_area,
+                "supervisor": sitting.supervisor,
+                "level": sitting.academic_level,
+            }
+        )
+    return {
+        "date": today,
+        "date_label": today.strftime("%A %d %b %Y"),
+        "periods": list(periods.values()),
+        "sitting_count": len(sittings),
+    }
+
+
+def _exam_marking_teacher_progress(generation):
+    from apps.employees.system_performance import _build_sparkline
+
+    level_ids = list(generation.academic_levels.values_list("id", flat=True))
+    if not level_ids:
+        return []
+
+    allocations = list(
+        ClassSubjectAllocation.objects.filter(
+            academic_class__academic_level_id__in=level_ids,
+            academic_class__status=AcademicClass.Status.ACTIVE,
+            teacher__isnull=False,
+        )
+        .select_related(
+            "teacher",
+            "academic_class",
+            "academic_class__academic_level",
+            "learning_area",
+        )
+        .order_by("teacher__last_name", "teacher__first_name")
+    )
+    teacher_slots = defaultdict(list)
+    teacher_map = {}
+    for allocation in allocations:
+        teacher = allocation.teacher
+        teacher_map[teacher.id] = teacher
+        level = allocation.academic_class.academic_level
+        exam_subject_ids = {subject.id for subject in _exam_record_subjects(level, allocation.academic_class)}
+        if allocation.learning_area_id not in exam_subject_ids:
+            continue
+        student_ids = list(
+            _students_in_academic_level(level, allocation.academic_class).values_list("id", flat=True)
+        )
+        if not student_ids:
+            continue
+        teacher_slots[teacher.id].append(
+            {
+                "class_id": allocation.academic_class_id,
+                "subject_id": allocation.learning_area_id,
+                "student_ids": student_ids,
+                "class_name": allocation.academic_class.name,
+                "subject_code": allocation.learning_area.code,
+            }
+        )
+    if not teacher_slots:
+        return []
+
+    mark_rows = list(
+        ExamMark.objects.filter(generation=generation).values_list(
+            "student_id", "learning_area_id", "updated_at"
+        )
+    )
+    mark_keys = set()
+    mark_dates_by_key = defaultdict(list)
+    for student_id, subject_id, updated_at in mark_rows:
+        mark_keys.add((student_id, subject_id))
+        mark_dates_by_key[(student_id, subject_id)].append(timezone.localdate(updated_at))
+
+    results = []
+    for teacher_id, slots in teacher_slots.items():
+        teacher = teacher_map[teacher_id]
+        expected = sum(len(slot["student_ids"]) for slot in slots)
+        slot_keys = [
+            (student_id, slot["subject_id"])
+            for slot in slots
+            for student_id in slot["student_ids"]
+        ]
+        entered = sum(1 for key in slot_keys if key in mark_keys)
+        percent = round((entered / expected) * 100) if expected else 0
+
+        all_dates = sorted(
+            {
+                mark_date
+                for key in slot_keys
+                for mark_date in mark_dates_by_key.get(key, [])
+            }
+        )
+        if not all_dates:
+            trend_values = [0, percent] if percent else [0]
+        else:
+            trend_values = []
+            for mark_date in all_dates:
+                count = sum(
+                    1
+                    for key in slot_keys
+                    if key in mark_keys and any(item <= mark_date for item in mark_dates_by_key.get(key, []))
+                )
+                trend_values.append(round((count / expected) * 100) if expected else 0)
+            if not trend_values or trend_values[-1] != percent:
+                trend_values.append(percent)
+
+        results.append(
+            {
+                "teacher": teacher,
+                "display_name": f"{teacher.first_name} {teacher.last_name}".strip(),
+                "expected": expected,
+                "entered": entered,
+                "percent": percent,
+                "trend": _build_sparkline(trend_values, width=120, height=32, pad=2),
+                "allocation_count": len(slots),
+            }
+        )
+    results.sort(key=lambda item: (-item["percent"], item["display_name"]))
+    return results
+
+
+def _exam_class_marks_analytics(generation):
+    classes = _exam_active_classes(generation)
+    results = []
+    for academic_class in classes:
+        level = academic_class.academic_level
+        students = list(_students_in_academic_level(level, academic_class))
+        subjects = _exam_record_subjects(level, academic_class)
+        if not students or not subjects:
+            continue
+        out_of_by_subject = _exam_record_out_of(level, subjects)
+        marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
+        _attach_exam_mark_cells(students, subjects, marks_lookup, out_of_by_subject)
+        subject_means = _exam_record_subject_means(students, subjects)
+        expected = len(students) * len(subjects)
+        entered = sum(
+            1
+            for student in students
+            for subject in subjects
+            if _exam_mark_entry_raw(marks_lookup.get((student.id, subject.id))) not in (None, "")
+        )
+        valid_means = [item["percent_mean"] for item in subject_means if item["percent_mean"] is not None]
+        results.append(
+            {
+                "academic_class": academic_class,
+                "students_count": len(students),
+                "subjects_count": len(subjects),
+                "expected_marks": expected,
+                "entered_marks": entered,
+                "completion_percent": round((entered / expected) * 100) if expected else 0,
+                "subject_means": subject_means,
+                "class_mean": round(sum(valid_means) / len(valid_means)) if valid_means else None,
+            }
+        )
+    return results
+
+
+def _build_exam_management_dashboard():
+    exam = _current_exam_for_dashboard()
+    if exam is None:
+        return {"current_exam": None}
+
+    exam = (
+        GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
+        .prefetch_related("academic_levels")
+        .get(pk=exam.pk)
+    )
+    dashboard = {
+        "current_exam": exam,
+        "exam_title": _exam_record_title(exam),
+        "status": exam.status,
+        "status_label": exam.get_status_display(),
+        "class_analytics": _exam_class_marks_analytics(exam),
+    }
+    if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
+        dashboard["today_schedule"] = _exam_today_schedule(exam)
+    if exam.status == GeneratedExamTimetable.Status.MARKING:
+        dashboard["teacher_progress"] = _exam_marking_teacher_progress(exam)
+        if exam.deadline:
+            dashboard["marking_deadline"] = exam.deadline
+    return dashboard
+
+
 @login_required
 def it_support_curriculum_section(request, section):
     denied = _require_it_support(request)
@@ -5001,18 +5404,17 @@ def it_support_curriculum_section(request, section):
         template = "employees/it_support_exam.html"
     else:
         template = "employees/it_support_curriculum_section.html"
-    return render(
-        request,
-        template,
-        {
-            "active_nav": "dashboard",
-            "section": current,
-            "learning_pages": IT_SUPPORT_LEARNING_PAGES,
-            "elearning_pages": IT_SUPPORT_ELEARNING_PAGES,
-            "exam_pages": IT_SUPPORT_EXAM_PAGES,
-            "active_elearning_tool": None,
-        },
-    )
+    context = {
+        "active_nav": "dashboard",
+        "section": current,
+        "learning_pages": IT_SUPPORT_LEARNING_PAGES,
+        "elearning_pages": IT_SUPPORT_ELEARNING_PAGES,
+        "exam_pages": IT_SUPPORT_EXAM_PAGES,
+        "active_elearning_tool": None,
+    }
+    if current["slug"] == "exam-management":
+        context["exam_dashboard"] = _build_exam_management_dashboard()
+    return render(request, template, context)
 
 
 @login_required
@@ -6565,6 +6967,9 @@ def _grouped_registered_exams():
         .annotate(sitting_count=Count("sittings", distinct=True))
         .order_by("-academic_year__start_date", "academic_term__order", "-created_at")
     )
+    active = _in_session_exam()
+    for exam in generations:
+        _annotate_exam_workflow_flags(exam, current=active)
     exam_groups = []
     for _year_id, exams in groupby(generations, key=lambda item: item.academic_year_id):
         exam_list = list(exams)
@@ -6574,11 +6979,11 @@ def _grouped_registered_exams():
                 "exams": exam_list,
             }
         )
-    return exam_groups, len(generations)
+    return exam_groups, len(generations), active
 
 
 def exam_records(request, current):
-    exam_groups, exam_count = _grouped_registered_exams()
+    exam_groups, exam_count, current_exam = _grouped_registered_exams()
     return render(
         request,
         "employees/it_support_exam_records.html",
@@ -6588,6 +6993,7 @@ def exam_records(request, current):
             "active_exam_tool": "exam-records",
             "exam_groups": exam_groups,
             "exam_count": exam_count,
+            "current_exam": current_exam,
         },
     )
 
@@ -6731,12 +7137,88 @@ def update_exam_record_status(request, exam_id):
         level_id = None
     if status not in valid_statuses:
         error(request, "Select a valid exam status.")
-    else:
-        exam.status = status
-        exam.save(update_fields=["status"])
-        label = dict(GeneratedExamTimetable.Status.choices).get(status, status)
-        success(request, f"{exam.display_name} status set to {label.lower()}.")
+        return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+    if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
+        error(request, "Published exams cannot be changed.")
+        return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+    active = _active_workflow_exam()
+    if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
+        if status != GeneratedExamTimetable.Status.IN_SESSION:
+            error(request, "Scheduled exams can only be started by setting them to In session.")
+            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+        if active is not None:
+            error(
+                request,
+                f"Only one exam can be current at a time. Finish {active.display_name} before starting another.",
+            )
+            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+    elif active is None or active.pk != exam.pk:
+        error(request, "You can only change status for the current exam in session.")
+        return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+    if status == GeneratedExamTimetable.Status.IN_SESSION:
+        other_in_session = (
+            GeneratedExamTimetable.objects.exclude(pk=exam.pk)
+            .filter(status=GeneratedExamTimetable.Status.IN_SESSION)
+            .exists()
+        )
+        if other_in_session:
+            error(
+                request,
+                "Only one exam can be in session at a time. Advance the other exam first.",
+            )
+            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+    exam.status = status
+    exam.save(update_fields=["status"])
+    label = dict(GeneratedExamTimetable.Status.choices).get(status, status)
+    success(request, f"{exam.display_name} status set to {label.lower()}.")
     return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+
+
+@login_required
+@require_POST
+def set_current_exam_record(request, exam_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
+    records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+    next_url = (request.POST.get("next") or "").strip()
+    redirect_target = records_url
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        redirect_target = next_url
+
+    if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
+        error(request, "Published exams cannot be set as current.")
+        return redirect(redirect_target)
+
+    is_current = request.POST.get("is_current") == "1"
+
+    if not is_current:
+        if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
+            exam.status = GeneratedExamTimetable.Status.SCHEDULED
+            exam.save(update_fields=["status"])
+            success(request, f"{exam.display_name} is no longer the current exam.")
+        return redirect(redirect_target)
+
+    if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
+        return redirect(redirect_target)
+
+    with transaction.atomic():
+        GeneratedExamTimetable.objects.exclude(pk=exam.pk).filter(
+            status__in=GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
+        ).update(status=GeneratedExamTimetable.Status.SCHEDULED)
+        exam.status = GeneratedExamTimetable.Status.IN_SESSION
+        exam.save(update_fields=["status"])
+    success(request, f"{exam.display_name} is now the current exam.")
+    return redirect(redirect_target)
 
 
 @login_required
@@ -7343,6 +7825,9 @@ def exam_record_detail(request, exam_id, level_id=None):
             "subject_means": subject_means,
             "out_of_settings_changed": out_of_settings_changed,
             "manage_next_url": request.get_full_path(),
+            "can_change_exam_status": _can_change_exam_status(generation),
+            "is_current_exam": generation.status == GeneratedExamTimetable.Status.IN_SESSION,
+            "can_toggle_current": generation.status != GeneratedExamTimetable.Status.PUBLISHED,
             **_exam_record_manage_context(generation),
         },
     )
@@ -7982,6 +8467,7 @@ def exam_timetable_generation(request, page=None):
                             academic_term=term,
                             start_date=start,
                             end_date=end,
+                            status=_initial_exam_status(),
                         )
                         generation.academic_levels.set(selected_levels)
                         sitting_count, total_slots = _generate_exams_for_levels(

@@ -6,6 +6,7 @@
       <span>Edit exam</span>
     </span>
   </button>
+  {% if can_change_exam_status %}
   <button type="button" class="teacher-dash-action" data-open-modal="exam-status">
     <span class="teacher-dash-action-icon" aria-hidden="true">ST</span>
     <span class="teacher-dash-action-copy">
@@ -13,6 +14,7 @@
       <span>Set status</span>
     </span>
   </button>
+  {% endif %}
   <button type="button" class="teacher-dash-action" data-open-modal="exam-deadline">
     <span class="teacher-dash-action-icon" aria-hidden="true">DL</span>
     <span class="teacher-dash-action-copy">

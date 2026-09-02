@@ -18,6 +18,9 @@
     <div class="sys-perf-stress-peak__score">
       <span class="sys-perf-stress-peak__label">Highest load</span>
       <strong>{{ performance_snapshot.stress_timeline.peak.score }}</strong>
+      {% if performance_snapshot.stress_timeline.score_chart %}
+      {% include "employees/includes/system_performance_sparkline.html" with trend=performance_snapshot.stress_timeline.score_chart tone="is-stress" large=True %}
+      {% endif %}
     </div>
     <div class="sys-perf-stress-peak__copy">
       <p>{{ performance_snapshot.stress_timeline.peak.summary }}</p>

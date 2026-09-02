@@ -1,0 +1,20 @@
+{% if chart %}
+<div class="sys-perf-line-chart" data-sys-perf-line-chart>
+  <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Response time line chart">
+    {% for tick in chart.grid %}
+    <line class="sys-perf-line-chart__grid" x1="{{ chart.plot_left }}" y1="{{ tick.y }}" x2="{{ chart.plot_right }}" y2="{{ tick.y }}"></line>
+    <text class="sys-perf-line-chart__axis" x="28" y="{{ tick.y }}" dy="0.35em" text-anchor="end">{{ tick.value }}</text>
+    {% endfor %}
+    <polygon class="sys-perf-line-chart__area is-cache" points="{{ chart.cache.area }}"></polygon>
+    <polygon class="sys-perf-line-chart__area is-db" points="{{ chart.db.area }}"></polygon>
+    <polyline class="sys-perf-line-chart__line is-cache" points="{{ chart.cache.line }}" fill="none"></polyline>
+    <polyline class="sys-perf-line-chart__line is-db" points="{{ chart.db.line }}" fill="none"></polyline>
+    {% for point in chart.db.points %}
+    <circle class="sys-perf-line-chart__dot is-db" cx="{{ point.x }}" cy="{{ point.y }}" r="3.4"></circle>
+    {% endfor %}
+    {% for point in chart.cache.points %}
+    <circle class="sys-perf-line-chart__dot is-cache" cx="{{ point.x }}" cy="{{ point.y }}" r="3.4"></circle>
+    {% endfor %}
+  </svg>
+</div>
+{% endif %}

@@ -440,6 +440,7 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
     roles = forms.MultipleChoiceField(
         choices=Employee.Role.choices,
         widget=forms.CheckboxSelectMultiple,
+        required=False,
         label="Roles",
         help_text="Select every workspace role this employee should have.",
     )
@@ -561,11 +562,22 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        roles = cleaned_data.get("roles") or []
-        # Allow legacy single-role posts that only send `role`.
-        if not roles and cleaned_data.get("role"):
+        submitted_roles = cleaned_data.get("roles")
+        roles_were_submitted = bool(self.data and "roles" in self.data)
+
+        if roles_were_submitted:
+            roles = submitted_roles or []
+            if not roles:
+                self.add_error("roles", "Select at least one role.")
+        elif self.instance and self.instance.pk:
+            roles = self.instance.role_values()
+        elif cleaned_data.get("role"):
             roles = [cleaned_data["role"]]
-            cleaned_data["roles"] = roles
+        else:
+            roles = []
+            self.add_error("roles", "Select at least one role.")
+
+        cleaned_data["roles"] = roles
         primary = cleaned_data.get("role")
         if roles and primary and primary not in roles:
             self.add_error(
@@ -623,8 +635,9 @@ class EmployeeProfileForm(UppercaseFieldsMixin, forms.ModelForm):
                     employee.save()
                 return apply_roles(employee)
 
-        employee = super().save(commit=commit)
-        return apply_roles(employee)
+        with transaction.atomic():
+            employee = super().save(commit=commit)
+            return apply_roles(employee)
 
 
 class EmployeeAccountSettingsForm(forms.ModelForm):

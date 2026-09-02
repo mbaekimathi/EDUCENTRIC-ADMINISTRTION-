@@ -1,0 +1,32 @@
+<section class="sys-perf-panel sys-perf-trend-cards" id="trends" aria-label="Metric trends" data-sys-perf-trend-cards-section>
+  <header class="sys-perf-panel__head">
+    <div>
+      <p class="sys-perf-eyebrow">Live movement</p>
+      <h3 class="sys-perf-panel__title">Metric trends</h3>
+      <p class="sys-perf-panel__hint">Rolling history from the latest probe samples</p>
+    </div>
+    <span class="sys-perf-panel__badge" data-sys-perf-trend-count>
+      {{ performance_snapshot.latency.summary.samples|default:0 }} samples
+    </span>
+  </header>
+
+  <div class="sys-perf-trend-grid" data-sys-perf-trend-grid>
+    {% for card in performance_snapshot.trend_cards %}
+    <article class="sys-perf-trend-card {{ card.tone }}">
+      <div class="sys-perf-trend-card__head">
+        <span class="sys-perf-trend-card__label">{{ card.label }}</span>
+        {% if card.delta.direction != "flat" %}
+        <span class="sys-perf-trend-card__delta is-{{ card.delta.direction }}" aria-label="Change since previous sample">
+          {% if card.delta.direction == "up" %}↑{% else %}↓{% endif %} {{ card.delta.value }}{% if card.unit == "ms" %} ms{% elif card.unit == "%" %}%{% endif %}
+        </span>
+        {% endif %}
+      </div>
+      <strong class="sys-perf-trend-card__value">
+        {% if card.latest is not None %}{{ card.latest }}{% else %}—{% endif %}
+        {% if card.unit == "ms" %}<small>ms</small>{% elif card.unit == "%" %}<small>%</small>{% endif %}
+      </strong>
+      {% include "employees/includes/system_performance_sparkline.html" with trend=card.trend tone=card.tone large=True %}
+    </article>
+    {% endfor %}
+  </div>
+</section>

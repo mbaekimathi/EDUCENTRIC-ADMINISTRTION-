@@ -1,0 +1,76 @@
+{% with health=performance_snapshot.health stress=performance_snapshot.stress_timeline latency=performance_snapshot.latency.summary %}
+<header class="sys-perf-hero" data-sys-perf-hero>
+  <div class="sys-perf-hero__main">
+    <div class="sys-perf-hero__score-ring {{ health.tone }}" aria-hidden="true">
+      <svg viewBox="0 0 96 96">
+        <circle class="sys-perf-hero__ring-track" cx="48" cy="48" r="42"></circle>
+        <circle
+          class="sys-perf-hero__ring-value"
+          cx="48"
+          cy="48"
+          r="42"
+          stroke-dasharray="{{ health.dash }} {{ health.gap }}"
+        ></circle>
+      </svg>
+      <div class="sys-perf-hero__score-copy">
+        <strong data-sys-perf-health-score>{{ health.score }}</strong>
+        <span data-sys-perf-health-label>{{ health.label }}</span>
+      </div>
+    </div>
+
+    <div class="sys-perf-hero__intro">
+      <p class="sys-perf-eyebrow">Infrastructure analytics</p>
+      <h2 class="sys-perf-hero__title">Live system health</h2>
+      <p class="sys-perf-hero__subtitle">
+        Real-time probes across database, cache, storage, and active user sessions.
+        Metrics refresh automatically every 15 seconds.
+      </p>
+      <div class="sys-perf-hero__actions">
+        <p class="sys-perf-widget-updated" data-sys-perf-updated>
+          <span class="sys-perf-sync-dot" aria-hidden="true"></span>
+          Updated {{ performance_snapshot.collected_at|date:"g:i:s A" }}
+        </p>
+        <button type="button" class="ghost-button sys-perf-btn" data-sys-perf-refresh>Refresh now</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sys-perf-hero__stats">
+    <article class="sys-perf-hero-stat">
+      <span class="sys-perf-hero-stat__label">DB latency</span>
+      <strong data-sys-perf-hero-db>{% if health.db_ms is not None %}{{ health.db_ms }} ms{% else %}—{% endif %}</strong>
+      <span class="sys-perf-hero-stat__meta">avg {{ latency.db_avg_ms|default:"—" }} ms</span>
+    </article>
+    <article class="sys-perf-hero-stat">
+      <span class="sys-perf-hero-stat__label">Cache latency</span>
+      <strong data-sys-perf-hero-cache>{% if health.cache_ms is not None %}{{ health.cache_ms }} ms{% else %}—{% endif %}</strong>
+      <span class="sys-perf-hero-stat__meta">avg {{ latency.cache_avg_ms|default:"—" }} ms</span>
+    </article>
+    <article class="sys-perf-hero-stat">
+      <span class="sys-perf-hero-stat__label">Disk usage</span>
+      <strong data-sys-perf-hero-disk>{{ health.disk_pct }}%</strong>
+      <span class="sys-perf-hero-stat__meta">{{ performance_snapshot.storage.media.free_gb }} GB free</span>
+    </article>
+    <article class="sys-perf-hero-stat">
+      <span class="sys-perf-hero-stat__label">Active users</span>
+      <strong data-sys-perf-hero-users>{{ health.active_users }}</strong>
+      <span class="sys-perf-hero-stat__meta">{{ latency.samples|default:0 }} trend samples</span>
+    </article>
+    <article class="sys-perf-hero-stat">
+      <span class="sys-perf-hero-stat__label">Peak load</span>
+      <strong data-sys-perf-hero-peak>{% if stress.peak %}{{ stress.peak.score }}{% else %}—{% endif %}</strong>
+      <span class="sys-perf-hero-stat__meta">{% if stress.events %}{{ stress.events|length }} events logged{% else %}No stress events{% endif %}</span>
+    </article>
+  </div>
+</header>
+
+<nav class="sys-perf-section-nav" aria-label="Analytics sections">
+  <a href="#overview" class="sys-perf-section-nav__link is-active">Overview</a>
+  <a href="#trends" class="sys-perf-section-nav__link">Trends</a>
+  <a href="#records" class="sys-perf-section-nav__link">Records</a>
+  <a href="#users" class="sys-perf-section-nav__link">Users</a>
+  <a href="#stress-timeline" class="sys-perf-section-nav__link">Load history</a>
+  <a href="#storage" class="sys-perf-section-nav__link">Storage</a>
+  <a href="#environment" class="sys-perf-section-nav__link">Environment</a>
+</nav>
+{% endwith %}

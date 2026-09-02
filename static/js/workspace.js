@@ -3,6 +3,7 @@
   if (!root) return;
   const toggle = root.querySelector("[data-workspace-toggle]");
   const backBtn = root.querySelector("[data-workspace-back]");
+  const sidebarBackBtn = root.querySelector("[data-workspace-back-sidebar]");
   const backdrop = root.querySelector("[data-workspace-backdrop]");
   const sidebar = document.getElementById("workspace-sidebar");
   const profile = root.querySelector("[data-profile-menu]");
@@ -13,6 +14,7 @@
   const employeesUrl = root.dataset.employeesUrl || "";
   const studentSearchUrl = root.dataset.studentSearchUrl || "";
   const dashboardUrl = root.dataset.dashboardUrl || "/";
+  const roleDashboardUrl = root.dataset.roleDashboardUrl || dashboardUrl;
   const navStackKey = "educentric.workspaceNavStack";
 
   function currentNavKey() {
@@ -33,25 +35,27 @@
     sessionStorage.setItem(navStackKey, JSON.stringify(stack.slice(-50)));
   }
 
-  function previousNavTarget(stack, current) {
-    let index = stack.length - 1;
-    while (index >= 0 && stack[index] === current) index -= 1;
-    return index >= 0 ? stack[index] : "";
-  }
-
-  function isMobileHeader() {
-    return window.matchMedia("(max-width: 1100px)").matches;
-  }
-
-  function isWorkspaceRootPath() {
+  function isWorkspaceHomePath() {
     const path = window.location.pathname.replace(/\/$/, "") || "/";
     try {
       const dashboardPath = new URL(dashboardUrl, window.location.origin).pathname.replace(/\/$/, "") || "/";
       if (path === dashboardPath) return true;
+      const roleDashboardPath = new URL(roleDashboardUrl, window.location.origin).pathname.replace(/\/$/, "") || "/";
+      if (path === roleDashboardPath) return true;
     } catch (error) {
       if (/\/dashboard\/?$/.test(window.location.pathname)) return true;
     }
     return /^\/workspace\/[^/]+$/.test(path);
+  }
+
+  function parentNavTarget() {
+    const path = window.location.pathname.replace(/\/$/, "");
+    if (!path || path === "/") return roleDashboardUrl || dashboardUrl;
+    const lastSlash = path.lastIndexOf("/");
+    if (lastSlash <= 0) return roleDashboardUrl || dashboardUrl;
+    const parentPath = path.slice(0, lastSlash) || "/";
+    if (parentPath === "/workspace") return roleDashboardUrl || dashboardUrl;
+    return `${parentPath}/`;
   }
 
   function syncProfileMenuPosition() {
@@ -69,34 +73,45 @@
   }
 
   function syncWorkspaceBack() {
-    if (!backBtn) return;
     const current = currentNavKey();
     const stack = readNavStack();
     if (!stack.length || stack[stack.length - 1] !== current) {
       stack.push(current);
       writeNavStack(stack);
     }
-    const previous = previousNavTarget(stack, current);
-    let canGoBack = Boolean(previous && previous !== current);
-    if (!canGoBack && isMobileHeader() && !isWorkspaceRootPath()) {
-      canGoBack = true;
+    const canGoBack = !isWorkspaceHomePath();
+    if (backBtn) {
+      backBtn.hidden = !canGoBack;
+      backBtn.disabled = !canGoBack;
     }
-    backBtn.hidden = !canGoBack;
-    backBtn.disabled = !canGoBack;
+    if (sidebarBackBtn) {
+      sidebarBackBtn.hidden = !canGoBack;
+      sidebarBackBtn.disabled = !canGoBack;
+    }
   }
 
-  function goWorkspaceBack() {
-    if (!backBtn || backBtn.disabled) return;
+  function goWorkspaceBack(event) {
+    event?.preventDefault();
+    if (isWorkspaceHomePath()) return;
     const current = currentNavKey();
     const stack = readNavStack();
     while (stack.length && stack[stack.length - 1] === current) stack.pop();
     const target = stack.length ? stack[stack.length - 1] : "";
     writeNavStack(stack);
-    window.location.assign(target || dashboardUrl);
+    if (target && target !== current) {
+      window.location.assign(target);
+      return;
+    }
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.assign(parentNavTarget());
   }
 
   syncWorkspaceBack();
-  if (backBtn) backBtn.addEventListener("click", goWorkspaceBack);
+  backBtn?.addEventListener("click", goWorkspaceBack);
+  sidebarBackBtn?.addEventListener("click", goWorkspaceBack);
 
   const workspaceContent = root.querySelector(".workspace-content");
   const workspaceHeader = root.querySelector(".workspace-header");
@@ -334,6 +349,15 @@
   const backButton = roleModal.querySelector("[data-role-switch-back]");
   const submitButton = roleModal.querySelector("[data-role-switch-submit]");
   const roleOptions = Array.from(roleModal.querySelectorAll("[data-role-option]"));
+  const ownAccessWrap = roleModal.querySelector("[data-role-switch-own-access]");
+  const enterSelfButton = roleModal.querySelector("[data-role-switch-enter-self]");
+  const enterSelfSubmit = roleModal.querySelector("[data-role-switch-enter-self-submit]");
+  const ownWorkspaceRoles = new Set(
+    (root.dataset.ownWorkspaceRoles || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
   let selectedRoleLabel = "";
 
   roleModal.querySelectorAll("[data-role-switch-close]").forEach((button) => {
@@ -344,6 +368,20 @@
     return roleInput.value;
   }
 
+  function selectedRoleIsOwn() {
+    return ownWorkspaceRoles.has(selectedRole());
+  }
+
+  function syncOwnRoleActions() {
+    const isOwnRole = selectedRoleIsOwn();
+    const onEmployeeStep = employeeStep.classList.contains("is-active");
+    if (ownAccessWrap) ownAccessWrap.hidden = !isOwnRole || !onEmployeeStep;
+    if (enterSelfSubmit) enterSelfSubmit.hidden = !isOwnRole || onEmployeeStep;
+    if (nextButton) {
+      nextButton.textContent = isOwnRole ? "View as employee" : "Continue";
+    }
+  }
+
   function setSelectedRole(value, label) {
     roleInput.value = value;
     selectedRoleLabel = label;
@@ -351,6 +389,7 @@
       option.classList.toggle("is-selected", option.dataset.roleValue === value);
     });
     nextButton.disabled = !value;
+    syncOwnRoleActions();
   }
 
   function setSelectedEmployee(id) {
@@ -359,6 +398,12 @@
       option.classList.toggle("is-selected", option.dataset.employeeId === String(id));
     });
     submitButton.disabled = !id;
+  }
+
+  function submitOwnRole() {
+    if (!selectedRole() || !selectedRoleIsOwn()) return;
+    employeeInput.value = "";
+    form.submit();
   }
 
   function goToRoleStep() {
@@ -372,11 +417,12 @@
     submitButton.hidden = true;
     kicker.textContent = "Step 1 of 2";
     copy.textContent =
-      "Choose the role you want to enter, then pick the employee whose session you will view.";
+      "Choose a role to open. Your assigned roles give full access; other employees are view-only.";
     setSelectedEmployee("");
     if (searchInput) searchInput.value = "";
     const current = roleOptions.find((option) => option.classList.contains("is-current"));
     if (current) setSelectedRole(current.dataset.roleValue, current.dataset.roleLabel);
+    else syncOwnRoleActions();
   }
 
   function goToEmployeeStep() {
@@ -388,8 +434,12 @@
     backButton.hidden = false;
     nextButton.hidden = true;
     submitButton.hidden = false;
+    if (enterSelfSubmit) enterSelfSubmit.hidden = true;
     kicker.textContent = "Step 2 of 2";
-    copy.textContent = `Select an employee to view the ${selectedRoleLabel || "selected"} session.`;
+    copy.textContent = selectedRoleIsOwn()
+      ? `View another ${selectedRoleLabel || "employee"}'s session, or open as yourself for full access.`
+      : `Select an employee to view the ${selectedRoleLabel || "selected"} session.`;
+    if (ownAccessWrap) ownAccessWrap.hidden = !selectedRoleIsOwn();
   }
 
   function renderEmployees(items) {
@@ -460,14 +510,26 @@
       renderEmployees([]);
       goToEmployeeStep();
     } finally {
-      nextButton.textContent = "Continue";
+      syncOwnRoleActions();
       nextButton.disabled = !selectedRole();
     }
   });
 
   backButton.addEventListener("click", () => goToRoleStep());
+  enterSelfButton?.addEventListener("click", submitOwnRole);
+  enterSelfSubmit?.addEventListener("click", (event) => {
+    event.preventDefault();
+    submitOwnRole();
+  });
   searchInput?.addEventListener("input", () => filterEmployees(searchInput.value));
   form.addEventListener("submit", (event) => {
-    if (!selectedRole() || !employeeInput.value) event.preventDefault();
+    if (!selectedRole()) {
+      event.preventDefault();
+      return;
+    }
+    if (selectedRoleIsOwn() && !employeeInput.value) {
+      return;
+    }
+    if (!employeeInput.value) event.preventDefault();
   });
 })();

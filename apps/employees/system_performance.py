@@ -496,18 +496,223 @@ def _operational_metrics():
     return metrics
 
 
-def _record_latency_sample(database, cache_info):
-    if database.get("status") != "ok" or cache_info.get("status") != "ok":
-        return
+def _record_metrics_sample(database, cache_info, storage, active_sessions):
     history = cache.get(LATENCY_HISTORY_KEY) or []
+    media = storage.get("media") or {}
+    totals = active_sessions.get("totals") or {}
+    sessions_total = (
+        (totals.get("employees") or 0)
+        + (totals.get("students") or 0)
+        + (totals.get("parents") or 0)
+    )
     history.append(
         {
             "at": timezone.now().isoformat(),
-            "db_ms": database.get("latency_ms") or 0,
-            "cache_ms": cache_info.get("latency_ms") or 0,
+            "db_ms": database.get("latency_ms") or 0 if database.get("status") == "ok" else 0,
+            "cache_ms": cache_info.get("latency_ms") or 0 if cache_info.get("status") == "ok" else 0,
+            "disk_pct": media.get("used_pct") or 0,
+            "sessions_total": sessions_total,
         }
     )
     cache.set(LATENCY_HISTORY_KEY, history[-LATENCY_HISTORY_MAX:], 3600)
+
+
+def _build_sparkline(values, *, width=88, height=28, pad=2):
+    cleaned = [value for value in values if value is not None]
+    if not cleaned:
+        return None
+    if len(cleaned) == 1:
+        cleaned = [cleaned[0], cleaned[0]]
+    min_value = min(cleaned)
+    max_value = max(cleaned)
+    span = max(max_value - min_value, 1)
+    plot_width = width - pad * 2
+    plot_height = height - pad * 2
+    points = []
+    for index, value in enumerate(cleaned):
+        x = pad + (index / (len(cleaned) - 1)) * plot_width
+        y = pad + plot_height - ((value - min_value) / span) * plot_height
+        points.append({"x": round(x, 1), "y": round(y, 1)})
+    line = " ".join(f"{point['x']},{point['y']}" for point in points)
+    area = f"{pad},{height - pad} {line} {width - pad},{height - pad}"
+    return {"width": width, "height": height, "line": line, "area": area, "points": points}
+
+
+def _kpi_trends(history):
+    return {
+        "db": _build_sparkline([point.get("db_ms") for point in history]),
+        "cache": _build_sparkline([point.get("cache_ms") for point in history]),
+        "disk": _build_sparkline([point.get("disk_pct") for point in history]),
+        "sessions": _build_sparkline([point.get("sessions_total") for point in history]),
+    }
+
+
+def _large_trend_cards(history):
+    cards = (
+        ("db", "Database latency", "ms", "is-db"),
+        ("cache", "Cache latency", "ms", "is-cache"),
+        ("disk", "Disk usage", "%", "is-disk"),
+        ("sessions", "Active sessions", "users", "is-users"),
+    )
+    key_map = {
+        "db": "db_ms",
+        "cache": "cache_ms",
+        "disk": "disk_pct",
+        "sessions": "sessions_total",
+    }
+    result = []
+    for slug, label, unit, tone in cards:
+        key = key_map[slug]
+        values = [point.get(key) for point in history]
+        latest = values[-1] if values else None
+        result.append(
+            {
+                "slug": slug,
+                "label": label,
+                "unit": unit,
+                "tone": tone,
+                "latest": latest,
+                "delta": _metric_delta(values),
+                "trend": _build_sparkline(values, width=220, height=56, pad=4),
+            }
+        )
+    return result
+
+
+def _metric_delta(values):
+    cleaned = [value for value in values if value is not None]
+    if len(cleaned) < 2:
+        return {"direction": "flat", "value": 0}
+    previous, current = cleaned[-2], cleaned[-1]
+    diff = round(current - previous, 1)
+    if diff == 0:
+        return {"direction": "flat", "value": 0}
+    return {"direction": "up" if diff > 0 else "down", "value": abs(diff)}
+
+
+def _kpi_deltas(history):
+    if len(history) < 2:
+        return {}
+    keys = ("db_ms", "cache_ms", "disk_pct", "sessions_total")
+    return {
+        key: _metric_delta([point.get(key) for point in history])
+        for key in keys
+    }
+
+
+def _build_dual_line_chart(history, *, width=560, height=180):
+    if not history:
+        return None
+
+    db_values = [point.get("db_ms") or 0 for point in history]
+    cache_values = [point.get("cache_ms") or 0 for point in history]
+    max_value = max([*db_values, *cache_values, 10])
+    pad_left = 38
+    pad_right = 14
+    pad_top = 14
+    pad_bottom = 28
+    plot_width = width - pad_left - pad_right
+    plot_height = height - pad_top - pad_bottom
+    baseline_y = height - pad_bottom
+
+    def series_points(values):
+        if len(values) == 1:
+            values = [values[0], values[0]]
+        points = []
+        for index, value in enumerate(values):
+            x = pad_left + (index / (len(values) - 1)) * plot_width
+            y = pad_top + plot_height - (value / max_value) * plot_height
+            points.append({"x": round(x, 1), "y": round(y, 1), "value": value})
+        line = " ".join(f"{point['x']},{point['y']}" for point in points)
+        area = f"{pad_left},{baseline_y} {line} {width - pad_right},{baseline_y}"
+        return points, line, area
+
+    db_points, db_line, db_area = series_points(db_values)
+    cache_points, cache_line, cache_area = series_points(cache_values)
+    grid = []
+    for tick in range(5):
+        value = round(max_value - (max_value / 4) * tick, 1)
+        y = pad_top + (plot_height / 4) * tick
+        grid.append({"y": round(y, 1), "value": value})
+
+    return {
+        "width": width,
+        "height": height,
+        "plot_left": pad_left,
+        "plot_right": width - pad_right,
+        "baseline_y": baseline_y,
+        "grid": grid,
+        "db": {"line": db_line, "area": db_area, "points": db_points},
+        "cache": {"line": cache_line, "area": cache_area, "points": cache_points},
+    }
+
+
+def _health_summary(status, database, cache_info, storage, active_sessions):
+    media = storage.get("media") or {}
+    totals = active_sessions.get("totals") or {}
+    total_users = (
+        (totals.get("employees") or 0)
+        + (totals.get("students") or 0)
+        + (totals.get("parents") or 0)
+    )
+    score = 96
+    if status == "degraded":
+        score = 72
+    elif status == "critical":
+        score = 38
+
+    db_ms = database.get("latency_ms") or 0
+    cache_ms = cache_info.get("latency_ms") or 0
+    disk_pct = media.get("used_pct") or 0
+    score -= min(18, round(db_ms / 12))
+    score -= min(12, round(cache_ms / 8))
+    score -= min(20, round(disk_pct / 5))
+    score = max(8, min(100, round(score)))
+
+    ring = 2 * 3.141592653589793 * 42
+    dash = round((score / 100) * ring, 2)
+    label = "Healthy"
+    tone = "is-ok"
+    if status == "degraded":
+        label = "Degraded"
+        tone = "is-warn"
+    elif status == "critical":
+        label = "Critical"
+        tone = "is-bad"
+
+    return {
+        "score": score,
+        "label": label,
+        "tone": tone,
+        "ring": round(ring, 2),
+        "dash": dash,
+        "gap": round(ring - dash, 2),
+        "active_users": total_users,
+        "disk_pct": disk_pct,
+        "db_ms": db_ms if database.get("status") == "ok" else None,
+        "cache_ms": cache_ms if cache_info.get("status") == "ok" else None,
+    }
+
+
+def _enrich_tables(tables):
+    if not tables:
+        return []
+    max_rows = max(table.get("rows") or 0 for table in tables) or 1
+    enriched = []
+    for table in tables:
+        rows = table.get("rows") or 0
+        enriched.append(
+            {
+                **table,
+                "bar_pct": min(100, round((rows / max_rows) * 100)),
+            }
+        )
+    return enriched
+
+
+def _stress_score_chart(events):
+    scores = [event.get("score") or 0 for event in reversed(events[-12:])]
+    return _build_sparkline(scores, width=220, height=56, pad=4)
 
 
 def _latency_history():
@@ -845,17 +1050,15 @@ def get_system_performance_snapshot(*, include_counts=True):
     cache_info = _measure_cache_ms()
     storage = _storage_layout()
     db_info = _database_info()
-    _record_latency_sample(database, cache_info)
+    active_sessions = _active_user_sessions()
+    _record_metrics_sample(database, cache_info, storage, active_sessions)
     history = _latency_history()
 
     database = {**database, **db_info}
     counts = _entity_counts() if include_counts else {}
     operations = _operational_metrics() if include_counts else {}
     collected_at = timezone.now()
-
-    collected_at = timezone.now()
     status = _overall_status(database, cache_info, storage)
-    active_sessions = _active_user_sessions()
     _record_stress_event(
         collected_at=collected_at,
         status=status,
@@ -864,22 +1067,32 @@ def get_system_performance_snapshot(*, include_counts=True):
         storage=storage,
         active_sessions=active_sessions,
     )
+    stress_timeline = _stress_timeline()
+    tables = _enrich_tables(_top_database_tables())
 
     snapshot = {
         "status": status,
+        "health": _health_summary(status, database, cache_info, storage, active_sessions),
         "database": database,
         "cache": cache_info,
         "storage": storage,
         "media": _media_storage(),
         "counts": counts,
         "operations": operations,
-        "tables": _top_database_tables(),
+        "tables": tables,
         "latency": {
             "history": history,
             "summary": _latency_summary(history),
+            "chart": _build_dual_line_chart(history),
         },
+        "kpi_trends": _kpi_trends(history),
+        "kpi_deltas": _kpi_deltas(history),
+        "trend_cards": _large_trend_cards(history),
         "active_sessions": active_sessions,
-        "stress_timeline": _stress_timeline(),
+        "stress_timeline": {
+            **stress_timeline,
+            "score_chart": _stress_score_chart(stress_timeline.get("events") or []),
+        },
         "app": _app_info(),
         "collected_at": collected_at,
     }

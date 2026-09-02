@@ -971,10 +971,17 @@ class GeneratedELearningLesson(models.Model):
 
 class GeneratedExamTimetable(models.Model):
     class Status(models.TextChoices):
+        SCHEDULED = "SCHEDULED", "Scheduled"
         IN_SESSION = "IN_SESSION", "In session"
         MARKING = "MARKING", "Marking"
         ANALYSING = "ANALYSING", "Analysing"
         PUBLISHED = "PUBLISHED", "Published"
+
+    ACTIVE_WORKFLOW_STATUSES = (
+        Status.IN_SESSION,
+        Status.MARKING,
+        Status.ANALYSING,
+    )
 
     name = models.CharField("exam name", max_length=120, blank=True, default="")
     created_by = models.ForeignKey(
@@ -1007,7 +1014,7 @@ class GeneratedExamTimetable(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.IN_SESSION,
+        default=Status.SCHEDULED,
     )
     deadline = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

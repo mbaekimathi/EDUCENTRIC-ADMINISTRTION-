@@ -1,0 +1,77 @@
+<section class="exam-mgmt-panel" aria-label="Class marks analytics">
+  <header class="exam-mgmt-panel__head">
+    <div>
+      {% if exam_dashboard.status == "PUBLISHED" %}
+      <h3>Published results</h3>
+      <p>Final class performance — results are ready to share</p>
+      {% elif exam_dashboard.status == "ANALYSING" %}
+      <h3>Marks input analytics</h3>
+      <p>Completion and subject means per class</p>
+      {% else %}
+      <h3>Class marks analytics</h3>
+      <p>Marks entered and subject means per class</p>
+      {% endif %}
+    </div>
+    <div class="exam-mgmt-panel__actions">
+      {% if exam_dashboard.status == "PUBLISHED" %}
+      <a class="ghost-button" href="{% url 'employees:it_support_curriculum_report_page' 'exam-reports' %}">Exam reports</a>
+      {% endif %}
+      <span class="exam-mgmt-panel__badge">{{ exam_dashboard.class_analytics|length }} class{{ exam_dashboard.class_analytics|length|pluralize }}</span>
+    </div>
+  </header>
+
+  {% if exam_dashboard.class_analytics %}
+  <div class="exam-mgmt-analytics-grid">
+    {% for entry in exam_dashboard.class_analytics %}
+    <article class="exam-mgmt-analytics-card{% if exam_dashboard.status == 'PUBLISHED' %} is-published{% endif %}">
+      <header class="exam-mgmt-analytics-card__head">
+        <div>
+          <h4 class="is-uppercase">{{ entry.academic_class.display_label }}</h4>
+          <p>
+            {{ entry.students_count }} student{{ entry.students_count|pluralize }}
+            · {{ entry.subjects_count }} subject{{ entry.subjects_count|pluralize }}
+            {% if exam_dashboard.status == "PUBLISHED" %}
+            · {{ entry.entered_marks }}/{{ entry.expected_marks }} marks
+            {% endif %}
+          </p>
+        </div>
+        {% if exam_dashboard.status == "PUBLISHED" %}
+          {% if entry.class_mean != None %}
+          <strong class="exam-mgmt-published-mean">{{ entry.class_mean }}<small>%</small></strong>
+          {% else %}
+          <strong class="exam-mgmt-published-mean is-muted">—</strong>
+          {% endif %}
+        {% else %}
+        <div class="exam-mgmt-analytics-card__stats">
+          <span class="exam-mgmt-stat-chip">{{ entry.completion_percent }}% entered</span>
+          {% if entry.class_mean != None %}
+          <span class="exam-mgmt-stat-chip is-accent">Mean {{ entry.class_mean }}%</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </header>
+      {% if exam_dashboard.status != "PUBLISHED" %}
+      <div class="exam-mgmt-progress-track is-compact" aria-hidden="true">
+        <span class="exam-mgmt-progress-fill" style="width: {{ entry.completion_percent }}%;"></span>
+      </div>
+      {% endif %}
+      {% if entry.subject_means %}
+      <ul class="exam-mgmt-subject-means">
+        {% for mean in entry.subject_means %}
+        <li>
+          <span>{{ mean.subject.code }}</span>
+          <strong>{% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}</strong>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="exam-mgmt-empty">
+    <strong>No class marks yet</strong>
+    <p>Class analytics will appear once marks are entered for active classes.</p>
+  </div>
+  {% endif %}
+</section>

@@ -1,11 +1,12 @@
 <section
-  class="sys-perf-widget{% if compact %} is-compact{% else %} is-analytics{% endif %}"
+  class="sys-perf-widget{% if compact %} is-compact{% else %} is-analytics{% endif %}{% if full_page %} is-full-page{% endif %}"
   data-system-performance
   data-metrics-url="{{ metrics_url }}"
   data-poll-interval="{{ poll_interval|default:30000 }}"
   aria-label="System performance"
   aria-live="polite"
 >
+  {% if not full_page %}
   <header class="sys-perf-widget-header">
     <div class="sys-perf-widget-intro">
       {% if not compact %}
@@ -35,11 +36,30 @@
       {% if compact and performance_snapshot.stress_timeline.peak %}
       <a class="ghost-button sys-perf-btn" href="{% url 'employees:it_support_system_performance' %}#stress-timeline">Peak load</a>
       {% endif %}
-      {% if compact %}
+      {% if compact or show_analytics_link %}
       <a class="ghost-button sys-perf-btn" href="{% url 'employees:it_support_system_performance' %}">Open analytics</a>
       {% endif %}
     </div>
   </header>
+  {% else %}
+  <header class="sys-perf-widget-header sys-perf-widget-header--inline">
+    <div class="sys-perf-widget-intro">
+      <p class="sys-perf-eyebrow">Core metrics</p>
+      <h2 class="sys-perf-widget-title">Infrastructure probes</h2>
+    </div>
+    <div class="sys-perf-widget-actions">
+      <span
+        class="sys-perf-live {% if performance_snapshot.status == 'healthy' %}is-ok{% elif performance_snapshot.status == 'degraded' %}is-warn{% else %}is-bad{% endif %}"
+        data-sys-perf-status-pill
+      >
+        <span class="sys-perf-live-dot" aria-hidden="true"></span>
+        <span data-sys-perf-status-label>
+          {% if performance_snapshot.status == "healthy" %}Healthy{% elif performance_snapshot.status == "degraded" %}Degraded{% else %}Critical{% endif %}
+        </span>
+      </span>
+    </div>
+  </header>
+  {% endif %}
 
   {% if performance_snapshot %}
   {% include "employees/includes/system_performance_stats.html" %}

@@ -4,6 +4,7 @@ from .models import Employee
 from .workspace import (
     can_choose_own_workspace_role,
     can_switch_workspace_role,
+    is_workspace_preview,
     prefetch_user_roles,
     uses_profile_settings,
     user_role_values,
@@ -52,14 +53,10 @@ def workspace(request):
             for value, label in Employee.Role.choices
             if value in own_roles
         ],
+        "own_workspace_role_values": own_roles,
         "workspace_role_choices": Employee.Role.choices,
         "workspace_view_employee": view_employee,
         "teacher_is_class_teacher": teacher_is_class_teacher,
         "teacher_has_elearning": teacher_has_elearning,
-        "is_role_preview": can_switch
-        and view_employee is not None
-        and (
-            role not in own_roles
-            or view_employee.pk != user.pk
-        ),
+        "is_role_preview": is_workspace_preview(request),
     }

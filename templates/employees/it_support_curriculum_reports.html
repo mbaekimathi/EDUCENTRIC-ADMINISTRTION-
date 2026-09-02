@@ -11,7 +11,7 @@
 <div class="exam-tool-page">
   <section class="teacher-dash-actions is-nav-links" aria-label="Curriculum report areas">
     {% for page in curriculum_report_pages %}
-    <a class="teacher-dash-action" href="{% url 'employees:it_support_curriculum_report_page' page.slug %}">
+    <a class="teacher-dash-action" href="{% url curriculum_report_page_url page.slug %}">
       <span class="teacher-dash-action-icon" aria-hidden="true">{{ page.icon }}</span>
       <span class="teacher-dash-action-copy">
         <strong>{{ page.title }}</strong>

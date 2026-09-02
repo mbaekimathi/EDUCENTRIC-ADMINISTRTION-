@@ -45,7 +45,7 @@
         method="get"
         class="exam-report-form"
         data-exam-report-builder
-        data-students-url="{% url 'employees:it_support_exam_report_students' %}"
+        data-students-url="{% url exam_report_students_url %}"
       >
         {{ exam_catalog_json|json_script:"exam-report-catalog" }}
         <input type="hidden" name="generate" value="1">
@@ -206,14 +206,14 @@
       <div class="exam-report-export-group" aria-label="Export options">
         <a
           class="ghost-button exam-report-export-btn"
-          href="{% url 'employees:it_support_exam_report_export' %}?{{ request.GET.urlencode }}&amp;export_mode=raw"
+          href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_mode=raw"
         >
           <span class="exam-export-label exam-export-label-full">Export Excel (raw marks)</span>
           <span class="exam-export-label exam-export-label-short" aria-hidden="true">Raw Excel</span>
         </a>
         <a
           class="ghost-button exam-report-export-btn"
-          href="{% url 'employees:it_support_exam_report_export' %}?{{ request.GET.urlencode }}&amp;export_mode=graded"
+          href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_mode=graded"
         >
           <span class="exam-export-label exam-export-label-full">Export Excel (graded)</span>
           <span class="exam-export-label exam-export-label-short" aria-hidden="true">Graded Excel</span>

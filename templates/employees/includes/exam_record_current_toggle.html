@@ -1,0 +1,62 @@
+{% if can_toggle_current %}
+<form
+  method="post"
+  action="{% url 'employees:set_current_exam_record' exam.id %}"
+  class="exam-current-toggle-form"
+  data-exam-current-toggle-form
+>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ manage_next_url }}">
+  <input
+    type="hidden"
+    name="is_current"
+    value="{% if is_current_exam %}1{% else %}0{% endif %}"
+    data-exam-current-value
+  >
+  <label class="exam-current-toggle">
+    <span class="exam-current-toggle-copy">
+      <strong>Current exam</strong>
+      <span data-exam-current-hint>
+        {% if is_current_exam %}In session — only one exam can be current{% else %}Off — turn on to run this exam now{% endif %}
+      </span>
+    </span>
+    <input
+      type="checkbox"
+      class="exam-current-toggle-input"
+      {% if is_current_exam %}checked{% endif %}
+      aria-label="Set as current exam"
+      data-exam-current-input
+    >
+    <span class="exam-current-toggle-track" aria-hidden="true"></span>
+  </label>
+</form>
+<script>
+(function () {
+  const form = document.querySelector("[data-exam-current-toggle-form]");
+  if (!form) return;
+  const input = form.querySelector("[data-exam-current-input]");
+  const value = form.querySelector("[data-exam-current-value]");
+  const hint = form.querySelector("[data-exam-current-hint]");
+  if (!input || !value) return;
+  input.addEventListener("change", () => {
+    value.value = input.checked ? "1" : "0";
+    if (hint) {
+      hint.textContent = input.checked
+        ? "In session — only one exam can be current"
+        : "Off — turn on to run this exam now";
+    }
+    form.submit();
+  });
+})();
+</script>
+{% elif exam.status == "PUBLISHED" %}
+<div class="exam-current-toggle-form is-readonly">
+  <div class="exam-current-toggle is-disabled">
+    <span class="exam-current-toggle-copy">
+      <strong>Current exam</strong>
+      <span>Published exams cannot be set as current</span>
+    </span>
+    <span class="exam-current-toggle-track" aria-hidden="true"></span>
+  </div>
+</div>
+{% endif %}

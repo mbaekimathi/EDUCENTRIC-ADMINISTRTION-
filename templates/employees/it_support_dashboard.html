@@ -9,8 +9,12 @@
 {% endblock %}
 
 {% block workspace_content %}
-<div class="exam-tool-page it-support-dashboard sys-perf-dashboard">
-  {% include "employees/includes/system_performance_widget.html" with compact=True poll_interval=30000 %}
+<div class="exam-tool-page it-support-dashboard sys-perf-dashboard sys-perf-page">
+  <div class="sys-perf-layout">
+    {% include "employees/includes/system_performance_widget.html" with compact=False poll_interval=30000 show_analytics_link=True %}
+
+    {% include "employees/includes/system_performance_analytics_panels.html" %}
+  </div>
 
   <section class="teacher-dash-actions is-nav-links" aria-label="IT Support modules">
     {% for module in it_support_modules %}
@@ -27,5 +31,5 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/system_performance.js' %}?v=20260902sysperf" defer></script>
+<script src="{% static 'js/system_performance.js' %}?v=20260902sysperf3" defer></script>
 {% endblock %}

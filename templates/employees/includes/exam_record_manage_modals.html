@@ -118,7 +118,11 @@
       <div class="exam-manage-dialog-heading">
         <p class="exam-manage-dialog-kicker">Exam workflow</p>
         <h2 id="exam-status-title">Set exam status</h2>
+        {% if exam.status == "SCHEDULED" %}
+        <p class="exam-manage-dialog-lead">Start this exam when you are ready. Only one exam can be in session at a time.</p>
+        {% else %}
         <p class="exam-manage-dialog-lead">Move this exam through each stage as sittings, marking, and publishing progress.</p>
+        {% endif %}
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-status" aria-label="Close">×</button>
     </div>
@@ -132,6 +136,17 @@
           <strong>{{ exam.get_status_display }}</strong>
         </div>
         <div class="exam-status-grid" role="radiogroup" aria-label="Exam status">
+          {% if exam.status == "SCHEDULED" %}
+          <label class="exam-status-card is-in-session is-selected">
+            <input type="radio" name="status" value="IN_SESSION" checked required>
+            <span class="exam-status-card-icon" aria-hidden="true">IN</span>
+            <span class="exam-status-card-copy">
+              <strong>In session</strong>
+              <span>Start exams in classes.</span>
+            </span>
+            <span class="exam-status-card-indicator" aria-hidden="true"></span>
+          </label>
+          {% else %}
           <label class="exam-status-card is-in-session{% if exam.status == 'IN_SESSION' %} is-selected{% endif %}">
             <input type="radio" name="status" value="IN_SESSION" {% if exam.status == "IN_SESSION" %}checked{% endif %} required>
             <span class="exam-status-card-icon" aria-hidden="true">IN</span>
@@ -168,6 +183,7 @@
             </span>
             <span class="exam-status-card-indicator" aria-hidden="true"></span>
           </label>
+          {% endif %}
         </div>
       </div>
       <div class="app-modal-actions exam-manage-dialog-actions">

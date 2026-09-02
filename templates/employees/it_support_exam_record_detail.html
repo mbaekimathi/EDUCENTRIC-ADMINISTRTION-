@@ -70,6 +70,7 @@
         </div>
         {% endif %}
         <div class="exam-detail-actions">
+          {% include "employees/includes/exam_record_current_toggle.html" %}
           <button type="button" class="ghost-button" data-exam-edit>Edit marks</button>
           <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
           <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
@@ -235,6 +236,7 @@
       </p>
     </div>
     <div class="exam-detail-hero-aside">
+      {% include "employees/includes/exam_record_current_toggle.html" %}
       <div class="exam-detail-stats" aria-label="Quick stats">
         <div class="exam-detail-stat">
           <strong>{{ academic_levels|length }}</strong>

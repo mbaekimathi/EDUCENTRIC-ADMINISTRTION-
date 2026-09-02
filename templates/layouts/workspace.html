@@ -8,6 +8,8 @@
   data-employees-url="{% url 'employees:workspace_role_employees' %}"
   data-student-search-url="{% url 'employees:workspace_student_search' %}"
   data-dashboard-url="{% url 'employees:dashboard' %}"
+  data-role-dashboard-url="{% url 'employees:role_dashboard' role=workspace_role|lower %}"
+  data-own-workspace-roles="{{ own_workspace_role_values|join:',' }}"
 >
   <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="Main navigation">
     <div class="workspace-sidebar-top">
@@ -18,6 +20,17 @@
         </a>
       </div>
 
+      <button
+        type="button"
+        class="workspace-nav-link workspace-nav-action workspace-nav-back"
+        data-workspace-back-sidebar
+        hidden
+      >
+        <span class="workspace-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Back
+      </button>
       <a
         class="workspace-nav-link workspace-nav-dashboard {% if active_nav == 'dashboard' %}is-active{% endif %}"
         href="{% url 'employees:dashboard' %}"
@@ -156,6 +169,11 @@
                 >
                   View as
                 </button>
+                {% if can_choose_own_workspace_role %}
+                <a class="workspace-profile-item workspace-switch-link" role="menuitem" href="{% url 'employees:select_login_role' %}">
+                  Switch role
+                </a>
+                {% endif %}
                 <div class="workspace-profile-divider" aria-hidden="true"></div>
               {% elif can_choose_own_workspace_role %}
                 <a class="workspace-profile-item workspace-switch-link" role="menuitem" href="{% url 'employees:select_login_role' %}">
@@ -180,9 +198,12 @@
       {% if is_role_preview %}
         <div class="workspace-preview-banner">
           <p>
-            Viewing session as
+            View-only session as
             <strong>{{ workspace_view_employee.display_name }}</strong>
             in the {{ workspace_role_label }} workspace.
+            {% if can_choose_own_workspace_role %}
+            Open this role as yourself for full access.
+            {% endif %}
           </p>
           <button type="button" class="workspace-preview-change" data-role-switch-open>Change</button>
         </div>
@@ -259,19 +280,31 @@
           {% for value, label in workspace_role_choices %}
             <button
               type="button"
-              class="role-switch-option{% if value == workspace_role %} is-current{% endif %}"
+              class="role-switch-option{% if value == workspace_role %} is-current{% endif %}{% if value in own_workspace_role_values %} is-own-role{% endif %}"
               data-role-option
               data-role-value="{{ value }}"
               data-role-label="{{ label }}"
+              data-role-is-own="{% if value in own_workspace_role_values %}1{% else %}0{% endif %}"
             >
               <span class="role-switch-option-name">{{ label }}</span>
-              {% if value == workspace_role %}<span class="role-switch-option-meta">Current view</span>{% endif %}
+              {% if value == workspace_role %}
+              <span class="role-switch-option-meta">Current view</span>
+              {% elif value in own_workspace_role_values %}
+              <span class="role-switch-option-meta">Your role · full access</span>
+              {% endif %}
             </button>
           {% endfor %}
         </div>
       </div>
 
       <div class="role-switch-step" data-role-switch-step="employee" hidden>
+        <div class="role-switch-own-access" data-role-switch-own-access hidden>
+          <button type="button" class="role-switch-own-access-button" data-role-switch-enter-self>
+            <span class="role-switch-own-access-title">Open as yourself</span>
+            <span class="role-switch-own-access-copy">Full access with your assigned permissions.</span>
+          </button>
+          <p class="role-switch-own-access-divider">or view another employee</p>
+        </div>
         <div class="role-switch-list" data-employee-list role="listbox" aria-label="Employees"></div>
         <p class="role-switch-empty" data-employee-empty hidden>No approved employees are available for this role.</p>
       </div>
@@ -281,6 +314,7 @@
         <button type="button" class="ghost-button" data-role-switch-close>Cancel</button>
         <button type="button" class="primary-button" data-role-switch-next disabled>Continue</button>
         <button type="submit" class="primary-button" data-role-switch-submit hidden disabled>Enter session</button>
+        <button type="button" class="primary-button" data-role-switch-enter-self-submit hidden>Open as yourself</button>
       </div>
     </form>
   </div>
@@ -289,6 +323,6 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{% static 'js/workspace.js' %}?v=20260902header" defer></script>
+<script src="{% static 'js/workspace.js' %}?v=20260902multi-role" defer></script>
 {% block workspace_scripts %}{% endblock %}
 {% endblock %}

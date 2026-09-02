@@ -1,0 +1,8 @@
+{% if trend %}
+<div class="sys-perf-sparkline{% if large %} is-large{% endif %}{% if tone %} {{ tone }}{% endif %}" aria-hidden="true">
+  <svg viewBox="0 0 {{ trend.width }} {{ trend.height }}" preserveAspectRatio="none">
+    <polygon class="sys-perf-sparkline__area" points="{{ trend.area }}"></polygon>
+    <polyline class="sys-perf-sparkline__line" points="{{ trend.line }}" fill="none"></polyline>
+  </svg>
+</div>
+{% endif %}
