@@ -1,0 +1,16 @@
+{% if student_level_filters %}
+<section class="teacher-dash-actions student-level-page-filters" aria-label="Filter by academic level">
+  {% for level in student_level_filters %}
+  <a
+    class="teacher-dash-action{% if level.is_active %} is-active{% endif %}"
+    href="?level={{ level.value }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}"
+    aria-current="{% if level.is_active %}page{% else %}false{% endif %}"
+  >
+    <span class="teacher-dash-action-copy">
+      <strong>{{ level.label }}</strong>
+      <span>{{ level.count }} student{{ level.count|pluralize }}</span>
+    </span>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}

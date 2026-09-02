@@ -1045,6 +1045,7 @@ def _student_management_context(request):
         for value, label in Student.AcademicLevel.choices
         if level_counts.get(value)
     ]
+    search_query = (request.GET.get("q") or "").strip()
     return {
         "student_groups": student_groups,
         "student_count": stats["student_count"],
@@ -1053,6 +1054,8 @@ def _student_management_context(request):
         "selected_student_level": selected_level,
         "selected_student_level_label": level_labels.get(selected_level, ""),
         "student_level_filters": level_filters,
+        "level_student_count": len(students),
+        "search_query": search_query,
         "gender_choices": Student.Gender.choices,
         "academic_level_choices": Student.AcademicLevel.choices,
         "sponsorship_choices": Student.SponsorshipCategory.choices,
@@ -3947,6 +3950,8 @@ def workspace_student_search(request):
                     "assessment_number": student.assessment_number,
                     "class_group": student.class_group
                     or student.get_academic_level_display(),
+                    "academic_level": student.academic_level,
+                    "level_label": student.get_academic_level_display(),
                     "profile_url": reverse(
                         "employees:workspace_student_profile",
                         kwargs={"student_id": student.pk},

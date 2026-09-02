@@ -10660,6 +10660,10 @@ body.is-reordering-exam-subjects [data-marks-input] {
     display: none;
   }
 
+  .student-level-page-filters {
+    display: none;
+  }
+
   .workspace-nav-drawer-toggle {
     display: none;
   }
@@ -17615,6 +17619,561 @@ body.is-reordering-exam-subjects [data-marks-input] {
   .edit-employee-actions .primary-button {
     width: 100%;
     min-width: 0;
+  }
+}
+
+/* ---------- Edit student modal ---------- */
+.edit-student-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(44rem, calc(100vw - 1.5rem));
+  max-height: min(92dvh, 52rem);
+  height: auto;
+  overflow: hidden;
+  border: 1px solid #d7e3f4;
+  background: #fff;
+  box-shadow: 0 24px 60px #0b1b3640, 0 2px 8px #0b1b3612;
+}
+
+.edit-student-header {
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.05rem 1.25rem 0.9rem;
+  border-bottom: 1px solid #e4ecf6;
+  background: linear-gradient(180deg, #f8faff 0%, #fff 100%);
+}
+
+.edit-student-header-copy {
+  min-width: 0;
+}
+
+.edit-student-kicker {
+  margin: 0 0 0.18rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.edit-student-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.edit-student-header-note {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.edit-student-dialog .app-modal-close {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+.edit-student-dialog .app-modal-close:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.edit-student-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+}
+
+.edit-student-form-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.25rem 1.25rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d3ea transparent;
+}
+
+.edit-student-form-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.edit-student-form-body::-webkit-scrollbar-thumb {
+  background: #c5d3ea;
+  border-radius: 999px;
+}
+
+.edit-student-section {
+  padding: 0.95rem 0 0.15rem;
+  border-top: 1px solid #e8eef8;
+}
+
+.edit-student-section:first-child {
+  border-top: 0;
+  padding-top: 0.75rem;
+}
+
+.edit-student-section-head {
+  margin-bottom: 0.75rem;
+}
+
+.edit-student-section-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.edit-student-section-head p {
+  margin: 0.12rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.edit-student-form .field {
+  margin-bottom: 0.75rem;
+}
+
+.edit-student-form .field label {
+  margin-bottom: 0.3rem;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.edit-student-form input:not([type="checkbox"]):not([type="radio"]),
+.edit-student-form select,
+.edit-student-form textarea {
+  min-height: 2.5rem;
+  border-color: #d5e0ef;
+  background: #fbfdff;
+}
+
+.edit-student-form textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.edit-student-form input:not([type="checkbox"]):not([type="radio"]):hover,
+.edit-student-form select:hover,
+.edit-student-form textarea:hover {
+  border-color: #c2d0e6;
+}
+
+.edit-student-form input:not([type="checkbox"]):not([type="radio"]):focus,
+.edit-student-form select:focus,
+.edit-student-form textarea:focus {
+  border-color: var(--blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px #1f5cf01a;
+  outline: none;
+}
+
+.edit-student-photo-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  border: 1px solid #e4ecf6;
+  border-radius: var(--radius-md);
+  background: #f8faff;
+}
+
+.edit-student-photo-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 5.5rem;
+  height: 5.5rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid #d5e0ef;
+  border-radius: 50%;
+  color: #5b6d88;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.edit-student-photo-avatar:hover,
+.edit-student-photo-avatar:focus-visible {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px #1f5cf01a;
+  outline: none;
+}
+
+.edit-student-photo-avatar.has-photo::after {
+  content: "Change";
+  position: absolute;
+  inset: auto 0 0;
+  padding: 0.28rem 0.35rem;
+  color: #fff;
+  background: #0b1b3699;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.edit-student-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-student-photo-initials {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.edit-student-photo-meta {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.edit-student-photo-hint {
+  margin: 0 0 0.65rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.edit-student-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.edit-student-photo-upload {
+  margin: 0;
+  cursor: pointer;
+}
+
+.edit-student-photo-remove.ghost-button.is-danger {
+  color: #b42318;
+  border-color: #f2c6c2;
+  background: #fff5f5;
+}
+
+.edit-student-photo-remove.ghost-button.is-danger:hover {
+  color: #912018;
+  border-color: #e8a9a3;
+  background: #feeceb;
+}
+
+.edit-student-photo-filename {
+  margin: 0.55rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.edit-student-actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.9rem 1.25rem calc(0.9rem + env(safe-area-inset-bottom));
+  border-top: 1px solid #e8eef8;
+  background: #fff;
+}
+
+.edit-student-actions .primary-button,
+.edit-student-actions .ghost-button {
+  min-width: 8.5rem;
+}
+
+@media (max-width: 720px) {
+  .edit-student-dialog {
+    width: min(100%, calc(100vw - 1rem));
+    max-height: min(94dvh, 100%);
+  }
+
+  .edit-student-header,
+  .edit-student-form-body,
+  .edit-student-actions {
+    padding-left: 0.95rem;
+    padding-right: 0.95rem;
+  }
+
+  .edit-student-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-student-form .form-grid .span-two {
+    grid-column: span 1;
+  }
+
+  .edit-student-photo-card {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .edit-student-photo-avatar {
+    margin: 0 auto;
+  }
+
+  .edit-student-photo-actions {
+    justify-content: center;
+  }
+
+  .edit-student-actions {
+    flex-direction: column-reverse;
+  }
+
+  .edit-student-actions .ghost-button,
+  .edit-student-actions .primary-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ---------- Student register live search ---------- */
+.student-register-search {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.student-register-search-field {
+  position: relative;
+  display: block;
+}
+
+.student-register-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.95rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: #7a8ca8;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.student-register-search-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #d5e0ef;
+  border-radius: 0.85rem;
+  padding: 0.65rem 2.75rem 0.65rem 2.65rem;
+  background: #fbfdff;
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.student-register-search-field input:hover {
+  border-color: #c2d0e6;
+}
+
+.student-register-search-field input:focus {
+  border-color: var(--blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px #1f5cf01a;
+  outline: none;
+}
+
+.student-register-search-field input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.student-register-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: var(--muted);
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.student-register-search-clear:hover {
+  color: var(--ink);
+  background: #eef3fb;
+}
+
+.student-register-search-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.student-register-search-panel {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border: 1px solid #e4ecf6;
+  border-radius: 0.85rem;
+  background: #f8faff;
+}
+
+.student-register-search-panel-title {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.student-register-search-results {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.student-register-search-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid #e4ecf8;
+  border-radius: 0.8rem;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.student-register-search-option:hover,
+.student-register-search-option:focus-visible {
+  border-color: #bfd0f5;
+  background: #f3f7ff;
+  outline: none;
+}
+
+.student-register-search-avatar {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #3b78f7, #1d4fcc);
+  color: #fff;
+  font: 800 0.82rem var(--display);
+}
+
+.student-register-search-option-copy {
+  min-width: 0;
+}
+
+.student-register-search-option-name {
+  display: block;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.student-register-search-option-meta {
+  display: block;
+  margin-top: 0.08rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.student-register-search-empty {
+  margin: 0.5rem 0 0;
+  padding: 0.95rem 1rem;
+  border: 1px dashed #d5e0f2;
+  border-radius: 0.85rem;
+  color: var(--muted);
+  background: #f8fbff;
+  font-size: 0.86rem;
+  text-align: center;
+}
+
+.student-class-table tr.is-search-highlight {
+  background: #eef4ff;
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.student-level-sidebar-link {
+  align-items: flex-start;
+}
+
+.student-level-sidebar-copy {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.student-level-sidebar-copy strong {
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.student-level-sidebar-copy span {
+  color: #b7d0ff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.student-level-sidebar-link.is-active .student-level-sidebar-copy span {
+  color: #e7efff;
+}
+
+.student-level-page-filters .teacher-dash-action-copy span {
+  display: block;
+}
+
+@media (max-width: 1100px) {
+  .student-level-page-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .student-level-page-filters .teacher-dash-action {
+    min-height: 3.6rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .student-level-page-filters .teacher-dash-action-copy strong {
+    font-size: 0.84rem;
+  }
+
+  .student-level-page-filters .teacher-dash-action-copy span {
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+}
+
+@media (max-width: 720px) {
+  .student-register-search-field input {
+    min-height: 2.65rem;
+    font-size: 0.95rem;
   }
 }
 .field-hint {

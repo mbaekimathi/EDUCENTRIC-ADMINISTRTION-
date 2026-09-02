@@ -1,0 +1,16 @@
+{% if student_level_filters %}
+<p class="workspace-nav-label">Grades</p>
+{% for level in student_level_filters %}
+<a
+  class="workspace-nav-link student-level-sidebar-link{% if level.is_active %} is-active{% endif %}"
+  href="?level={{ level.value }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}"
+  {% if level.is_active %}aria-current="page"{% endif %}
+>
+  <span class="student-level-sidebar-copy">
+    <strong>{{ level.label }}</strong>
+    <span>{{ level.count }} student{{ level.count|pluralize }}</span>
+  </span>
+  <span class="workspace-nav-badge">{{ level.count }}</span>
+</a>
+{% endfor %}
+{% endif %}

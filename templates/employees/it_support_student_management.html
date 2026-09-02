@@ -5,12 +5,11 @@
 {% block header_title %}{{ module.title }}{% endblock %}
 
 {% block sidebar_modules %}
-{% include "employees/includes/it_support_sidebar.html" %}
+{% include "employees/includes/student_management_sidebar.html" %}
 {% endblock %}
 
 {% block workspace_content %}
 
-{% include "employees/includes/nav/it_support.html" %}
 <div class="exam-tool-page">
 <div class="teacher-page-bar" aria-label="Student management overview">
   <div class="teacher-page-bar-stats">
@@ -32,25 +31,40 @@
   </div>
 </div>
 
-{% if student_level_filters %}
-<section class="teacher-dash-actions is-nav-links" aria-label="Filter by academic level">
-  {% for level in student_level_filters %}
-  <a
-    class="teacher-dash-action{% if level.is_active %} is-active{% endif %}"
-    href="?level={{ level.value }}"
-    aria-current="{% if level.is_active %}page{% else %}false{% endif %}"
-  >
-    <span class="teacher-dash-action-copy">
-      <strong>{{ level.label }}</strong>
-      <span>{{ level.count }} student{{ level.count|pluralize }}</span>
-    </span>
-  </a>
-  {% endfor %}
-</section>
-{% endif %}
+<div
+  class="student-register-search"
+  data-student-register-search
+  data-student-search-url="{% url 'employees:workspace_student_search' %}"
+  data-selected-level="{{ selected_student_level }}"
+>
+  <label class="student-register-search-field" for="student-register-search-input">
+    <svg class="student-register-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <input
+      id="student-register-search-input"
+      type="search"
+      placeholder="Search by name, admission, assessment, parent, or phone…"
+      autocomplete="off"
+      spellcheck="false"
+      {% if search_query %}value="{{ search_query }}"{% endif %}
+      data-student-register-search-input
+    >
+    <button type="button" class="student-register-search-clear" data-student-register-search-clear {% if not search_query %}hidden{% endif %} aria-label="Clear search">×</button>
+  </label>
+  <p class="student-register-search-status" data-student-register-search-status aria-live="polite">
+    {% if level_student_count %}
+    Showing all {{ level_student_count }} student{{ level_student_count|pluralize }} in {{ selected_student_level_label|default:"this level" }}
+    {% endif %}
+  </p>
+  <div class="student-register-search-panel" data-student-register-search-panel hidden>
+    <p class="student-register-search-panel-title" data-student-register-search-panel-title>Found in other grades</p>
+    <div class="student-register-search-results" data-student-register-search-results role="listbox" aria-label="Students in other grades"></div>
+  </div>
+</div>
+
+{% include "employees/includes/nav/student_management_levels.html" %}
 
 {% if student_groups %}
-<div class="student-directory">
+<div class="student-directory" data-student-directory>
   {% for level in student_groups %}
   <section class="student-level-block">
     <header class="student-level-header">
@@ -94,7 +108,12 @@
             </thead>
             <tbody>
               {% for student in group.students %}
-              <tr>
+              <tr
+                id="student-{{ student.id }}"
+                data-student-row
+                data-student-id="{{ student.id }}"
+                data-search="{{ student.display_name }} {{ student.admission_number }} {{ student.assessment_number }} {{ student.parent_guardian.full_name }} {{ student.parent_guardian.phone_number }} {{ student.class_group }}"
+              >
                 <td data-label="Student">
                   <div class="student-name-cell">
                     {% if student.profile_image %}
@@ -178,6 +197,7 @@
   </section>
   {% endfor %}
 </div>
+<p class="student-register-search-empty" data-student-register-search-empty hidden>No students match your search in this grade.</p>
 {% else %}
 <p class="settings-empty">No students are registered yet.</p>
 {% endif %}
@@ -185,119 +205,175 @@
 
 <div class="app-modal" id="edit-student-modal" data-edit-student-modal hidden>
   <div class="app-modal-backdrop" data-edit-student-close></div>
-  <div class="app-modal-dialog app-modal-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="edit-student-title">
-    <div class="app-modal-header">
-      <h2 id="edit-student-title">Edit student</h2>
+  <div class="app-modal-dialog app-modal-dialog-wide edit-student-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-student-title">
+    <div class="app-modal-header edit-student-header">
+      <div class="edit-student-header-copy">
+        <p class="edit-student-kicker">Student management</p>
+        <h2 id="edit-student-title">Edit student</h2>
+        <p class="edit-student-header-note">Update enrolment, parent contact, and student records.</p>
+      </div>
       <button type="button" class="app-modal-close" data-edit-student-close aria-label="Close">×</button>
     </div>
-    <form method="post" class="app-modal-form" enctype="multipart/form-data" data-edit-student-form>
+    <form method="post" class="app-modal-form edit-student-form" enctype="multipart/form-data" data-edit-student-form>
       {% csrf_token %}
-      <div class="form-grid">
-        <div class="field span-two student-photo-field">
-          <label for="edit-student-photo">Profile photo</label>
-          <div class="student-photo-edit">
-            <img class="student-photo-preview" data-edit-student-photo-preview hidden alt="">
-            <span class="student-photo-placeholder" data-edit-student-photo-placeholder aria-hidden="true">Photo</span>
-            <div class="student-photo-controls">
-              <input id="edit-student-photo" type="file" name="profile_image" accept="image/*">
-              <label class="student-photo-clear" data-edit-student-clear-wrap hidden>
-                <input type="checkbox" name="clear_profile_image" value="1" data-edit-student-clear-photo>
-                Remove current photo
-              </label>
-              <small class="hint">Optional. Leave empty to keep the current photo.</small>
+      <div class="edit-student-form-body">
+        <section class="edit-student-section" aria-labelledby="edit-student-photo-heading">
+          <div class="edit-student-section-head">
+            <h3 id="edit-student-photo-heading">Profile photo</h3>
+            <p>Optional portrait for the student register</p>
+          </div>
+          <div class="edit-student-photo-card">
+            <button type="button" class="edit-student-photo-avatar" data-edit-student-photo-trigger aria-label="Choose profile photo">
+              <img class="edit-student-photo-preview" data-edit-student-photo-preview hidden alt="">
+              <span class="edit-student-photo-initials" data-edit-student-photo-initials aria-hidden="true">--</span>
+            </button>
+            <div class="edit-student-photo-meta">
+              <p class="edit-student-photo-hint">JPG or PNG recommended. Leave unchanged to keep the current photo.</p>
+              <div class="edit-student-photo-actions">
+                <label class="ghost-button edit-student-photo-upload" for="edit-student-photo">Choose photo</label>
+                <button type="button" class="ghost-button is-danger edit-student-photo-remove" data-edit-student-remove-photo hidden>Remove photo</button>
+              </div>
+              <p class="edit-student-photo-filename" data-edit-student-photo-filename hidden></p>
+              <input id="edit-student-photo" type="file" name="profile_image" accept="image/*" hidden>
+              <input type="checkbox" name="clear_profile_image" value="1" data-edit-student-clear-photo hidden>
             </div>
           </div>
-        </div>
-        <div class="field">
-          <label for="edit-student-first-name">First name <span class="required">*</span></label>
-          <input id="edit-student-first-name" class="uppercase-input" name="first_name" required>
-        </div>
-        <div class="field">
-          <label for="edit-student-last-name">Last name <span class="required">*</span></label>
-          <input id="edit-student-last-name" class="uppercase-input" name="last_name" required>
-        </div>
-        <div class="field">
-          <label for="edit-student-dob">Date of birth <span class="required">*</span></label>
-          <input id="edit-student-dob" type="date" name="date_of_birth" required>
-        </div>
-        <div class="field">
-          <label for="edit-student-gender">Gender <span class="required">*</span></label>
-          <select id="edit-student-gender" class="uppercase-input" name="gender" required>
-            {% for value, label in gender_choices %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field">
-          <label for="edit-student-level">Class / level <span class="required">*</span></label>
-          <select id="edit-student-level" class="uppercase-input" name="academic_level" required>
-            {% for value, label in academic_level_choices %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field">
-          <label for="edit-student-class-group">Class stream</label>
-          <input id="edit-student-class-group" class="uppercase-input" name="class_group" maxlength="50">
-        </div>
-        <div class="field">
-          <label for="edit-student-admission">Admission number</label>
-          <input id="edit-student-admission" class="uppercase-input" name="admission_number" maxlength="40">
-        </div>
-        <div class="field">
-          <label for="edit-student-assessment">Assessment number <span class="required">*</span></label>
-          <input id="edit-student-assessment" class="uppercase-input" name="assessment_number" required maxlength="50">
-        </div>
-        <div class="field">
-          <label for="edit-student-sponsorship">Sponsorship <span class="required">*</span></label>
-          <select id="edit-student-sponsorship" class="uppercase-input" name="sponsorship_category" required>
-            {% for value, label in sponsorship_choices %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field span-two" data-sponsor-details-field>
-          <label for="edit-student-sponsor">Sponsor details</label>
-          <textarea id="edit-student-sponsor" name="sponsor_details" rows="2"></textarea>
-        </div>
-        <div class="field span-two">
-          <label for="edit-student-previous-school">Previous school</label>
-          <input id="edit-student-previous-school" class="uppercase-input" name="previous_school" maxlength="200">
-        </div>
-        <div class="field">
-          <label for="edit-student-parent-name">Parent / guardian name <span class="required">*</span></label>
-          <input id="edit-student-parent-name" class="uppercase-input" name="parent_guardian_name" required>
-        </div>
-        <div class="field">
-          <label for="edit-student-relationship">Relationship <span class="required">*</span></label>
-          <input id="edit-student-relationship" class="uppercase-input" name="relationship_to_student" required>
-        </div>
-        <div class="field">
-          <label for="edit-student-parent-phone">Phone <span class="required">*</span></label>
-          <input id="edit-student-parent-phone" name="parent_phone" required>
-        </div>
-        <div class="field">
-          <label for="edit-student-parent-email">Email</label>
-          <input id="edit-student-parent-email" type="email" name="parent_email">
-        </div>
-        <div class="field span-two">
-          <label for="edit-student-address">Home address</label>
-          <textarea id="edit-student-address" name="home_address" rows="2"></textarea>
-        </div>
-        <div class="field span-two">
-          <label for="edit-student-medical">Medical notes</label>
-          <textarea id="edit-student-medical" name="medical_notes" rows="2"></textarea>
-        </div>
-        <div class="field span-two">
-          <label for="edit-student-needs">Special needs</label>
-          <textarea id="edit-student-needs" name="special_needs" rows="2"></textarea>
-        </div>
-        <div class="field span-two">
-          <label for="edit-student-emergency">Emergency contact</label>
-          <input id="edit-student-emergency" name="emergency_contact" maxlength="200">
-        </div>
+        </section>
+
+        <section class="edit-student-section" aria-labelledby="edit-student-personal-heading">
+          <div class="edit-student-section-head">
+            <h3 id="edit-student-personal-heading">Personal details</h3>
+            <p>Legal name and identity</p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="edit-student-first-name">First name <span class="required">*</span></label>
+              <input id="edit-student-first-name" class="uppercase-input" name="first_name" required>
+            </div>
+            <div class="field">
+              <label for="edit-student-last-name">Last name <span class="required">*</span></label>
+              <input id="edit-student-last-name" class="uppercase-input" name="last_name" required>
+            </div>
+            <div class="field">
+              <label for="edit-student-dob">Date of birth <span class="required">*</span></label>
+              <input id="edit-student-dob" type="date" name="date_of_birth" required>
+            </div>
+            <div class="field">
+              <label for="edit-student-gender">Gender <span class="required">*</span></label>
+              <select id="edit-student-gender" class="uppercase-input" name="gender" required>
+                {% for value, label in gender_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="edit-student-section" aria-labelledby="edit-student-enrolment-heading">
+          <div class="edit-student-section-head">
+            <h3 id="edit-student-enrolment-heading">Enrolment</h3>
+            <p>Class placement and school identifiers</p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="edit-student-level">Class / level <span class="required">*</span></label>
+              <select id="edit-student-level" class="uppercase-input" name="academic_level" required>
+                {% for value, label in academic_level_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="edit-student-class-group">Class stream</label>
+              <input id="edit-student-class-group" class="uppercase-input" name="class_group" maxlength="50">
+            </div>
+            <div class="field">
+              <label for="edit-student-admission">Admission number</label>
+              <input id="edit-student-admission" class="uppercase-input" name="admission_number" maxlength="40">
+            </div>
+            <div class="field">
+              <label for="edit-student-assessment">Assessment number <span class="required">*</span></label>
+              <input id="edit-student-assessment" class="uppercase-input" name="assessment_number" required maxlength="50">
+            </div>
+            <div class="field span-two">
+              <label for="edit-student-previous-school">Previous school</label>
+              <input id="edit-student-previous-school" class="uppercase-input" name="previous_school" maxlength="200">
+            </div>
+          </div>
+        </section>
+
+        <section class="edit-student-section" aria-labelledby="edit-student-sponsorship-heading">
+          <div class="edit-student-section-head">
+            <h3 id="edit-student-sponsorship-heading">Sponsorship</h3>
+            <p>Funding category and sponsor information</p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="edit-student-sponsorship">Sponsorship <span class="required">*</span></label>
+              <select id="edit-student-sponsorship" class="uppercase-input" name="sponsorship_category" required>
+                {% for value, label in sponsorship_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field span-two" data-sponsor-details-field>
+              <label for="edit-student-sponsor">Sponsor details</label>
+              <textarea id="edit-student-sponsor" name="sponsor_details" rows="2"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="edit-student-section" aria-labelledby="edit-student-parent-heading">
+          <div class="edit-student-section-head">
+            <h3 id="edit-student-parent-heading">Parent / guardian</h3>
+            <p>Primary contact for this student</p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="edit-student-parent-name">Parent / guardian name <span class="required">*</span></label>
+              <input id="edit-student-parent-name" class="uppercase-input" name="parent_guardian_name" required>
+            </div>
+            <div class="field">
+              <label for="edit-student-relationship">Relationship <span class="required">*</span></label>
+              <input id="edit-student-relationship" class="uppercase-input" name="relationship_to_student" required>
+            </div>
+            <div class="field">
+              <label for="edit-student-parent-phone">Phone <span class="required">*</span></label>
+              <input id="edit-student-parent-phone" name="parent_phone" required>
+            </div>
+            <div class="field">
+              <label for="edit-student-parent-email">Email</label>
+              <input id="edit-student-parent-email" type="email" name="parent_email">
+            </div>
+            <div class="field span-two">
+              <label for="edit-student-address">Home address</label>
+              <textarea id="edit-student-address" name="home_address" rows="2"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="edit-student-section" aria-labelledby="edit-student-health-heading">
+          <div class="edit-student-section-head">
+            <h3 id="edit-student-health-heading">Health and support</h3>
+            <p>Medical notes, special needs, and emergency contact</p>
+          </div>
+          <div class="form-grid">
+            <div class="field span-two">
+              <label for="edit-student-medical">Medical notes</label>
+              <textarea id="edit-student-medical" name="medical_notes" rows="2"></textarea>
+            </div>
+            <div class="field span-two">
+              <label for="edit-student-needs">Special needs</label>
+              <textarea id="edit-student-needs" name="special_needs" rows="2"></textarea>
+            </div>
+            <div class="field span-two">
+              <label for="edit-student-emergency">Emergency contact</label>
+              <input id="edit-student-emergency" name="emergency_contact" maxlength="200">
+            </div>
+          </div>
+        </section>
       </div>
-      <div class="app-modal-actions">
+      <div class="app-modal-actions edit-student-actions">
         <button type="button" class="ghost-button" data-edit-student-close>Cancel</button>
         <button type="submit" class="primary-button">Save changes</button>
       </div>
@@ -307,5 +383,5 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/student-management.js' %}?v=20260902level-filter" defer></script>
+<script src="{% static 'js/student-management.js' %}?v=20260902live-search" defer></script>
 {% endblock %}
