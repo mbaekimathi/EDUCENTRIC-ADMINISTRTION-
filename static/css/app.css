@@ -1190,18 +1190,31 @@ button.workspace-nav-action.workspace-nav-action-danger:hover {
   place-items: center;
   width: 2.5rem;
   height: 2.5rem;
+  flex: 0 0 auto;
+  overflow: hidden;
   border-radius: 0.8rem;
   background: #eef4ff;
   color: #2f6af7;
 }
 .sys-perf-kpi__icon svg {
+  display: block;
   width: 1.2rem;
   height: 1.2rem;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.sys-perf-kpi__icon svg ellipse,
+.sys-perf-kpi__icon svg circle,
+.sys-perf-kpi__icon svg rect,
+.sys-perf-kpi__icon svg path {
+  fill: none;
+  stroke: inherit;
 }
 .sys-perf-kpi--cache .sys-perf-kpi__icon { background: #ecfdf3; color: #027a48; }
 .sys-perf-kpi--disk .sys-perf-kpi__icon { background: #fff7ed; color: #c4320a; }

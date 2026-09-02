@@ -50,11 +50,12 @@
   }
 
   function buildKpiCard(type, label, valueHtml, meterHtml, metaHtml) {
+    const iconAttrs = 'viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
     const icons = {
-      db: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
-      cache: '<svg viewBox="0 0 24 24"><path d="M13 2 3 7v10l10 5 10-5V7L13 2z"/><path d="m3 7 10 5 10-5M13 12v10"/></svg>',
-      disk: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12h8M8 16h5"/></svg>',
-      users: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 20a5 5 0 0 1 8 0"/></svg>',
+      db: `<svg ${iconAttrs}><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>`,
+      cache: `<svg ${iconAttrs}><path d="M13 2 3 7v10l10 5 10-5V7L13 2z"/><path d="m3 7 10 5 10-5M13 12v10"/></svg>`,
+      disk: `<svg ${iconAttrs}><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12h8M8 16h5"/></svg>`,
+      users: `<svg ${iconAttrs}><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 20a5 5 0 0 1 8 0"/></svg>`,
     };
     return `
       <article class="sys-perf-kpi sys-perf-kpi--${type}">
