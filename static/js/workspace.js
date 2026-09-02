@@ -43,12 +43,15 @@
     return window.matchMedia("(max-width: 1100px)").matches;
   }
 
-  function isDashboardPath() {
+  function isWorkspaceRootPath() {
+    const path = window.location.pathname.replace(/\/$/, "") || "/";
     try {
-      return window.location.pathname === new URL(dashboardUrl, window.location.origin).pathname;
+      const dashboardPath = new URL(dashboardUrl, window.location.origin).pathname.replace(/\/$/, "") || "/";
+      if (path === dashboardPath) return true;
     } catch (error) {
-      return /\/dashboard\/?$/.test(window.location.pathname);
+      if (/\/dashboard\/?$/.test(window.location.pathname)) return true;
     }
+    return /^\/workspace\/[^/]+$/.test(path);
   }
 
   function syncProfileMenuPosition() {
@@ -75,7 +78,7 @@
     }
     const previous = previousNavTarget(stack, current);
     let canGoBack = Boolean(previous && previous !== current);
-    if (!canGoBack && isMobileHeader() && !isDashboardPath()) {
+    if (!canGoBack && isMobileHeader() && !isWorkspaceRootPath()) {
       canGoBack = true;
     }
     backBtn.hidden = !canGoBack;
@@ -94,6 +97,22 @@
 
   syncWorkspaceBack();
   if (backBtn) backBtn.addEventListener("click", goWorkspaceBack);
+
+  const workspaceContent = root.querySelector(".workspace-content");
+  const workspaceHeader = root.querySelector(".workspace-header");
+
+  function syncHeaderScrollState() {
+    if (!workspaceHeader || !workspaceContent) return;
+    workspaceHeader.classList.toggle("is-scrolled", workspaceContent.scrollTop > 4);
+  }
+
+  workspaceContent?.addEventListener("scroll", () => {
+    syncHeaderScrollState();
+    if (profile && profile.classList.contains("is-open")) {
+      syncProfileMenuPosition();
+    }
+  }, { passive: true });
+  syncHeaderScrollState();
 
   document.querySelectorAll("[data-nav-drawer]").forEach(function (drawer) {
     const drawerToggle = drawer.querySelector("[data-nav-drawer-toggle]");

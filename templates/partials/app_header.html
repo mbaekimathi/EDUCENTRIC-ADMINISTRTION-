@@ -6,8 +6,13 @@
     </a>
     <div class="app-header-actions">
       {% if nav_href %}<a class="text-link header-nav" href="{{ nav_href }}">{{ nav_label }}</a>{% endif %}
-      {% if user_label %}<span class="user-chip" title="{{ user_label }}">{{ user_label }}</span>{% endif %}
-      {% if action_href %}<a class="ghost-button" href="{{ action_href }}">{{ action_label }}</a>{% endif %}
+      {% if user_label %}
+        <span class="app-header-user" title="{{ user_label }}">
+          <span class="app-header-avatar" aria-hidden="true">{{ user_label|slice:":1"|upper }}</span>
+          <span class="app-header-user-name">{{ user_label }}</span>
+        </span>
+      {% endif %}
+      {% if action_href %}<a class="ghost-button app-header-action" href="{{ action_href }}">{{ action_label }}</a>{% endif %}
     </div>
   </div>
 </header>

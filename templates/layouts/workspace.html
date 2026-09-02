@@ -45,7 +45,7 @@
       {% endblock %}
     </nav>
 
-        <div class="workspace-sidebar-foot">
+    <div class="workspace-sidebar-foot">
       {% if request.user.is_authenticated %}
         <div class="workspace-role-chip">
           <span class="workspace-role-dot" aria-hidden="true"></span>
@@ -103,6 +103,17 @@
         </div>
 
         <div class="workspace-header-right">
+          <button
+            type="button"
+            class="workspace-header-action"
+            data-student-search-open
+            aria-label="Search for student"
+            title="Search for student"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zm8.5 1.5-4.2-4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
           <div class="workspace-profile" data-profile-menu>
             <button
               type="button"
@@ -152,6 +163,14 @@
                 </a>
                 <div class="workspace-profile-divider" aria-hidden="true"></div>
               {% endif %}
+              <a
+                class="workspace-profile-item"
+                role="menuitem"
+                href="{% if uses_profile_settings %}{% url 'employees:profile_settings' %}{% else %}{% url 'employees:system_settings' %}{% endif %}"
+              >
+                {% if uses_profile_settings %}Profile settings{% else %}System settings{% endif %}
+              </a>
+              <div class="workspace-profile-divider" aria-hidden="true"></div>
               <a class="workspace-profile-item workspace-profile-signout" role="menuitem" href="{% url 'employees:logout' %}">Sign out</a>
             </div>
           </div>
@@ -270,6 +289,6 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{% static 'js/workspace.js' %}?v=20260902profile-click" defer></script>
+<script src="{% static 'js/workspace.js' %}?v=20260902header" defer></script>
 {% block workspace_scripts %}{% endblock %}
 {% endblock %}
