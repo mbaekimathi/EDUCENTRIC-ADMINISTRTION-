@@ -69,6 +69,31 @@ class AdmissionsTests(TestCase):
         self.assertFalse(admitted.parent_guardian.is_active)
         self.assertEqual(admitted.emergency_contact, "+254700000003")
 
+    def test_employee_can_admit_student_without_assessment_number(self):
+        self.client.force_login(self.employee)
+        response = self.client.post(
+            reverse("admissions:admit_student"),
+            {
+                "first_name": "Amina",
+                "last_name": "Hassan",
+                "date_of_birth": "2017-08-20",
+                "gender": "FEMALE",
+                "academic_level": "GRADE_2",
+                "assessment_number": "",
+                "previous_school": "",
+                "sponsorship_category": "SELF",
+                "sponsor_details": "",
+                "parent_guardian_name": "Hassan Ali",
+                "relationship_to_student": "Father",
+                "parent_phone": "+254700000004",
+                "parent_email": "",
+                "home_address": "",
+            },
+        )
+        self.assertRedirects(response, reverse("admissions:admit_student"))
+        admitted = Student.objects.get(first_name="AMINA", last_name="HASSAN")
+        self.assertIsNone(admitted.assessment_number)
+
     def test_student_can_access_student_portal(self):
         response = self.client.post(
             reverse("admissions:portal_login"),

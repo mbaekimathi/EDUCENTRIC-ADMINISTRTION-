@@ -1,4 +1,5 @@
 {% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}{{ page.title }} | Edu-Centric{% endblock %}
 {% block header_eyebrow %}My class{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
@@ -10,7 +11,7 @@
 {% block workspace_content %}
 
 {% include "employees/includes/nav/teacher_my_class_attendance.html" %}
-<div class="sa-hub-page class-attendance-page">
+<div class="sa-hub-page class-attendance-page" data-student-sortable>
   <div class="teacher-page-bar" aria-label="Attendance summary">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
@@ -39,6 +40,7 @@
       <p class="subtle">Showing attendance for this single day only. Choose another date from the calendar to switch days.</p>
     </div>
     <div class="class-attendance-day-controls">
+      {% include "employees/includes/student_sort_toggle.html" %}
       {% if led_classes|length > 1 %}
       <label class="attendance-control">
         <span>Class</span>
@@ -74,6 +76,11 @@
     {% csrf_token %}
     <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-attendance-class-id>
     <input type="hidden" name="attendance_date" value="{{ attendance_date|date:'Y-m-d' }}" data-attendance-date-value>
+    {% if student_sort_is_admission %}
+    <input type="hidden" name="sort" value="admission" data-student-sort-field>
+    {% else %}
+    <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
+    {% endif %}
 
     <label class="attendance-control is-wide attendance-notes-control">
       <span>Notes for {{ attendance_date|date:"j M Y" }}</span>
@@ -100,12 +107,16 @@
             <th class="attendance-check-col">Evening</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody data-student-sort-body>
           {% for student in students %}
-          <tr>
+          <tr
+            data-student-row
+            data-sort-name="{{ student.first_name }} {{ student.last_name }}"
+            data-sort-admission="{{ student.admission_number }}"
+          >
             <td data-label="Student">
               <strong class="is-uppercase exam-student-name">
-                <span class="sa-student-index" aria-hidden="true">{{ forloop.counter }}.</span>
+                <span class="sa-student-index" data-student-index aria-hidden="true">{{ forloop.counter }}.</span>
                 <span class="exam-student-first">{{ student.first_name }}</span>
                 <span class="exam-student-last">{{ student.last_name }}</span>
               </strong>
@@ -153,6 +164,7 @@
 {% endblock %}
 
 {% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 <script>
 (function () {
   const root = document.querySelector(".class-attendance-page");

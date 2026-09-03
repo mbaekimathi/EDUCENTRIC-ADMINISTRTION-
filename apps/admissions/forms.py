@@ -26,7 +26,8 @@ class StudentAdmissionForm(forms.Form):
     )
     assessment_number = forms.CharField(
         max_length=50,
-        widget=forms.TextInput(attrs={"placeholder": "Unique assessment number"}),
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Optional"}),
     )
     previous_school = forms.CharField(
         max_length=200,
@@ -94,7 +95,9 @@ class StudentAdmissionForm(forms.Form):
         self.fields["parent_phone"].widget.attrs["autocomplete"] = "tel"
 
     def clean_assessment_number(self):
-        number = uppercase_value(self.cleaned_data["assessment_number"])
+        number = uppercase_value(self.cleaned_data.get("assessment_number", ""))
+        if not number:
+            return None
         if Student.objects.filter(assessment_number=number).exists():
             raise forms.ValidationError("A student already uses this assessment number.")
         return number
@@ -140,7 +143,7 @@ class StudentAdmissionForm(forms.Form):
             date_of_birth=data["date_of_birth"],
             gender=data["gender"],
             academic_level=data["academic_level"],
-            assessment_number=data["assessment_number"],
+            assessment_number=data.get("assessment_number") or None,
             previous_school=uppercase_value(data["previous_school"]),
             profile_image=data.get("profile_image"),
             sponsorship_category=data["sponsorship_category"],
@@ -171,7 +174,9 @@ class StudentWorkspaceForm(StudentAdmissionForm):
         super().__init__(*args, **kwargs)
 
     def clean_assessment_number(self):
-        number = uppercase_value(self.cleaned_data["assessment_number"])
+        number = uppercase_value(self.cleaned_data.get("assessment_number", ""))
+        if not number:
+            return None
         existing = Student.objects.filter(assessment_number=number)
         if self.student is not None:
             existing = existing.exclude(pk=self.student.pk)
@@ -215,7 +220,7 @@ class StudentWorkspaceForm(StudentAdmissionForm):
         self.student.academic_level = data["academic_level"]
         self.student.admission_number = data.get("admission_number") or None
         self.student.class_group = uppercase_value(data.get("class_group", ""))
-        self.student.assessment_number = data["assessment_number"]
+        self.student.assessment_number = data.get("assessment_number") or None
         self.student.previous_school = uppercase_value(data["previous_school"])
         self.student.sponsorship_category = data["sponsorship_category"]
         self.student.sponsor_details = uppercase_value(data["sponsor_details"])

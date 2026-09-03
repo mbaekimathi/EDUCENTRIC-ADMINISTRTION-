@@ -27,6 +27,7 @@
     </div>
   </div>
   <div class="teacher-page-bar-actions">
+    {% include "employees/includes/student_sort_toggle.html" %}
     <a class="primary-button" href="{% url 'admissions:admit_student' %}">Admit student</a>
   </div>
 </div>
@@ -64,7 +65,7 @@
 {% include "employees/includes/nav/student_management_levels.html" %}
 
 {% if student_groups %}
-<div class="student-directory" data-student-directory>
+<div class="student-directory" data-student-directory data-student-sortable>
   {% for level in student_groups %}
   <section class="student-level-block">
     <header class="student-level-header">
@@ -106,12 +107,14 @@
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-student-sort-body>
               {% for student in group.students %}
               <tr
                 id="student-{{ student.id }}"
                 data-student-row
                 data-student-id="{{ student.id }}"
+                data-sort-name="{{ student.first_name }} {{ student.last_name }}"
+                data-sort-admission="{{ student.admission_number }}"
                 data-search="{{ student.display_name }} {{ student.admission_number }} {{ student.assessment_number }} {{ student.parent_guardian.full_name }} {{ student.parent_guardian.phone_number }} {{ student.class_group }}"
               >
                 <td data-label="Student">
@@ -384,4 +387,5 @@
 
 {% block workspace_scripts %}
 <script src="{% static 'js/student-management.js' %}?v=20260902live-search" defer></script>
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% endblock %}

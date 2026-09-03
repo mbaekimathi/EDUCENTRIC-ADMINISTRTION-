@@ -1,4 +1,5 @@
 {% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}Employee management | Edu-Centric{% endblock %}
 {% block header_eyebrow %}Human resource management{% endblock %}
 {% block header_title %}Employee management{% endblock %}
@@ -46,6 +47,9 @@
         <span>Suspended</span>
       </div>
     </div>
+    <div class="teacher-page-bar-actions">
+      {% include "employees/includes/student_sort_toggle.html" with sort_code_label="Employee code" %}
+    </div>
   </div>
 
   {% if employees %}
@@ -57,7 +61,7 @@
     </label>
   </div>
 
-  <div class="employee-directory" data-employee-directory>
+  <div class="employee-directory" data-employee-directory data-student-sortable>
     <article class="employee-role-card">
       <div class="employee-table-wrap">
         <table class="employee-table">
@@ -81,10 +85,13 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-student-sort-body>
             {% for employee in employees %}
             <tr
               data-employee-row
+              data-student-row
+              data-sort-name="{{ employee.first_name }} {{ employee.last_name }}"
+              data-sort-code="{{ employee.employment_number }}"
               data-search="{{ employee.display_name }} {{ employee.employee_code }} {{ employee.employment_number }} {{ employee.email }} {{ employee.phone_number }} {% for value in employee.role_values %}{% for choice_value, choice_label in role_choices %}{% if choice_value == value %}{{ choice_label }} {% endif %}{% endfor %}{% endfor %}"
             >
               <td data-label="Employee">
@@ -322,6 +329,7 @@
 {% endblock %}
 
 {% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 <script>
 (function () {
   const modal = document.querySelector("[data-edit-employee-modal]");

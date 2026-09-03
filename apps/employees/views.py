@@ -996,6 +996,92 @@ def group_employees_by_role(employees):
 
 CLASS_STREAM_RE = re.compile(r"^(\d+)\s*([A-Za-z]+)$")
 
+STUDENT_SORT_NAME = "name"
+STUDENT_SORT_ADMISSION = "admission"
+STUDENT_SORT_CHOICES = {STUDENT_SORT_NAME, STUDENT_SORT_ADMISSION}
+
+
+def _resolve_student_sort(request):
+    raw = (request.GET.get("sort") or request.POST.get("sort") or "").strip().lower()
+    if raw in {"admission", "adm", "admission_number", "admission-no", "admission_no"}:
+        return STUDENT_SORT_ADMISSION
+    return STUDENT_SORT_NAME
+
+
+def _student_sort_order_by(sort_mode, *, include_class_group=False):
+    if sort_mode == STUDENT_SORT_ADMISSION:
+        fields = ("admission_number", "first_name", "last_name")
+    else:
+        fields = ("first_name", "last_name", "admission_number")
+    if include_class_group:
+        return ("class_group", *fields)
+    return fields
+
+
+def _student_admission_sort_key(student):
+    admission = (student.admission_number or "").strip()
+    match = re.match(r"^(\D*?)(\d+)(.*)$", admission, flags=re.IGNORECASE)
+    if match:
+        prefix, digits, suffix = match.groups()
+        return (0, prefix.casefold(), int(digits), suffix.casefold())
+    if admission:
+        return (1, admission.casefold(), 0, "")
+    return (2, "", 0, "")
+
+
+def _student_name_sort_key(student):
+    return (
+        (student.first_name or "").casefold(),
+        (student.last_name or "").casefold(),
+        _student_admission_sort_key(student),
+    )
+
+
+def _sorted_students(students, sort_mode):
+    mode = sort_mode if sort_mode in STUDENT_SORT_CHOICES else STUDENT_SORT_NAME
+    if mode == STUDENT_SORT_ADMISSION:
+        return sorted(
+            students,
+            key=lambda student: (_student_admission_sort_key(student), _student_name_sort_key(student)),
+        )
+    return sorted(students, key=_student_name_sort_key)
+
+
+def _student_sort_template_context(request, *, anchor=""):
+    sort_mode = _resolve_student_sort(request)
+    params = request.GET.copy()
+    path = request.path
+
+    def build(mode):
+        query = params.copy()
+        if mode == STUDENT_SORT_ADMISSION:
+            query["sort"] = STUDENT_SORT_ADMISSION
+        else:
+            query.pop("sort", None)
+        encoded = query.urlencode()
+        href = f"{path}?{encoded}" if encoded else path
+        if anchor:
+            href = f"{href}#{anchor}"
+        return href
+
+    return {
+        "student_sort": sort_mode,
+        "student_sort_is_admission": sort_mode == STUDENT_SORT_ADMISSION,
+        "student_sort_name_url": build(STUDENT_SORT_NAME),
+        "student_sort_admission_url": build(STUDENT_SORT_ADMISSION),
+    }
+
+
+def _with_student_sort(url, sort_mode):
+    if sort_mode != STUDENT_SORT_ADMISSION:
+        return url
+    path, hash_part = url, ""
+    if "#" in url:
+        path, hash_part = url.split("#", 1)
+        hash_part = f"#{hash_part}"
+    sep = "&" if "?" in path else "?"
+    return f"{path}{sep}sort={STUDENT_SORT_ADMISSION}{hash_part}"
+
 
 def _student_management_stats():
     from django.db.models import Count
@@ -1017,6 +1103,7 @@ def _student_management_context(request):
     valid_levels = {value for value, _label in Student.AcademicLevel.choices}
     stats = _student_management_stats()
     level_counts = stats["level_counts"]
+    sort_mode = _resolve_student_sort(request)
 
     selected_level = (request.GET.get("level") or "").strip().upper()
     if selected_level not in valid_levels or not level_counts.get(selected_level):
@@ -1027,14 +1114,12 @@ def _student_management_context(request):
 
     students_qs = Student.objects.select_related("parent_guardian").order_by(
         "academic_level",
-        "class_group",
-        "last_name",
-        "first_name",
+        *_student_sort_order_by(sort_mode, include_class_group=True),
     )
     if selected_level:
         students_qs = students_qs.filter(academic_level=selected_level)
     students = list(students_qs)
-    student_groups = group_students_by_class(students)
+    student_groups = group_students_by_class(students, sort=sort_mode)
     level_filters = [
         {
             "value": value,
@@ -1059,6 +1144,7 @@ def _student_management_context(request):
         "gender_choices": Student.Gender.choices,
         "academic_level_choices": Student.AcademicLevel.choices,
         "sponsorship_choices": Student.SponsorshipCategory.choices,
+        **_student_sort_template_context(request),
     }
 
 
@@ -1073,13 +1159,19 @@ def _cached_exam_report_builder_catalog():
     return catalog
 
 
-def group_students_by_class(students):
+def group_students_by_class(students, sort=STUDENT_SORT_NAME):
     level_rank = {
         value: index
         for index, (value, _label) in enumerate(Student.AcademicLevel.choices)
     }
     level_labels = dict(Student.AcademicLevel.choices)
     levels = OrderedDict()
+    sort_mode = sort if sort in STUDENT_SORT_CHOICES else STUDENT_SORT_NAME
+
+    def student_sort_key(student):
+        if sort_mode == STUDENT_SORT_ADMISSION:
+            return (_student_admission_sort_key(student), _student_name_sort_key(student))
+        return _student_name_sort_key(student)
 
     for student in students:
         raw_class = (student.class_group or "").strip()
@@ -1109,7 +1201,7 @@ def group_students_by_class(students):
     for level, data in sorted(levels.items(), key=lambda item: level_rank.get(item[0], 99)):
         streams = sorted(data["streams"].values(), key=lambda stream: stream["key"])
         for stream in streams:
-            stream["students"].sort(key=lambda student: (student.last_name, student.first_name, student.admission_number or ""))
+            stream["students"].sort(key=student_sort_key)
         grouped.append(
             {
                 "level": data["level"],
@@ -2379,7 +2471,17 @@ def teacher_register_class_attendance(request, employee, led_classes, page):
     except ValueError:
         attendance_date = date.today()
 
-    students = list(_students_in_academic_level(selected_class.academic_level, selected_class))
+    sort_mode = _resolve_student_sort(request)
+    students = _sorted_students(
+        list(
+            _students_in_academic_level(
+                selected_class.academic_level,
+                selected_class,
+                sort=sort_mode,
+            )
+        ),
+        sort_mode,
+    )
 
     if request.method == "POST":
         session, _created = ClassAttendanceSession.objects.update_or_create(
@@ -2412,9 +2514,13 @@ def teacher_register_class_attendance(request, employee, led_classes, page):
             request,
             f"Class attendance saved for {selected_class.display_label} on {attendance_date.strftime('%d %b %Y')}.",
         )
+        sort_mode = _resolve_student_sort(request)
         return redirect(
-            f"{reverse('employees:teacher_my_class_page', kwargs={'tool': 'register-class-attendance'})}"
-            f"?class_id={selected_class.id}&date={attendance_date.isoformat()}"
+            _with_student_sort(
+                f"{reverse('employees:teacher_my_class_page', kwargs={'tool': 'register-class-attendance'})}"
+                f"?class_id={selected_class.id}&date={attendance_date.isoformat()}",
+                sort_mode,
+            )
         )
 
     attendance_session = (
@@ -2451,6 +2557,7 @@ def teacher_register_class_attendance(request, employee, led_classes, page):
             "present_morning": sum(1 for student in students if student.morning),
             "present_afternoon": sum(1 for student in students if student.afternoon),
             "present_evening": sum(1 for student in students if student.evening),
+            **_student_sort_template_context(request),
         },
     )
 
@@ -2530,7 +2637,17 @@ def teacher_students_class_attendance_analytics(request, employee, led_classes, 
             f"{filter_ctx['range_end'].strftime('%d %b %Y')}. "
             "Cells show attendance percentage for each session."
         )
-    students = list(_students_in_academic_level(selected_class.academic_level, selected_class))
+    sort_mode = _resolve_student_sort(request)
+    students = _sorted_students(
+        list(
+            _students_in_academic_level(
+                selected_class.academic_level,
+                selected_class,
+                sort=sort_mode,
+            )
+        ),
+        sort_mode,
+    )
     sessions = list(
         ClassAttendanceSession.objects.filter(
             academic_class=selected_class,
@@ -2613,6 +2730,7 @@ def teacher_students_class_attendance_analytics(request, employee, led_classes, 
             "student_rows": student_rows,
             "session_total": session_total,
             **filter_ctx,
+            **_student_sort_template_context(request),
         },
     )
 
@@ -2662,7 +2780,11 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
         if selected_class is None:
             return redirect("employees:teacher_exam_record_detail", exam_id=generation.id)
         selected_level = selected_class.academic_level
-        students = list(_students_in_academic_level(selected_level, selected_class))
+        sort_mode = _resolve_student_sort(request)
+        students = _sorted_students(
+            list(_students_in_academic_level(selected_level, selected_class, sort=sort_mode)),
+            sort_mode,
+        )
         subjects = _teacher_class_subjects(
             employee, selected_class, selected_level
         )
@@ -2707,7 +2829,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                     subject_means = _exam_record_subject_means(students, subjects)
                 else:
                     success(request, "Student marks were saved.")
-                    return redirect(class_url)
+                    return redirect(_with_student_sort(class_url, sort_mode))
             marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
             out_of_settings_changed = _exam_marks_out_of_settings_changed(
                 marks_lookup, out_of_by_subject
@@ -2754,6 +2876,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             "subject_means": subject_means,
             "out_of_settings_changed": out_of_settings_changed,
             "marks_editable": marks_editable,
+            **(_student_sort_template_context(request) if selected_class else {}),
         },
     )
 
@@ -3767,7 +3890,17 @@ def teacher_subject_attendance_profile(request, class_id, subject_id):
         "employees:teacher_subject_attendance_profile",
         kwargs={"class_id": academic_class.id, "subject_id": allocation.learning_area_id},
     )
-    students = list(_students_in_academic_level(academic_class.academic_level, academic_class))
+    sort_mode = _resolve_student_sort(request)
+    students = _sorted_students(
+        list(
+            _students_in_academic_level(
+                academic_class.academic_level,
+                academic_class,
+                sort=sort_mode,
+            )
+        ),
+        sort_mode,
+    )
     lesson_plan = ClassSubjectLessonPlan.objects.filter(allocation=allocation).first()
     subject_outcome = ClassSubjectOutcome.objects.filter(allocation=allocation).first()
 
@@ -3806,7 +3939,7 @@ def teacher_subject_attendance_profile(request, class_id, subject_id):
                 },
             )
             success(request, "Lesson plan saved.")
-            return redirect(f"{profile_url}#lesson-plan")
+            return redirect(_with_student_sort(f"{profile_url}#lesson-plan", sort_mode))
         if action == "outcome":
             ClassSubjectOutcome.objects.update_or_create(
                 allocation=allocation,
@@ -3816,7 +3949,12 @@ def teacher_subject_attendance_profile(request, class_id, subject_id):
                 },
             )
             success(request, "Class subject outcome saved.")
-            return redirect(f"{profile_url}?date={lesson_date.isoformat()}#outcome")
+            return redirect(
+                _with_student_sort(
+                    f"{profile_url}?date={lesson_date.isoformat()}#outcome",
+                    sort_mode,
+                )
+            )
         if action == "attendance":
             session, _created = SubjectAttendanceSession.objects.update_or_create(
                 allocation=allocation,
@@ -3851,9 +3989,14 @@ def teacher_subject_attendance_profile(request, class_id, subject_id):
                 student_id__in=student_ids
             ).delete()
             success(request, f"Attendance saved for {lesson_date.strftime('%d %b %Y')}.")
-            return redirect(f"{profile_url}?date={lesson_date.isoformat()}#attendance")
+            return redirect(
+                _with_student_sort(
+                    f"{profile_url}?date={lesson_date.isoformat()}#attendance",
+                    sort_mode,
+                )
+            )
         error(request, "Unknown form action.")
-        return redirect(profile_url)
+        return redirect(_with_student_sort(profile_url, sort_mode))
 
     attendance_session = SubjectAttendanceSession.objects.filter(
         allocation=allocation, lesson_date=lesson_date
@@ -3886,6 +4029,7 @@ def teacher_subject_attendance_profile(request, class_id, subject_id):
             "lesson_date": lesson_date,
             "attendance_session": attendance_session,
             "attendance_statuses": SubjectAttendanceRecord.Status.choices,
+            **_student_sort_template_context(request, anchor="attendance"),
         },
     )
 
@@ -4894,16 +5038,52 @@ def it_support_exam_report_students(request):
     return _exam_report_students_response(request)
 
 
+def _employee_code_sort_key(employee):
+    raw = employee.employment_number
+    if raw is None or raw == "":
+        code = (employee.employee_code or "").strip()
+        match = re.match(r"^(\D*?)(\d+)(.*)$", code, flags=re.IGNORECASE)
+        if match:
+            prefix, digits, suffix = match.groups()
+            return (1, prefix.casefold(), int(digits), suffix.casefold())
+        if code:
+            return (1, code.casefold(), 0, "")
+        return (2, "", 0, "")
+    try:
+        return (0, "", int(raw), "")
+    except (TypeError, ValueError):
+        text = str(raw).strip()
+        match = re.match(r"^(\D*?)(\d+)(.*)$", text, flags=re.IGNORECASE)
+        if match:
+            prefix, digits, suffix = match.groups()
+            return (0, prefix.casefold(), int(digits), suffix.casefold())
+        return (0, text.casefold(), 0, "")
+
+
 @login_required
 def it_support_employee_management(request):
     denied = _require_it_support(request)
     if denied:
         return denied
-    employees = list(
-        Employee.objects.prefetch_related("assigned_roles")
-        .all()
-        .order_by("last_name", "first_name", "employee_code")
-    )
+    sort_mode = _resolve_student_sort(request)
+    employees = list(Employee.objects.prefetch_related("assigned_roles").all())
+    if sort_mode == STUDENT_SORT_ADMISSION:
+        employees.sort(
+            key=lambda employee: (
+                _employee_code_sort_key(employee),
+                (employee.first_name or "").casefold(),
+                (employee.last_name or "").casefold(),
+                (employee.employee_code or "").casefold(),
+            )
+        )
+    else:
+        employees.sort(
+            key=lambda employee: (
+                (employee.first_name or "").casefold(),
+                (employee.last_name or "").casefold(),
+                _employee_code_sort_key(employee),
+            )
+        )
     approved_count = sum(
         1
         for employee in employees
@@ -4938,6 +5118,7 @@ def it_support_employee_management(request):
             "title_choices": Employee.Title.choices,
             "role_choices": Employee.Role.choices,
             "approval_choices": Employee.ApprovalStatus.choices,
+            **_student_sort_template_context(request),
         },
     )
 
@@ -7403,15 +7584,13 @@ def _student_level_choice(level):
     return ""
 
 
-def _students_in_academic_level(level, academic_class=None):
+def _students_in_academic_level(level, academic_class=None, sort=STUDENT_SORT_NAME):
     choice = _student_level_choice(level)
     if not choice:
         return Student.objects.none()
+    sort_mode = sort if sort in STUDENT_SORT_CHOICES else STUDENT_SORT_NAME
     students = Student.objects.select_related("parent_guardian").filter(academic_level=choice).order_by(
-        "class_group",
-        "last_name",
-        "first_name",
-        "admission_number",
+        *_student_sort_order_by(sort_mode, include_class_group=True),
     )
     if academic_class is None:
         return students

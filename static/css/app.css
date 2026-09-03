@@ -11342,6 +11342,48 @@ body.is-reordering-exam-subjects [data-marks-input] {
   align-items: center;
 }
 
+.student-sort-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.student-sort-label {
+  color: var(--muted);
+  font: 650 0.72rem/1.2 var(--font);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.student-sort-select {
+  min-width: 11.5rem;
+  min-height: 2.15rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+}
+
+.student-sort-select:focus {
+  outline: 2px solid #9db4e0;
+  outline-offset: 1px;
+}
+
+.subject-panel-header-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  justify-content: flex-end;
+}
+
 .workspace-content:has(.sa-hub-page),
 .workspace-content:has(.exam-tool-page),
 .workspace-content:has(.all-exams-page),

@@ -144,7 +144,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="gradeband",
             constraint=models.CheckConstraint(
-                condition=models.Q(end_percent__gte=models.F("start_percent")),
+                check=models.Q(end_percent__gte=models.F("start_percent")),
                 name="grade_band_end_gte_start",
             ),
         ),

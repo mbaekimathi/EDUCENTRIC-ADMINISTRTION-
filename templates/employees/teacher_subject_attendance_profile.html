@@ -1,4 +1,5 @@
 {% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}{{ subject.code }} · {{ selected_class.display_label }} | Edu-Centric{% endblock %}
 {% block header_eyebrow %}{{ selected_class.display_label }}{% endblock %}
 {% block header_title %}{{ subject.name }}{% endblock %}
@@ -9,7 +10,7 @@
 
 {% block workspace_content %}
 {% include "employees/includes/nav/teacher_subject_attendance.html" %}
-<div class="subject-profile-page" data-subject-profile>
+<div class="subject-profile-page" data-subject-profile data-student-sortable>
   
   <section class="exam-record-bar subject-profile-bar">
     <div class="exam-record-bar-title">
@@ -171,13 +172,21 @@
           <h3 class="is-uppercase">Attendance</h3>
           <p class="subtle">Mark attendance for {{ selected_class.display_label }} in {{ subject.code }}.</p>
         </div>
-        {% if students %}
-        <span class="student-count-chip is-quiet">{{ students|length }} student{{ students|length|pluralize }}</span>
-        {% endif %}
+        <div class="subject-panel-header-tools">
+          {% if students %}
+          <span class="student-count-chip is-quiet">{{ students|length }} student{{ students|length|pluralize }}</span>
+          {% endif %}
+          {% include "employees/includes/student_sort_toggle.html" %}
+        </div>
       </header>
       <form method="post" class="subject-profile-form attendance-form" data-attendance-form>
         {% csrf_token %}
         <input type="hidden" name="form_action" value="attendance">
+        {% if student_sort_is_admission %}
+        <input type="hidden" name="sort" value="admission" data-student-sort-field>
+        {% else %}
+        <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
+        {% endif %}
 
         <div class="attendance-form-controls">
           <label class="attendance-control">
@@ -216,13 +225,17 @@
                 <th class="attendance-presence-col">Attendance</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-student-sort-body>
               {% for student in students %}
-              <tr>
+              <tr
+                data-student-row
+                data-sort-name="{{ student.first_name }} {{ student.last_name }}"
+                data-sort-admission="{{ student.admission_number }}"
+              >
                 <td data-label="Student">
                   <span class="attendance-student-cell">
                     <strong class="is-uppercase exam-student-name">
-                      <span class="sa-student-index" aria-hidden="true">{{ forloop.counter }}.</span>
+                      <span class="sa-student-index" data-student-index aria-hidden="true">{{ forloop.counter }}.</span>
                       <span class="exam-student-first">{{ student.first_name }}</span>
                       <span class="exam-student-last">{{ student.last_name }}</span>
                     </strong>
@@ -328,6 +341,7 @@
 {% endblock %}
 
 {% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 <script>
 (function () {
   const root = document.querySelector("[data-subject-profile]");

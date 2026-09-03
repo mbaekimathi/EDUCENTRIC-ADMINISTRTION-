@@ -121,7 +121,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="combinedexamsubject",
             constraint=models.CheckConstraint(
-                condition=~models.Q(
+                check=~models.Q(
                     ("first_subject", models.F("second_subject")),
                 ),
                 name="combined_exam_subjects_must_differ",

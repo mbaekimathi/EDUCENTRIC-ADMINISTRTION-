@@ -67,7 +67,7 @@
           {% for error in form.academic_level.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
         <div class="field">
-          <label for="{{ form.assessment_number.id_for_label }}">Assessment number <span class="required">*</span></label>
+          <label for="{{ form.assessment_number.id_for_label }}">Assessment number</label>
           {{ form.assessment_number }}
           {% for error in form.assessment_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>

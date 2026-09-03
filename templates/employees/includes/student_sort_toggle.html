@@ -1,0 +1,17 @@
+<label
+  class="student-sort-toggle"
+  data-student-sort-toggle
+  data-current-sort="{% if student_sort_is_admission %}admission{% else %}name{% endif %}"
+  data-student-sort-name-url="{{ student_sort_name_url }}"
+  data-student-sort-admission-url="{{ student_sort_admission_url }}"
+>
+  <span class="student-sort-label">Sort by</span>
+  <select
+    class="student-sort-select"
+    data-student-sort-select
+    aria-label="Sort list by"
+  >
+    <option value="name" {% if not student_sort_is_admission %}selected{% endif %}>{{ sort_name_label|default:"A–Z (first name)" }}</option>
+    <option value="admission" {% if student_sort_is_admission %}selected{% endif %}>{{ sort_code_label|default:"Admission number" }}</option>
+  </select>
+</label>

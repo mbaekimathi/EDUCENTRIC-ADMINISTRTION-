@@ -73,7 +73,7 @@ class Student(PortalAccount):
     academic_level = models.CharField(max_length=20, choices=AcademicLevel.choices)
     admission_number = models.CharField(max_length=40, unique=True, null=True, blank=True)
     class_group = models.CharField(max_length=50, blank=True)
-    assessment_number = models.CharField(max_length=50, unique=True)
+    assessment_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
     previous_school = models.CharField(max_length=200, blank=True)
     profile_image = models.ImageField(upload_to="students/profiles/", blank=True)
     sponsorship_category = models.CharField(
@@ -120,6 +120,7 @@ class Student(PortalAccount):
         return f"{self.first_name} {self.last_name}"
 
     def __str__(self):
-        return f"{self.assessment_number} — {self.display_name}"
+        label = self.assessment_number or self.admission_number or "NO ID"
+        return f"{label} — {self.display_name}"
 
 # Create your models here.

@@ -809,7 +809,7 @@ class GradeBand(models.Model):
         ordering = ["-end_percent", "-start_percent", "code"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(end_percent__gte=models.F("start_percent")),
+                check=models.Q(end_percent__gte=models.F("start_percent")),
                 name="grade_band_end_gte_start",
             ),
             models.UniqueConstraint(

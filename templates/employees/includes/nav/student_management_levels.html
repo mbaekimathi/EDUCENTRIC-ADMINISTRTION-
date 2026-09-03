@@ -3,7 +3,7 @@
   {% for level in student_level_filters %}
   <a
     class="teacher-dash-action{% if level.is_active %} is-active{% endif %}"
-    href="?level={{ level.value }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}"
+    href="?level={{ level.value }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}{% if student_sort_is_admission %}&amp;sort=admission{% endif %}"
     aria-current="{% if level.is_active %}page{% else %}false{% endif %}"
   >
     <span class="teacher-dash-action-copy">

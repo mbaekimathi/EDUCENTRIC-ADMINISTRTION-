@@ -1,4 +1,5 @@
 {% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}{{ exam_title }} | Edu-Centric{% endblock %}
 {% block header_eyebrow %}Assessment records{% endblock %}
 {% block header_title %}{{ exam_title }}{% endblock %}
@@ -15,10 +16,15 @@
 {% include "employees/includes/nav/teacher_exam_classes.html" %}
 {% endif %}
 {% if selected_class %}
-<section class="exam-record-sheet teacher-marks-sheet teacher-exam-marks-view">
+<section class="exam-record-sheet teacher-marks-sheet teacher-exam-marks-view" data-student-sortable>
   {% if students %}
   <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
+    {% if student_sort_is_admission %}
+    <input type="hidden" name="sort" value="admission" data-student-sort-field>
+    {% else %}
+    <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
+    {% endif %}
     <header class="exam-record-bar teacher-marks-bar">
       <div class="teacher-marks-bar-main">
         <p class="exam-detail-kicker">Marks sheet · scores out of each subject total</p>
@@ -47,6 +53,7 @@
         </div>
       </div>
       <div class="exam-record-bar-tools teacher-marks-tools">
+        {% include "employees/includes/student_sort_toggle.html" %}
         {% if marks_editable %}
         <button type="button" class="ghost-button" data-exam-edit>Edit marks</button>
         <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
@@ -88,10 +95,13 @@
               {% endfor %}
             </tr>
           </thead>
-          <tbody>
+          <tbody data-student-sort-body>
             {% for student in students %}
-            <tr>
-              <td>
+            <tr
+              data-student-row
+              data-sort-name="{{ student.first_name }} {{ student.last_name }}"
+              data-sort-admission="{{ student.admission_number }}"
+            >              <td>
                 <strong class="is-uppercase exam-student-name">
                   <span class="exam-student-first">{{ student.first_name }}</span>
                   <span class="exam-student-last">{{ student.last_name }}</span>
@@ -293,6 +303,7 @@
 {% endblock %}
 
 {% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% include "employees/includes/exam_record_edit_mode.html" %}
 <script>
 (function () {

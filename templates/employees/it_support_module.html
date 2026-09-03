@@ -6,6 +6,7 @@
 {% block sidebar_modules %}
 {% if module.slug == 'human-resource-management' %}
 {% include "employees/includes/human_resource_sidebar.html" %}
+{% elif module.slug == 'financial-management' or module.slug == 'stock-management' %}
 {% else %}
 {% include "employees/includes/it_support_sidebar.html" %}
 {% endif %}

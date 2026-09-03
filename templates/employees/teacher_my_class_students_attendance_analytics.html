@@ -1,4 +1,5 @@
 {% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}{{ page.title }} | Edu-Centric{% endblock %}
 {% block header_eyebrow %}My class{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
@@ -10,7 +11,7 @@
 {% block workspace_content %}
 
 {% include "employees/includes/nav/teacher_my_class_attendance.html" %}
-<div class="sa-hub-page class-subject-attendance-overview class-attendance-analytics">
+<div class="sa-hub-page class-subject-attendance-overview class-attendance-analytics" data-student-sortable>
   <div class="teacher-page-bar" aria-label="Analytics summary">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
@@ -23,7 +24,8 @@
       </div>
     </div>
     <div class="teacher-page-bar-actions">
-      <a class="ghost-button" href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}?class_id={{ selected_class.id }}">
+      {% include "employees/includes/student_sort_toggle.html" %}
+      <a class="ghost-button" href="{% url 'employees:teacher_my_class_page' 'register-class-attendance' %}?class_id={{ selected_class.id }}{% if student_sort_is_admission %}&amp;sort=admission{% endif %}">
         Register attendance
       </a>
     </div>
@@ -36,6 +38,11 @@
       <p class="subtle">{{ filter_subtitle }}</p>
     </div>
     <form class="sa-scope-form" method="get" data-scope-form>
+      {% if student_sort_is_admission %}
+      <input type="hidden" name="sort" value="admission" data-student-sort-field>
+      {% else %}
+      <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
+      {% endif %}
       {% if led_classes|length > 1 %}
       <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-keep-class>
       {% endif %}
@@ -139,12 +146,16 @@
           <th class="subject-attendance-col">Evening</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody data-student-sort-body>
         {% for row in student_rows %}
-        <tr>
+        <tr
+          data-student-row
+          data-sort-name="{{ row.student.first_name }} {{ row.student.last_name }}"
+          data-sort-admission="{{ row.student.admission_number }}"
+        >
           <td data-label="Student">
             <strong class="is-uppercase exam-student-name">
-              <span class="sa-student-index" aria-hidden="true">{{ forloop.counter }}.</span>
+              <span class="sa-student-index" data-student-index aria-hidden="true">{{ forloop.counter }}.</span>
               <span class="exam-student-first">{{ row.student.first_name }}</span>
               <span class="exam-student-last">{{ row.student.last_name }}</span>
             </strong>
@@ -174,6 +185,7 @@
 {% endblock %}
 
 {% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {{ calendar_options_json|json_script:"sa-calendar-options" }}
 <script>
 (function () {
