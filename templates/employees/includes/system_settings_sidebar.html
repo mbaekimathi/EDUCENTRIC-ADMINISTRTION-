@@ -14,6 +14,13 @@
   Curriculum
 </a>
 <a
+  class="workspace-nav-link {% if active_settings == 'admissions' %}is-active{% endif %}"
+  href="{% url 'employees:admission_settings' %}"
+>
+  <span class="workspace-nav-icon" aria-hidden="true">AD</span>
+  Admissions
+</a>
+<a
   class="workspace-nav-link {% if active_settings == 'finance' %}is-active{% endif %}"
   href="{% url 'employees:finance_settings' %}"
 >

@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from apps.curriculum.models import AcademicLevel, ELearningLearningMaterial
 
 from .forms import ParentLoginForm, StudentAdmissionForm, StudentLoginForm
-from .models import ParentGuardian, Student
+from .models import AdmissionSettings, ParentGuardian, Student
 
 
 def portal_session_required(session_key):
@@ -100,7 +100,24 @@ def admit_student(request):
     if not request.user.is_authenticated:
         return redirect("employees:login")
 
-    form = StudentAdmissionForm(request.POST or None, request.FILES or None)
+    admission_settings = AdmissionSettings.get_solo()
+    if not admission_settings.admissions_enabled:
+        return render(
+            request,
+            "admissions/admit_student.html",
+            {
+                "form": None,
+                "active_nav": "admissions",
+                "admission_settings": admission_settings,
+                "admissions_disabled": True,
+            },
+        )
+
+    form = StudentAdmissionForm(
+        request.POST or None,
+        request.FILES or None,
+        admission_settings=admission_settings,
+    )
     if request.method == "POST" and form.is_valid():
         student = form.save()
         messages.success(
@@ -111,7 +128,13 @@ def admit_student(request):
     return render(
         request,
         "admissions/admit_student.html",
-        {"form": form, "active_nav": "admissions"},
+        {
+            "form": form,
+            "active_nav": "admissions",
+            "admission_settings": admission_settings,
+            "next_admission_number": admission_settings.preview_next_admission_number(),
+            "admissions_disabled": False,
+        },
     )
 
 

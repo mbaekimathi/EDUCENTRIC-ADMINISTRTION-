@@ -41,6 +41,7 @@
     <h3>Personal details</h3>
     <dl class="student-detail-list">
       <div><dt>First name</dt><dd class="is-uppercase">{{ student.first_name }}</dd></div>
+      <div><dt>Middle name</dt><dd class="is-uppercase">{% if student.middle_name %}{{ student.middle_name }}{% else %}—{% endif %}</dd></div>
       <div><dt>Last name</dt><dd class="is-uppercase">{{ student.last_name }}</dd></div>
       <div><dt>Date of birth</dt><dd>{{ student.date_of_birth|date:"j F Y" }}</dd></div>
       <div><dt>Gender</dt><dd>{{ student.get_gender_display }}</dd></div>

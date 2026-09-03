@@ -33,6 +33,7 @@
         <span>Marks for your classes</span>
       </span>
     </a>
+    {% if admissions_enabled %}
     <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
       <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
       <span class="teacher-dash-action-copy">
@@ -40,6 +41,7 @@
         <span>Admit new learners</span>
       </span>
     </a>
+    {% endif %}
   </section>
 
   <section id="session-timetable" class="teacher-dashboard-scroll" aria-label="This week’s timetables">

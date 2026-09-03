@@ -481,6 +481,7 @@ urlpatterns = [
         name="delete_learning_area",
     ),
     path("settings/finance/", views.finance_settings, name="finance_settings"),
+    path("settings/admissions/", views.admission_settings, name="admission_settings"),
     path("settings/hr/", views.hr_settings, name="hr_settings"),
     path("profile/photo/", views.update_profile_image, name="update_profile_image"),
     path("logout/", views.employee_logout, name="logout"),

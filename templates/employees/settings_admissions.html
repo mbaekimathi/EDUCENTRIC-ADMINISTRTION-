@@ -1,0 +1,131 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Admission settings | Edu-Centric{% endblock %}
+{% block header_title %}Admission settings{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/system_settings_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% include "employees/includes/nav/system_settings.html" %}
+
+<form method="post" class="school-profile-form" novalidate data-admission-settings-form>
+  {% csrf_token %}
+  {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}
+
+  <section class="settings-panel school-profile-panel">
+    <div class="settings-profile-card">
+      <span class="module-icon" aria-hidden="true">AD</span>
+      <div>
+        <h3>Admission set-up</h3>
+        <p>Control whether new students can be admitted and how admission numbers are suggested.</p>
+      </div>
+    </div>
+
+    <div class="admission-settings-toggles">
+      <label class="calendar-toggle">
+        {{ form.admissions_enabled }}
+        <span>
+          <strong>{{ form.admissions_enabled.label }}</strong>
+          <small>{{ form.admissions_enabled.help_text }}</small>
+        </span>
+      </label>
+      {% for error in form.admissions_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+
+      <label class="calendar-toggle">
+        {{ form.auto_generate_admission_number }}
+        <span>
+          <strong>{{ form.auto_generate_admission_number.label }}</strong>
+          <small>{{ form.auto_generate_admission_number.help_text }}</small>
+        </span>
+      </label>
+      {% for error in form.auto_generate_admission_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+    </div>
+  </section>
+
+  <section class="settings-panel school-profile-panel" data-number-format-section{% if not form.auto_generate_admission_number.value %} hidden{% endif %}>
+    <div>
+      <h3 class="school-profile-section-title">How the admission number starts</h3>
+      <p class="settings-empty">
+        Set the prefix, starting number, and padding used for the suggested admission number.
+        Staff can still edit it on the admit form.
+        Suggested continue-from value based on existing students: {{ suggested_next_number }}.
+      </p>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="field">
+        <label for="{{ form.admission_number_prefix.id_for_label }}">{{ form.admission_number_prefix.label }}</label>
+        {{ form.admission_number_prefix }}
+        <small class="field-hint">{{ form.admission_number_prefix.help_text }}</small>
+        {% for error in form.admission_number_prefix.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.admission_number_next.id_for_label }}">{{ form.admission_number_next.label }}</label>
+        {{ form.admission_number_next }}
+        <small class="field-hint">{{ form.admission_number_next.help_text }}</small>
+        {% for error in form.admission_number_next.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.admission_number_pad_width.id_for_label }}">{{ form.admission_number_pad_width.label }}</label>
+        {{ form.admission_number_pad_width }}
+        <small class="field-hint">{{ form.admission_number_pad_width.help_text }} Examples: 4 → 0001, 0 → 1.</small>
+        {% for error in form.admission_number_pad_width.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label>Preview of next number</label>
+        <input
+          type="text"
+          value="{{ admission_settings.preview_next_admission_number }}"
+          readonly
+          data-admission-number-preview
+          aria-live="polite"
+        >
+        <small class="field-hint">This is what the next admitted student will receive.</small>
+      </div>
+    </div>
+  </section>
+
+  <div class="school-profile-actions">
+    <button type="submit" class="primary-button">Save admission settings</button>
+  </div>
+</form>
+
+<script>
+(function () {
+  const form = document.querySelector("[data-admission-settings-form]");
+  if (!form) return;
+
+  const autoToggle = form.querySelector("#{{ form.auto_generate_admission_number.id_for_label }}");
+  const formatSection = form.querySelector("[data-number-format-section]");
+  const prefixInput = form.querySelector("#{{ form.admission_number_prefix.id_for_label }}");
+  const nextInput = form.querySelector("#{{ form.admission_number_next.id_for_label }}");
+  const padInput = form.querySelector("#{{ form.admission_number_pad_width.id_for_label }}");
+  const preview = form.querySelector("[data-admission-number-preview]");
+
+  function syncFormatVisibility() {
+    if (!autoToggle || !formatSection) return;
+    formatSection.hidden = !autoToggle.checked;
+  }
+
+  function updatePreview() {
+    if (!preview || !nextInput || !padInput) return;
+    const prefix = (prefixInput?.value || "").trim().toUpperCase();
+    let number = parseInt(nextInput.value, 10);
+    if (!Number.isFinite(number) || number < 1) number = 1;
+    let pad = parseInt(padInput.value, 10);
+    if (!Number.isFinite(pad) || pad < 0) pad = 0;
+    const numeric = pad > 0 ? String(number).padStart(pad, "0") : String(number);
+    preview.value = `${prefix}${numeric}`;
+  }
+
+  autoToggle?.addEventListener("change", syncFormatVisibility);
+  prefixInput?.addEventListener("input", updatePreview);
+  nextInput?.addEventListener("input", updatePreview);
+  padInput?.addEventListener("input", updatePreview);
+
+  syncFormatVisibility();
+  updatePreview();
+})();
+</script>
+{% endblock %}

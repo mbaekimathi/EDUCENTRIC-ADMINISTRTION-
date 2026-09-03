@@ -20,9 +20,9 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.admissions.forms import StudentWorkspaceForm
+from apps.admissions.forms import AdmissionSettingsForm, StudentWorkspaceForm
 from apps.employees.exam_report_export import build_exam_report_excel
-from apps.admissions.models import Student
+from apps.admissions.models import AdmissionSettings, Student
 from apps.curriculum.forms import (
     AcademicLevelForm,
     AcademicYearForm,
@@ -1032,6 +1032,7 @@ def _student_admission_sort_key(student):
 def _student_name_sort_key(student):
     return (
         (student.first_name or "").casefold(),
+        (getattr(student, "middle_name", None) or "").casefold(),
         (student.last_name or "").casefold(),
         _student_admission_sort_key(student),
     )
@@ -10407,6 +10408,33 @@ def finance_settings(request):
         request,
         "employees/settings_finance.html",
         {"active_nav": "settings", "active_settings": "finance"},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def admission_settings(request):
+    settings_obj = AdmissionSettings.get_solo()
+    form = AdmissionSettingsForm(request.POST or None, instance=settings_obj)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        from django.core.cache import cache
+
+        cache.delete("admissions_enabled")
+        success(request, "Admission settings saved.")
+        return redirect("employees:admission_settings")
+
+    return render(
+        request,
+        "employees/settings_admissions.html",
+        {
+            "active_nav": "settings",
+            "active_settings": "admissions",
+            "form": form,
+            "admission_settings": settings_obj,
+            "suggested_next_number": AdmissionSettings.suggested_next_number(),
+        },
     )
 
 

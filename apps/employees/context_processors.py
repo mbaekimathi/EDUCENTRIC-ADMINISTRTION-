@@ -59,4 +59,19 @@ def workspace(request):
         "teacher_is_class_teacher": teacher_is_class_teacher,
         "teacher_has_elearning": teacher_has_elearning,
         "is_role_preview": is_workspace_preview(request),
+        "admissions_enabled": _admissions_enabled(),
     }
+
+
+def _admissions_enabled():
+    cache_key = "admissions_enabled"
+    enabled = cache.get(cache_key)
+    if enabled is None:
+        try:
+            from apps.admissions.models import AdmissionSettings
+
+            enabled = AdmissionSettings.get_solo().admissions_enabled
+        except Exception:
+            enabled = True
+        cache.set(cache_key, enabled, 60)
+    return bool(enabled)

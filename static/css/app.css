@@ -926,6 +926,15 @@ button.workspace-nav-action.workspace-nav-action-danger:hover {
   font-size: 0.95rem;
 }
 
+.admission-settings-toggles {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admission-settings-toggles .calendar-toggle {
+  min-height: 0;
+}
+
 .settings-table-panel {
   overflow: auto;
   -webkit-overflow-scrolling: touch;

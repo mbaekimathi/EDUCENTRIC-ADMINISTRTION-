@@ -6,6 +6,7 @@
 {% include "employees/includes/secretary_sidebar.html" %}
 {% else %}
 <p class="workspace-nav-label">Modules</p>
+{% if admissions_enabled %}
 <a
   class="workspace-nav-link"
   href="{% url 'admissions:admit_student' %}"
@@ -15,4 +16,5 @@
   </span>
   Admit student
 </a>
+{% endif %}
 {% endif %}

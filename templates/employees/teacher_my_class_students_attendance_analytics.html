@@ -150,7 +150,7 @@
         {% for row in student_rows %}
         <tr
           data-student-row
-          data-sort-name="{{ row.student.first_name }} {{ row.student.last_name }}"
+          data-sort-name="{{ row.student.display_name }}"
           data-sort-admission="{{ row.student.admission_number }}"
         >
           <td data-label="Student">

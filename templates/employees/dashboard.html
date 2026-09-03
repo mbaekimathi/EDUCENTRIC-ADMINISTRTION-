@@ -17,11 +17,12 @@
             <p>Your Edu-Centric workspace is ready. Open a module below to continue school operations.</p>
           </div>
         </div>
-        <a class="ghost-button" href="{% url 'admissions:admit_student' %}">Admit student</a>
+        {% if admissions_enabled %}<a class="ghost-button" href="{% url 'admissions:admit_student' %}">Admit student</a>{% endif %}
       </div>
     </section>
 
     <section class="teacher-dash-actions" aria-label="Workspace modules">
+      {% if admissions_enabled %}
       <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
         <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
         <span class="teacher-dash-action-copy">
@@ -29,6 +30,7 @@
           <span>Register new students and set up parent portal access.</span>
         </span>
       </a>
+      {% endif %}
       <div class="teacher-dash-action is-static" aria-disabled="true">
         <span class="teacher-dash-action-icon" aria-hidden="true">AT</span>
         <span class="teacher-dash-action-copy">

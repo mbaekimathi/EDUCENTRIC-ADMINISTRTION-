@@ -1,16 +1,97 @@
 from django import forms
 
-from .models import ParentGuardian, Student
+from .models import AdmissionSettings, ParentGuardian, Student
 
 
 def uppercase_value(value):
     return value.strip().upper() if isinstance(value, str) else value
 
 
+class AdmissionSettingsForm(forms.ModelForm):
+    class Meta:
+        model = AdmissionSettings
+        fields = (
+            "admissions_enabled",
+            "auto_generate_admission_number",
+            "admission_number_prefix",
+            "admission_number_next",
+            "admission_number_pad_width",
+        )
+        labels = {
+            "admissions_enabled": "Enable admissions",
+            "auto_generate_admission_number": "Suggest admission number on admit form",
+            "admission_number_prefix": "Prefix",
+            "admission_number_next": "Starting / next number",
+            "admission_number_pad_width": "Minimum digits",
+        }
+        help_texts = {
+            "admissions_enabled": "Turn off to stop new students from being admitted.",
+            "auto_generate_admission_number": (
+                "When on, the admit form suggests the next admission number "
+                "using the format below. Staff can still edit it before saving."
+            ),
+            "admission_number_prefix": (
+                "Optional text before the number. Leave blank for numbers only."
+            ),
+            "admission_number_next": (
+                "The numeric part of the next suggested admission number. "
+                "Set this to start a new sequence or continue from an existing one."
+            ),
+            "admission_number_pad_width": (
+                "Pad with leading zeros to this length. Use 0 for no padding."
+            ),
+        }
+        widgets = {
+            "admissions_enabled": forms.CheckboxInput(attrs={"class": "calendar-check"}),
+            "auto_generate_admission_number": forms.CheckboxInput(
+                attrs={"class": "calendar-check"}
+            ),
+            "admission_number_prefix": forms.TextInput(
+                attrs={
+                    "placeholder": "e.g. ADM or 2026/",
+                    "class": "uppercase-input",
+                    "autocapitalize": "characters",
+                    "maxlength": 20,
+                }
+            ),
+            "admission_number_next": forms.NumberInput(
+                attrs={"min": 1, "step": 1, "placeholder": "e.g. 1001"}
+            ),
+            "admission_number_pad_width": forms.NumberInput(
+                attrs={"min": 0, "max": 12, "step": 1, "placeholder": "e.g. 4"}
+            ),
+        }
+
+    def clean_admission_number_prefix(self):
+        value = self.cleaned_data.get("admission_number_prefix", "")
+        if isinstance(value, str):
+            return value.strip().upper()
+        return value
+
+    def clean_admission_number_next(self):
+        value = self.cleaned_data.get("admission_number_next")
+        if value is None or value < 1:
+            raise forms.ValidationError("Enter a starting number of 1 or higher.")
+        return value
+
+    def clean_admission_number_pad_width(self):
+        value = self.cleaned_data.get("admission_number_pad_width")
+        if value is None:
+            return 0
+        if value < 0 or value > 12:
+            raise forms.ValidationError("Use between 0 and 12 digits.")
+        return value
+
+
 class StudentAdmissionForm(forms.Form):
     first_name = forms.CharField(
         max_length=150,
         widget=forms.TextInput(attrs={"placeholder": "First name", "autocomplete": "given-name"}),
+    )
+    middle_name = forms.CharField(
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Optional", "autocomplete": "additional-name"}),
     )
     last_name = forms.CharField(
         max_length=150,
@@ -23,6 +104,11 @@ class StudentAdmissionForm(forms.Form):
     academic_level = forms.ChoiceField(
         label="Class / level",
         choices=Student.AcademicLevel.choices,
+    )
+    admission_number = forms.CharField(
+        max_length=40,
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Optional"}),
     )
     assessment_number = forms.CharField(
         max_length=50,
@@ -85,7 +171,13 @@ class StudentAdmissionForm(forms.Form):
         widget=forms.ClearableFileInput(attrs={"accept": "image/*"}),
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, admission_settings=None, apply_admission_number_auto=None, **kwargs):
+        self.admission_settings = admission_settings or AdmissionSettings.get_solo()
+        if apply_admission_number_auto is None:
+            apply_admission_number_auto = True
+        self.apply_admission_number_auto = bool(
+            apply_admission_number_auto and self.admission_settings.auto_generate_admission_number
+        )
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             if name not in {"parent_email", "date_of_birth", "profile_image"}:
@@ -93,6 +185,11 @@ class StudentAdmissionForm(forms.Form):
                 field.widget.attrs["class"] = f"{existing} uppercase-input".strip()
         self.fields["parent_email"].widget.attrs["autocomplete"] = "email"
         self.fields["parent_phone"].widget.attrs["autocomplete"] = "tel"
+        if self.apply_admission_number_auto:
+            self.fields["admission_number"].required = False
+            self.fields["admission_number"].widget.attrs["placeholder"] = "Suggested — editable"
+            if not self.is_bound and not self.fields["admission_number"].initial:
+                self.fields["admission_number"].initial = AdmissionSettings.peek_next_admission_number()
 
     def clean_assessment_number(self):
         number = uppercase_value(self.cleaned_data.get("assessment_number", ""))
@@ -100,6 +197,14 @@ class StudentAdmissionForm(forms.Form):
             return None
         if Student.objects.filter(assessment_number=number).exists():
             raise forms.ValidationError("A student already uses this assessment number.")
+        return number
+
+    def clean_admission_number(self):
+        number = uppercase_value(self.cleaned_data.get("admission_number", ""))
+        if not number:
+            return None
+        if Student.objects.filter(admission_number=number).exists():
+            raise forms.ValidationError("A student already uses this admission number.")
         return number
 
     def clean_parent_phone(self):
@@ -137,12 +242,20 @@ class StudentAdmissionForm(forms.Form):
             parent.email = data["parent_email"]
             parent.save(update_fields=["full_name", "relationship_to_student", "email"])
 
+        admission_number = data.get("admission_number") or None
+        if not admission_number and self.apply_admission_number_auto:
+            admission_number = AdmissionSettings.allocate_next_admission_number()
+        elif admission_number and self.apply_admission_number_auto:
+            AdmissionSettings.advance_past_admission_number(admission_number)
+
         return Student.objects.create(
             first_name=uppercase_value(data["first_name"]),
+            middle_name=uppercase_value(data.get("middle_name", "")),
             last_name=uppercase_value(data["last_name"]),
             date_of_birth=data["date_of_birth"],
             gender=data["gender"],
             academic_level=data["academic_level"],
+            admission_number=admission_number,
             assessment_number=data.get("assessment_number") or None,
             previous_school=uppercase_value(data["previous_school"]),
             profile_image=data.get("profile_image"),
@@ -157,11 +270,6 @@ class StudentAdmissionForm(forms.Form):
 
 
 class StudentWorkspaceForm(StudentAdmissionForm):
-    admission_number = forms.CharField(
-        max_length=40,
-        required=False,
-        widget=forms.TextInput(attrs={"placeholder": "Optional"}),
-    )
     class_group = forms.CharField(
         max_length=50,
         required=False,
@@ -171,6 +279,7 @@ class StudentWorkspaceForm(StudentAdmissionForm):
 
     def __init__(self, *args, student=None, **kwargs):
         self.student = student
+        kwargs["apply_admission_number_auto"] = False
         super().__init__(*args, **kwargs)
 
     def clean_assessment_number(self):
@@ -187,7 +296,7 @@ class StudentWorkspaceForm(StudentAdmissionForm):
     def clean_admission_number(self):
         number = uppercase_value(self.cleaned_data.get("admission_number", ""))
         if not number:
-            return ""
+            return None
         existing = Student.objects.filter(admission_number=number)
         if self.student is not None:
             existing = existing.exclude(pk=self.student.pk)
@@ -214,6 +323,7 @@ class StudentWorkspaceForm(StudentAdmissionForm):
             parent.save(update_fields=["full_name", "relationship_to_student", "email"])
 
         self.student.first_name = uppercase_value(data["first_name"])
+        self.student.middle_name = uppercase_value(data.get("middle_name", ""))
         self.student.last_name = uppercase_value(data["last_name"])
         self.student.date_of_birth = data["date_of_birth"]
         self.student.gender = data["gender"]

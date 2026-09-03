@@ -99,7 +99,7 @@
             {% for student in students %}
             <tr
               data-student-row
-              data-sort-name="{{ student.first_name }} {{ student.last_name }}"
+              data-sort-name="{{ student.display_name }}"
               data-sort-admission="{{ student.admission_number }}"
             >              <td>
                 <strong class="is-uppercase exam-student-name">

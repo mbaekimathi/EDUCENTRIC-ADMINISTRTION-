@@ -28,7 +28,9 @@
   </div>
   <div class="teacher-page-bar-actions">
     {% include "employees/includes/student_sort_toggle.html" %}
+    {% if admissions_enabled %}
     <a class="primary-button" href="{% url 'admissions:admit_student' %}">Admit student</a>
+    {% endif %}
   </div>
 </div>
 
@@ -113,7 +115,7 @@
                 id="student-{{ student.id }}"
                 data-student-row
                 data-student-id="{{ student.id }}"
-                data-sort-name="{{ student.first_name }} {{ student.last_name }}"
+                data-sort-name="{{ student.display_name }}"
                 data-sort-admission="{{ student.admission_number }}"
                 data-search="{{ student.display_name }} {{ student.admission_number }} {{ student.assessment_number }} {{ student.parent_guardian.full_name }} {{ student.parent_guardian.phone_number }} {{ student.class_group }}"
               >
@@ -156,13 +158,14 @@
                       class="record-action"
                       data-edit-student
                       data-first-name="{{ student.first_name }}"
+                      data-middle-name="{{ student.middle_name }}"
                       data-last-name="{{ student.last_name }}"
                       data-date-of-birth="{{ student.date_of_birth|date:'Y-m-d' }}"
                       data-gender="{{ student.gender }}"
                       data-academic-level="{{ student.academic_level }}"
                       data-admission-number="{{ student.admission_number|default:'' }}"
                       data-class-group="{{ student.class_group }}"
-                      data-assessment-number="{{ student.assessment_number }}"
+                      data-assessment-number="{{ student.assessment_number|default:'' }}"
                       data-previous-school="{{ student.previous_school }}"
                       data-sponsorship-category="{{ student.sponsorship_category }}"
                       data-sponsor-details="{{ student.sponsor_details }}"
@@ -254,6 +257,10 @@
               <input id="edit-student-first-name" class="uppercase-input" name="first_name" required>
             </div>
             <div class="field">
+              <label for="edit-student-middle-name">Middle name</label>
+              <input id="edit-student-middle-name" class="uppercase-input" name="middle_name" maxlength="150">
+            </div>
+            <div class="field">
               <label for="edit-student-last-name">Last name <span class="required">*</span></label>
               <input id="edit-student-last-name" class="uppercase-input" name="last_name" required>
             </div>
@@ -295,8 +302,8 @@
               <input id="edit-student-admission" class="uppercase-input" name="admission_number" maxlength="40">
             </div>
             <div class="field">
-              <label for="edit-student-assessment">Assessment number <span class="required">*</span></label>
-              <input id="edit-student-assessment" class="uppercase-input" name="assessment_number" required maxlength="50">
+              <label for="edit-student-assessment">Assessment number</label>
+              <input id="edit-student-assessment" class="uppercase-input" name="assessment_number" maxlength="50">
             </div>
             <div class="field span-two">
               <label for="edit-student-previous-school">Previous school</label>
@@ -386,6 +393,6 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/student-management.js' %}?v=20260902live-search" defer></script>
+<script src="{% static 'js/student-management.js' %}?v=20260903middle" defer></script>
 <script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% endblock %}

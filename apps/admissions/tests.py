@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from apps.employees.models import Employee
 
-from .models import ParentGuardian, Student
+from .models import AdmissionSettings, ParentGuardian, Student
 
 
 class AdmissionsTests(TestCase):
@@ -48,10 +48,12 @@ class AdmissionsTests(TestCase):
             reverse("admissions:admit_student"),
             {
                 "first_name": "Grace",
+                "middle_name": "Njeri",
                 "last_name": "Wanjiku",
                 "date_of_birth": "2016-04-15",
                 "gender": "FEMALE",
                 "academic_level": "GRADE_3",
+                "admission_number": "ADM-1001",
                 "assessment_number": "ASSESS-002",
                 "previous_school": "Bright School",
                 "sponsorship_category": "GOVERNMENT",
@@ -68,17 +70,42 @@ class AdmissionsTests(TestCase):
         self.assertFalse(admitted.is_active)
         self.assertFalse(admitted.parent_guardian.is_active)
         self.assertEqual(admitted.emergency_contact, "+254700000003")
+        self.assertEqual(admitted.middle_name, "NJERI")
+        self.assertEqual(admitted.admission_number, "ADM-1001")
+        self.assertEqual(admitted.display_name, "GRACE NJERI WANJIKU")
+        settings = AdmissionSettings.get_solo()
+        self.assertGreaterEqual(settings.admission_number_next, 1002)
+
+    def test_admit_form_suggests_editable_admission_number(self):
+        settings = AdmissionSettings.get_solo()
+        settings.auto_generate_admission_number = True
+        settings.admission_number_prefix = ""
+        settings.admission_number_next = 5001
+        settings.admission_number_pad_width = 0
+        settings.save()
+        self.client.force_login(self.employee)
+        response = self.client.get(reverse("admissions:admit_student"))
+        self.assertContains(response, 'value="5001"')
+        self.assertContains(response, "Suggested automatically")
 
     def test_employee_can_admit_student_without_assessment_number(self):
+        settings = AdmissionSettings.get_solo()
+        settings.auto_generate_admission_number = True
+        settings.admission_number_prefix = ""
+        settings.admission_number_next = 7001
+        settings.admission_number_pad_width = 0
+        settings.save()
         self.client.force_login(self.employee)
         response = self.client.post(
             reverse("admissions:admit_student"),
             {
                 "first_name": "Amina",
+                "middle_name": "",
                 "last_name": "Hassan",
                 "date_of_birth": "2017-08-20",
                 "gender": "FEMALE",
                 "academic_level": "GRADE_2",
+                "admission_number": "",
                 "assessment_number": "",
                 "previous_school": "",
                 "sponsorship_category": "SELF",
@@ -93,6 +120,10 @@ class AdmissionsTests(TestCase):
         self.assertRedirects(response, reverse("admissions:admit_student"))
         admitted = Student.objects.get(first_name="AMINA", last_name="HASSAN")
         self.assertIsNone(admitted.assessment_number)
+        self.assertEqual(admitted.middle_name, "")
+        self.assertEqual(admitted.admission_number, "7001")
+        settings.refresh_from_db()
+        self.assertEqual(settings.admission_number_next, 7002)
 
     def test_student_can_access_student_portal(self):
         response = self.client.post(

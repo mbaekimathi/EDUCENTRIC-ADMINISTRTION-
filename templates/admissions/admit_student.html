@@ -5,6 +5,7 @@
 
 {% block sidebar_modules %}
 <p class="workspace-nav-label">Admissions</p>
+{% if admissions_enabled %}
 <a
   class="workspace-nav-link {% if active_nav == 'admissions' %}is-active{% endif %}"
   href="{% url 'admissions:admit_student' %}"
@@ -14,9 +15,11 @@
   </span>
   Admit student
 </a>
+{% endif %}
 {% endblock %}
 
 {% block workspace_content %}
+{% if admissions_enabled %}
 <section class="teacher-dash-actions is-nav-links" aria-label="Admissions">
   <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
@@ -26,6 +29,23 @@
     </span>
   </a>
 </section>
+{% endif %}
+
+{% if admissions_disabled %}
+<section class="settings-panel">
+  <div class="settings-profile-card">
+    <span class="module-icon" aria-hidden="true">AD</span>
+    <div>
+      <h3>Admissions are turned off</h3>
+      <p>New students cannot be admitted until admissions are enabled in system settings.</p>
+    </div>
+  </div>
+  <p class="settings-empty">
+    <a href="{% url 'employees:admission_settings' %}">Open admission settings</a>
+    to enable admissions again.
+  </p>
+</section>
+{% else %}
 <section class="admit-panel workspace-panel">
   
   <form method="post" class="admit-form" enctype="multipart/form-data" novalidate>
@@ -41,16 +61,33 @@
           <small class="hint">Optional. Used on report cards and the student profile.</small>
           {% for error in form.profile_image.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
+      </div>
+    </div>
+
+    <div class="admit-group">
+      <h2 class="admit-group-title">Name</h2>
+      <div class="form-grid">
         <div class="field">
           <label for="{{ form.first_name.id_for_label }}">First name <span class="required">*</span></label>
           {{ form.first_name }}
           {% for error in form.first_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
         <div class="field">
+          <label for="{{ form.middle_name.id_for_label }}">Middle name</label>
+          {{ form.middle_name }}
+          {% for error in form.middle_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
           <label for="{{ form.last_name.id_for_label }}">Last name <span class="required">*</span></label>
           {{ form.last_name }}
           {% for error in form.last_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
+      </div>
+    </div>
+
+    <div class="admit-group">
+      <h2 class="admit-group-title">Enrolment</h2>
+      <div class="form-grid">
         <div class="field">
           <label for="{{ form.date_of_birth.id_for_label }}">Date of birth <span class="required">*</span></label>
           {{ form.date_of_birth }}
@@ -65,6 +102,14 @@
           <label for="{{ form.academic_level.id_for_label }}">Class / level <span class="required">*</span></label>
           {{ form.academic_level }}
           {% for error in form.academic_level.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.admission_number.id_for_label }}">Admission number</label>
+          {{ form.admission_number }}
+          {% if admission_settings.auto_generate_admission_number %}
+          <small class="hint">Suggested automatically — you can edit it before saving.</small>
+          {% endif %}
+          {% for error in form.admission_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
         <div class="field">
           <label for="{{ form.assessment_number.id_for_label }}">Assessment number</label>
@@ -147,9 +192,11 @@
     </div>
   </form>
 </section>
+{% endif %}
 {% endblock %}
 
 {% block workspace_scripts %}
+{% if not admissions_disabled %}
 <script>
   const category = document.getElementById("id_sponsorship_category");
   const sponsorDetails = document.getElementById("sponsor-details-field");
@@ -160,4 +207,5 @@
   category.addEventListener("change", toggleSponsorDetails);
   toggleSponsorDetails();
 </script>
+{% endif %}
 {% endblock %}

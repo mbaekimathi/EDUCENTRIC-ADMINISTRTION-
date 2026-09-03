@@ -9,6 +9,7 @@
 
 {% block workspace_content %}
 <section class="teacher-dash-actions is-nav-links" aria-label="Role modules">
+  {% if admissions_enabled %}
   <a class="teacher-dash-action" href="{% url 'admissions:admit_student' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
     <span class="teacher-dash-action-copy">
@@ -16,6 +17,7 @@
       <span>Admit students and prepare parent portal credentials.</span>
     </span>
   </a>
+  {% endif %}
   <div class="teacher-dash-action is-static" aria-disabled="true">
     <span class="teacher-dash-action-icon" aria-hidden="true">RL</span>
     <span class="teacher-dash-action-copy">

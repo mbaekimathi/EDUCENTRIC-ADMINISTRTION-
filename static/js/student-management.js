@@ -4,6 +4,7 @@
   const sponsorField = document.querySelector("[data-sponsor-details-field]");
   const fields = {
     firstName: document.querySelector("#edit-student-first-name"),
+    middleName: document.querySelector("#edit-student-middle-name"),
     lastName: document.querySelector("#edit-student-last-name"),
     dateOfBirth: document.querySelector("#edit-student-dob"),
     gender: document.querySelector("#edit-student-gender"),
@@ -90,6 +91,7 @@
     button.addEventListener("click", () => {
       form.action = button.dataset.updateUrl;
       fields.firstName.value = button.dataset.firstName || "";
+      if (fields.middleName) fields.middleName.value = button.dataset.middleName || "";
       fields.lastName.value = button.dataset.lastName || "";
       fields.dateOfBirth.value = button.dataset.dateOfBirth || "";
       fields.gender.value = button.dataset.gender || "";

@@ -1,7 +1,31 @@
 from django.contrib import admin
 from django import forms
 
-from .models import ParentGuardian, Student
+from .models import AdmissionSettings, ParentGuardian, Student
+
+
+@admin.register(AdmissionSettings)
+class AdmissionSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "admissions_enabled",
+        "auto_generate_admission_number",
+        "admission_number_prefix",
+        "admission_number_next",
+        "admission_number_pad_width",
+    )
+    fields = (
+        "admissions_enabled",
+        "auto_generate_admission_number",
+        "admission_number_prefix",
+        "admission_number_next",
+        "admission_number_pad_width",
+    )
+
+    def has_add_permission(self, request):
+        return not AdmissionSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class PortalAccountAdminForm(forms.ModelForm):
@@ -47,6 +71,7 @@ class StudentAdmin(admin.ModelAdmin):
         "admission_number",
         "assessment_number",
         "first_name",
+        "middle_name",
         "last_name",
         "class_group",
         "academic_level",
@@ -59,12 +84,14 @@ class StudentAdmin(admin.ModelAdmin):
         "admission_number",
         "assessment_number",
         "first_name",
+        "middle_name",
         "last_name",
         "parent_guardian__full_name",
     )
     readonly_fields = ("password", "admitted_at")
     fields = (
         "first_name",
+        "middle_name",
         "last_name",
         "date_of_birth",
         "gender",
