@@ -56,26 +56,32 @@
       || form.querySelector(".it-marks-mean-table");
     const sheet = form.closest(".it-marks-sheet") || form.closest(".teacher-marks-sheet");
     const compactNameSheet = Boolean(sheet && mainTable);
-    const COLLAPSE_AT = 24;
+    const COLLAPSE_AT = 20;
     const EXPAND_AT = 2;
     let nameCollapsed = false;
-    // After collapse, browser may clamp scrollLeft to 0. Hold expand until the
-    // user moves right a bit so we don't immediately re-open (shake) — but never
-    // write scrollLeft ourselves (that blocked scrolling back).
+    // After collapse, browser may clamp scrollLeft to 0. Hold expand briefly so we
+    // don't shake — cleared as soon as the user scrolls left (or right past a few px).
     let holdExpandAtOrigin = false;
     let ignoreExpandUntil = 0;
     let cachedFirstMin = 0;
+    let spacerPx = 0;
     let scrollRaf = 0;
+    let lastScrollX = 0;
+
+    function isMobileMarksViewport() {
+      return window.matchMedia("(max-width: 720px)").matches;
+    }
 
     function nameColExtraPx() {
-      // Room for a truncated last/middle name when expanded — keep it modest.
-      if (window.matchMedia("(max-width: 480px)").matches) return 3.25 * 16;
-      if (window.matchMedia("(max-width: 720px)").matches) return 4 * 16;
-      return 5 * 16;
+      // Extra room beyond first name when showing the full name at rest.
+      if (window.matchMedia("(max-width: 480px)").matches) return 7 * 16;
+      if (isMobileMarksViewport()) return 9 * 16;
+      return 12 * 16;
     }
 
     function cellPadPx() {
-      if (window.matchMedia("(max-width: 720px)").matches) return 18;
+      if (window.matchMedia("(max-width: 480px)").matches) return 14;
+      if (isMobileMarksViewport()) return 16;
       return 24;
     }
 
@@ -112,14 +118,20 @@
           ctx.font = cs.font || `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
           fontSet = true;
         }
-        const text = (el.textContent || "").replace(/\s+/g, " ").trim().toUpperCase();
+        const parts = [];
+        el.querySelectorAll(".exam-student-first, .exam-student-middle, .exam-student-last").forEach(function (part) {
+          const t = (part.textContent || "").replace(/\s+/g, " ").trim();
+          if (t) parts.push(t);
+        });
+        const text = parts.join(" ").toUpperCase();
         if (!text) return;
         max = Math.max(max, ctx.measureText(text).width);
       });
       const firstMin = cachedFirstMin || measureFirstNameMinPx();
-      const capped = firstMin + nameColExtraPx();
       const measured = max > 0 ? Math.ceil(max + cellPadPx()) : 0;
-      return measured ? Math.min(measured, capped) : capped;
+      // Prefer the real full-name width; only fall back to first+extra if measure failed.
+      if (measured) return measured;
+      return firstMin ? firstMin + nameColExtraPx() : 0;
     }
 
     function remeasureFirstNames() {
@@ -146,38 +158,135 @@
       return scrollPanel ? scrollPanel.scrollLeft || 0 : 0;
     }
 
+    function canScrollX() {
+      if (!scrollPanel) return false;
+      return scrollPanel.scrollWidth > scrollPanel.clientWidth + 2;
+    }
+
     function nameCells() {
       if (!mainTable) return [];
       return Array.from(mainTable.querySelectorAll("tr > :first-child"));
+    }
+
+    function ensureScrollTrack() {
+      if (!scrollPanel || !mainTable) return null;
+      let track = scrollPanel.querySelector(":scope > .exam-marks-scroll-track");
+      if (track && mainTable.parentElement === track) return track;
+      track = document.createElement("div");
+      track.className = "exam-marks-scroll-track";
+      scrollPanel.insertBefore(track, mainTable);
+      track.appendChild(mainTable);
+      return track;
+    }
+
+    function ensureNameCol() {
+      if (!mainTable) return null;
+      let cg = mainTable.querySelector(":scope > colgroup[data-exam-cols]");
+      const headCells = mainTable.querySelector("thead tr")?.children;
+      const colCount = headCells ? headCells.length : 0;
+      if (!colCount) return null;
+      if (!cg || cg.children.length !== colCount) {
+        if (cg) cg.remove();
+        cg = document.createElement("colgroup");
+        cg.setAttribute("data-exam-cols", "1");
+        for (let i = 0; i < colCount; i += 1) {
+          const col = document.createElement("col");
+          if (i === 0) col.setAttribute("data-exam-name-col", "1");
+          if (i === 1) col.setAttribute("data-exam-admit-col", "1");
+          cg.appendChild(col);
+        }
+        mainTable.insertBefore(cg, mainTable.firstChild);
+      }
+      return cg.querySelector("[data-exam-name-col]");
     }
 
     function applyNameCellWidths(collapsed) {
       const firstMin = cachedFirstMin || remeasureFirstNames();
       if (!firstMin) {
         nameCells().forEach(function (cell) {
-          cell.style.width = "";
-          cell.style.minWidth = "";
-          cell.style.maxWidth = "";
+          cell.style.removeProperty("width");
+          cell.style.removeProperty("min-width");
+          cell.style.removeProperty("max-width");
         });
+        const nameCol = ensureNameCol();
+        if (nameCol) {
+          nameCol.style.width = "";
+          nameCol.style.minWidth = "";
+          nameCol.style.maxWidth = "";
+        }
         return;
       }
-      // Same width/min/max so table-layout:fixed cannot stretch the sticky col.
+      // Collapsed: hug first name. Expanded: fit full name. Never leave empty sticky space.
       const colW = collapsed ? firstMin : measureExpandedNamePx();
       const root = sheet || form;
       root.style.setProperty("--exam-name-col-width", `${colW}px`);
+      root.style.setProperty("--exam-name-first-min", `${firstMin}px`);
       root.style.setProperty("--exam-name-col-max", `${colW}px`);
+      // Keep table content-sized so fixed/min-width rules cannot redistribute into name.
+      mainTable.style.tableLayout = "auto";
+      mainTable.style.width = "max-content";
+      mainTable.style.minWidth = "0";
+      mainTable.style.maxWidth = "none";
+      const nameCol = ensureNameCol();
+      if (nameCol) {
+        nameCol.style.setProperty("width", `${colW}px`);
+        nameCol.style.setProperty("min-width", `${colW}px`);
+        nameCol.style.setProperty("max-width", `${colW}px`);
+      }
+      const admitCol = mainTable.querySelector("[data-exam-admit-col]");
+      if (admitCol) {
+        if (collapsed) {
+          admitCol.style.width = "0px";
+          admitCol.style.minWidth = "0px";
+          admitCol.style.maxWidth = "0px";
+        } else {
+          admitCol.style.width = "";
+          admitCol.style.minWidth = "";
+          admitCol.style.maxWidth = "";
+        }
+      }
       nameCells().forEach(function (cell) {
-        cell.style.width = `${colW}px`;
-        cell.style.minWidth = `${colW}px`;
-        cell.style.maxWidth = `${colW}px`;
+        cell.style.setProperty("width", `${colW}px`, "important");
+        cell.style.setProperty("min-width", `${colW}px`, "important");
+        cell.style.setProperty("max-width", `${colW}px`, "important");
+        cell.style.boxSizing = "border-box";
       });
+    }
+
+    function setScrollSpacer(px) {
+      // Spacer sits BESIDE the table (not inside it) so scrollWidth is preserved
+      // without stretching the sticky name column.
+      spacerPx = Math.max(0, Math.round(px || 0));
+      if (!scrollPanel || !mainTable) return;
+      mainTable.style.minWidth = "";
+      mainTable.style.paddingInlineEnd = "";
+      mainTable.style.boxSizing = "";
+      const track = ensureScrollTrack();
+      if (!track) return;
+      let spacer = track.querySelector(":scope > [data-exam-x-spacer]");
+      if (!spacer) {
+        spacer = document.createElement("div");
+        spacer.setAttribute("data-exam-x-spacer", "1");
+        spacer.setAttribute("aria-hidden", "true");
+        track.appendChild(spacer);
+      }
+      spacer.style.width = spacerPx ? `${spacerPx}px` : "0px";
+      spacer.style.minWidth = spacer.style.width;
+      spacer.style.flex = "0 0 auto";
+      spacer.style.height = "1px";
+      spacer.style.pointerEvents = "none";
+      spacer.style.alignSelf = "stretch";
     }
 
     function syncMeanBarWidth() {
       if (!mainTable || !meanTable) return;
-      meanTable.style.tableLayout = "fixed";
-      meanTable.style.width = `${Math.max(mainTable.offsetWidth, mainTable.scrollWidth)}px`;
-      meanTable.style.minWidth = `${Math.max(mainTable.offsetWidth, mainTable.scrollWidth)}px`;
+      const tableW = Math.max(mainTable.scrollWidth, mainTable.offsetWidth) + spacerPx;
+      meanTable.style.tableLayout = "auto";
+      meanTable.style.width = `${tableW}px`;
+      meanTable.style.minWidth = "0";
+      meanTable.style.maxWidth = "none";
+      meanTable.style.paddingInlineEnd = "";
+      meanTable.style.boxSizing = "";
       const colW = cachedFirstMin
         ? nameCollapsed
           ? cachedFirstMin
@@ -186,9 +295,9 @@
       const meanName = meanTable.querySelector("tr > :first-child");
       const meanAdmit = meanTable.querySelector("tr > :nth-child(2)");
       if (meanName && colW) {
-        meanName.style.width = `${colW}px`;
-        meanName.style.minWidth = `${colW}px`;
-        meanName.style.maxWidth = `${colW}px`;
+        meanName.style.setProperty("width", `${colW}px`, "important");
+        meanName.style.setProperty("min-width", `${colW}px`, "important");
+        meanName.style.setProperty("max-width", `${colW}px`, "important");
         meanName.style.boxSizing = "border-box";
       }
       if (meanAdmit) {
@@ -226,21 +335,44 @@
     }
 
     function setNameCollapsed(next) {
-      if (!compactNameSheet || !mainTable) return;
+      if (!compactNameSheet || !mainTable || !scrollPanel) return;
       if (next === nameCollapsed) return;
 
-      nameCollapsed = next;
-      applyNameCollapsedClass(next);
-      applyNameCellWidths(next);
+      if (next) {
+        // Measure full scroll width, collapse name band, then add an external
+        // spacer so overflow (and scroll-back) remains without widening the name col.
+        setScrollSpacer(0);
+        const widthBefore = scrollPanel.scrollWidth;
+        const scrollBefore = currentScrollX();
+        nameCollapsed = true;
+        applyNameCollapsedClass(true);
+        applyNameCellWidths(true);
+        void mainTable.offsetWidth;
+        const widthAfter = scrollPanel.scrollWidth;
+        setScrollSpacer(Math.max(0, widthBefore - widthAfter));
+        // Keep the user's place if the browser clamped during shrink.
+        if (scrollPanel.scrollLeft < scrollBefore) {
+          scrollPanel.scrollLeft = Math.min(
+            scrollBefore,
+            Math.max(0, scrollPanel.scrollWidth - scrollPanel.clientWidth)
+          );
+        }
+      } else {
+        nameCollapsed = false;
+        setScrollSpacer(0);
+        applyNameCollapsedClass(false);
+        applyNameCellWidths(false);
+      }
       syncMeanBarWidth();
       syncMeanBarScroll();
 
       if (next) {
-        ignoreExpandUntil = performance.now() + 350;
-        // Detect clamp-to-start on the next frame without touching scrollLeft.
+        ignoreExpandUntil = performance.now() + 180;
         requestAnimationFrame(function () {
           if (nameCollapsed && currentScrollX() <= EXPAND_AT) {
-            holdExpandAtOrigin = true;
+            // Only latch if there is still room to scroll — otherwise we'd trap
+            // the user with no way to clear the hold.
+            holdExpandAtOrigin = canScrollX();
           }
         });
       } else {
@@ -260,11 +392,23 @@
       if (!compactNameSheet || !scrollPanel) return;
 
       const x = currentScrollX();
+      const scrollingLeft = x < lastScrollX - 0.5;
+      const scrollingRight = x > lastScrollX + 0.5;
 
-      // Any rightward move while collapsed clears the origin hold so the user
-      // can scroll back left and restore full names.
-      if (nameCollapsed && x > EXPAND_AT + 6) {
+      // Scrolling left always frees expand. Scrolling further right also clears
+      // the post-collapse origin latch.
+      if (nameCollapsed && (scrollingLeft || (scrollingRight && x > EXPAND_AT + 6))) {
         holdExpandAtOrigin = false;
+      }
+
+      // Stuck collapsed with no horizontal overflow — restore full names.
+      if (nameCollapsed && holdExpandAtOrigin && !canScrollX()) {
+        holdExpandAtOrigin = false;
+        setNameCollapsed(false);
+        lastScrollX = currentScrollX();
+        updateScrolledChrome(lastScrollX);
+        syncMeanBarScroll();
+        return;
       }
 
       if (!nameCollapsed && x >= COLLAPSE_AT) {
@@ -278,7 +422,8 @@
         setNameCollapsed(false);
       }
 
-      updateScrolledChrome(x);
+      lastScrollX = currentScrollX();
+      updateScrolledChrome(lastScrollX);
       syncMeanBarScroll();
     }
 
@@ -294,12 +439,26 @@
       remeasureFirstNames();
       applyNameCollapsedClass(nameCollapsed);
       applyNameCellWidths(nameCollapsed);
+      if (nameCollapsed) {
+        setScrollSpacer(0);
+        const collapsedW = scrollPanel ? scrollPanel.scrollWidth : 0;
+        applyNameCollapsedClass(false);
+        applyNameCellWidths(false);
+        const expandedW = scrollPanel ? scrollPanel.scrollWidth : collapsedW;
+        applyNameCollapsedClass(true);
+        applyNameCellWidths(true);
+        setScrollSpacer(Math.max(0, expandedW - collapsedW));
+      } else {
+        setScrollSpacer(0);
+      }
       syncMeanBarWidth();
-      updateScrolledChrome(currentScrollX());
+      lastScrollX = currentScrollX();
+      updateScrolledChrome(lastScrollX);
       syncMeanBarScroll();
     }
 
     if (compactNameSheet && scrollPanel) {
+      ensureScrollTrack();
       scrollPanel.addEventListener("scroll", onScrollPanelScroll, { passive: true });
       window.addEventListener("resize", onViewportChange);
       if (typeof ResizeObserver === "function") {
@@ -316,9 +475,14 @@
         }).observe(scrollPanel);
       }
       remeasureFirstNames();
+      // Always show full names at rest; collapse only after scrolling right.
+      nameCollapsed = false;
+      holdExpandAtOrigin = false;
+      setScrollSpacer(0);
       applyNameCollapsedClass(false);
       applyNameCellWidths(false);
       syncMeanBarWidth();
+      lastScrollX = 0;
       updateScrolledChrome(0);
       syncMeanBarScroll();
     }
