@@ -122,7 +122,8 @@ def admit_student(request):
         student = form.save()
         messages.success(
             request,
-            f"{student.display_name} has been admitted. Portal accounts need administrator activation.",
+            f"{student.display_name} has been admitted. "
+            "Confirm their details under Pending admissions to activate portal access.",
         )
         return redirect("admissions:admit_student")
     return render(

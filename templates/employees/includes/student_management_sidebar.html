@@ -1,3 +1,38 @@
+<p class="workspace-nav-label">Student management</p>
+<a
+  class="workspace-nav-link {% if active_student_tool == 'register' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_module' 'student-management' %}"
+  {% if active_student_tool == 'register' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 12a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 12 12zm-7 8a6.2 6.2 0 0 1 14 0M17 8.5a2.5 2.5 0 1 0-1.2-4.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Student register
+</a>
+<a
+  class="workspace-nav-link {% if active_student_tool == 'pending-admissions' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_pending_admissions' %}"
+  {% if active_student_tool == 'pending-admissions' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Pending admissions
+  {% if pending_admission_count %}
+  <span class="workspace-nav-badge">{{ pending_admission_count }}</span>
+  {% endif %}
+</a>
+<a
+  class="workspace-nav-link {% if active_student_tool == 'advance-academic-level' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_advance_academic_level' %}"
+  {% if active_student_tool == 'advance-academic-level' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Advance academic level
+</a>
+
 {% if student_level_filters %}
 <p class="workspace-nav-label">Grades</p>
 {% for level in student_level_filters %}

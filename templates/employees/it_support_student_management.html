@@ -11,6 +11,8 @@
 {% block workspace_content %}
 
 <div class="exam-tool-page">
+{% include "employees/includes/nav/student_management.html" %}
+
 <div class="teacher-page-bar" aria-label="Student management overview">
   <div class="teacher-page-bar-stats">
     <div class="teacher-page-bar-stat">
@@ -24,6 +26,10 @@
     <div class="teacher-page-bar-stat">
       <strong>{{ class_count }}</strong>
       <span>Class{{ class_count|pluralize }}</span>
+    </div>
+    <div class="teacher-page-bar-stat">
+      <strong>{{ pending_admission_count }}</strong>
+      <span>Pending</span>
     </div>
   </div>
   <div class="teacher-page-bar-actions">

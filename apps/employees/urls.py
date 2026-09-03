@@ -105,6 +105,31 @@ urlpatterns = [
         name="delete_workspace_employee",
     ),
     path(
+        "workspace/it_support/student-management/pending-admissions/",
+        views.it_support_pending_admissions,
+        name="it_support_pending_admissions",
+    ),
+    path(
+        "workspace/it_support/student-management/advance-academic-level/",
+        views.it_support_advance_academic_level,
+        name="it_support_advance_academic_level",
+    ),
+    path(
+        "workspace/it_support/student-management/advance-academic-level/classes/<int:class_id>/",
+        views.it_support_advance_academic_level_class,
+        name="it_support_advance_academic_level_class",
+    ),
+    path(
+        "workspace/it_support/student-management/pending-admissions/<int:student_id>/",
+        views.it_support_pending_admission_detail,
+        name="it_support_pending_admission_detail",
+    ),
+    path(
+        "workspace/it_support/student-management/pending-admissions/<int:student_id>/approve/",
+        views.approve_workspace_student,
+        name="approve_workspace_student",
+    ),
+    path(
         "workspace/it_support/student-management/<int:student_id>/profile/",
         views.workspace_student_profile_legacy,
         name="workspace_student_profile_legacy",
@@ -349,6 +374,11 @@ urlpatterns = [
         "settings/curriculum/academic-levels/",
         views.academic_levels_settings,
         name="academic_levels_settings",
+    ),
+    path(
+        "settings/curriculum/academic-levels/reorder/",
+        views.reorder_academic_levels,
+        name="reorder_academic_levels",
     ),
     path(
         "settings/curriculum/academic-levels/<int:level_id>/update/",

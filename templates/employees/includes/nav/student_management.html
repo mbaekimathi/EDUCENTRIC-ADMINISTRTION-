@@ -1,0 +1,35 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Student management tools">
+  <a
+    class="teacher-dash-action{% if active_student_tool == 'register' %} is-active{% endif %}"
+    href="{% url 'employees:it_support_module' 'student-management' %}"
+    {% if active_student_tool == 'register' %}aria-current="page"{% endif %}
+  >
+    <span class="teacher-dash-action-icon" aria-hidden="true">SR</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Student register</strong>
+      <span>Student register</span>
+    </span>
+  </a>
+  <a
+    class="teacher-dash-action{% if active_student_tool == 'pending-admissions' %} is-active{% endif %}"
+    href="{% url 'employees:it_support_pending_admissions' %}"
+    {% if active_student_tool == 'pending-admissions' %}aria-current="page"{% endif %}
+  >
+    <span class="teacher-dash-action-icon" aria-hidden="true">PA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Pending admissions{% if pending_admission_count %} ({{ pending_admission_count }}){% endif %}</strong>
+      <span>Pending admissions</span>
+    </span>
+  </a>
+  <a
+    class="teacher-dash-action{% if active_student_tool == 'advance-academic-level' %} is-active{% endif %}"
+    href="{% url 'employees:it_support_advance_academic_level' %}"
+    {% if active_student_tool == 'advance-academic-level' %}aria-current="page"{% endif %}
+  >
+    <span class="teacher-dash-action-icon" aria-hidden="true">AL</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Advance academic level</strong>
+      <span>Advance academic level</span>
+    </span>
+  </a>
+</section>

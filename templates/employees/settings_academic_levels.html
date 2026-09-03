@@ -10,6 +10,7 @@
   type="button"
   class="workspace-nav-link workspace-nav-action"
   data-open-modal="register-level"
+  data-normal-only
 >
   <span class="workspace-nav-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -21,18 +22,42 @@
 {% block workspace_content %}
 
 {% include "employees/includes/nav/curriculum_settings.html" %}
-<div class="settings-toolbar">
+<div class="settings-toolbar" data-levels-toolbar>
   <div class="settings-toolbar-copy">
     <h2>Registered levels</h2>
-    <p class="subtle">Create academic levels and manage classes inside the register or edit popup.</p>
+    <p class="subtle" data-order-hint>Create academic levels and manage classes inside the register or edit popup. Override level order when registering or editing, or rearrange the full list.</p>
+    <p class="subtle" data-order-active-hint hidden>Drag levels to rearrange progression order, then save. Category grouping is restored after you save.</p>
   </div>
-  <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-level">
-    Register level
-  </button>
+  <div class="settings-toolbar-actions">
+    <button type="button" class="ghost-button settings-toolbar-action" data-start-reorder{% if not levels %} disabled{% endif %}>
+      Edit level order
+    </button>
+    <button type="button" class="ghost-button settings-toolbar-action" data-cancel-reorder hidden>
+      Cancel
+    </button>
+    <button type="button" class="primary-button settings-toolbar-action" data-save-reorder hidden>
+      Save order
+    </button>
+    <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-level" data-normal-only>
+      Register level
+    </button>
+  </div>
 </div>
 
+<form
+  id="reorder-academic-levels-form"
+  method="post"
+  action="{% url 'employees:reorder_academic_levels' %}"
+  data-reorder-form
+  hidden
+>
+  {% csrf_token %}
+  <div data-reorder-inputs></div>
+</form>
+
+<div data-levels-board>
 {% if level_groups %}
-<div class="settings-category-list">
+<div class="settings-category-list" data-levels-grouped>
   {% for group in level_groups %}
   <section class="settings-category" aria-label="{{ group.category }}">
     <header class="settings-category-header">
@@ -90,6 +115,7 @@
                   data-code="{{ level.code }}"
                   data-category="{{ level.category }}"
                   data-description="{{ level.description }}"
+                  data-order="{{ level.order }}"
                   data-status="{{ level.status }}"
                   data-update-url="{% url 'employees:update_academic_level' level.id %}"
                   data-classes='[{% for academic_class in level.classes.all %}{"id":{{ academic_class.id }},"name":"{{ academic_class.name|escapejs }}","code":"{{ academic_class.code|escapejs }}","status":"{{ academic_class.status }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
@@ -114,9 +140,45 @@
   </section>
   {% endfor %}
 </div>
+
+<div class="settings-table-panel" data-levels-reorder-panel hidden>
+  <table class="settings-table settings-table-responsive">
+    <thead>
+      <tr>
+        <th class="reorder-handle-col"><span class="sr-only">Move</span></th>
+        <th>Level</th>
+        <th>Level code</th>
+        <th>Category</th>
+        <th>Level order</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody data-reorder-list>
+      {% for level in levels %}
+      <tr data-level-row data-level-id="{{ level.id }}">
+        <td class="reorder-handle-col" data-label="Move">
+          <span class="reorder-handle" aria-hidden="true" title="Drag to reorder">⋮⋮</span>
+        </td>
+        <td data-label="Level">
+          <strong class="is-uppercase">{{ level.name }}</strong>
+        </td>
+        <td data-label="Level code"><code class="is-uppercase">{{ level.code }}</code></td>
+        <td data-label="Category" class="is-uppercase">{{ level.category|default:"—" }}</td>
+        <td data-label="Level order" data-order-display>{{ level.order }}</td>
+        <td data-label="Status">
+          <span class="status-pill is-uppercase {% if level.status == 'ACTIVE' %}is-active{% else %}is-inactive{% endif %}">
+            {{ level.get_status_display }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% else %}
 <p class="settings-empty">No academic levels yet. Use <strong>Register level</strong> to add one.</p>
 {% endif %}
+</div>
 
 <template id="class-row-template">
   <div class="class-editor-row">
@@ -187,6 +249,12 @@
         <label for="{{ form.description.id_for_label }}">Description</label>
         {{ form.description }}
         {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.order.id_for_label }}">Level order</label>
+        {{ form.order }}
+        <small class="field-hint">Leave blank to auto-assign the next order, or set a number to override.</small>
+        {% for error in form.order.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
       </div>
       <div class="field">
         <label for="{{ form.status.id_for_label }}">Status <span class="required">*</span></label>
@@ -261,6 +329,11 @@
       <div class="field">
         <label for="edit-level-description">Description</label>
         <textarea id="edit-level-description" name="description" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label for="edit-level-order">Level order <span class="required">*</span></label>
+        <input id="edit-level-order" class="uppercase-input" type="number" name="order" min="0" step="1" required>
+        <small class="field-hint">Lower numbers appear earlier in progression across the system.</small>
       </div>
       <div class="field">
         <label for="edit-level-status">Status <span class="required">*</span></label>
@@ -356,6 +429,7 @@
     code: document.querySelector("#edit-level-code"),
     category: document.querySelector("#edit-level-category"),
     description: document.querySelector("#edit-level-description"),
+    order: document.querySelector("#edit-level-order"),
     status: document.querySelector("#edit-level-status"),
   };
 
@@ -390,6 +464,106 @@
   editModal?.querySelectorAll("[data-edit-level-close]").forEach((button) => {
     button.addEventListener("click", () => setEditOpen(false));
   });
+
+  const board = document.querySelector("[data-levels-board]");
+  const groupedPanel = document.querySelector("[data-levels-grouped]");
+  const reorderPanel = document.querySelector("[data-levels-reorder-panel]");
+  const reorderForm = document.querySelector("[data-reorder-form]");
+  const reorderInputs = document.querySelector("[data-reorder-inputs]");
+  const reorderList = document.querySelector("[data-reorder-list]");
+  const startReorderBtn = document.querySelector("[data-start-reorder]");
+  const cancelReorderBtn = document.querySelector("[data-cancel-reorder]");
+  const saveReorderBtn = document.querySelector("[data-save-reorder]");
+  const orderHint = document.querySelector("[data-order-hint]");
+  const orderActiveHint = document.querySelector("[data-order-active-hint]");
+  let reorderActive = false;
+  let draggedRow = null;
+
+  function refreshOrderDisplays() {
+    if (!reorderList) return;
+    reorderList.querySelectorAll("[data-level-row]").forEach((row, index) => {
+      const display = row.querySelector("[data-order-display]");
+      if (display) display.textContent = String(index + 1);
+    });
+  }
+
+  function setReorderMode(active) {
+    reorderActive = active;
+    document.body.classList.toggle("is-reordering-academic-levels", active);
+    board?.classList.toggle("is-reordering", active);
+    startReorderBtn?.toggleAttribute("hidden", active);
+    cancelReorderBtn?.toggleAttribute("hidden", !active);
+    saveReorderBtn?.toggleAttribute("hidden", !active);
+    orderHint?.toggleAttribute("hidden", active);
+    orderActiveHint?.toggleAttribute("hidden", !active);
+    if (groupedPanel) groupedPanel.hidden = active;
+    if (reorderPanel) reorderPanel.hidden = !active;
+    document.querySelectorAll("[data-normal-only]").forEach((el) => {
+      el.hidden = active;
+    });
+    reorderList?.querySelectorAll("[data-level-row]").forEach((row) => {
+      row.draggable = active;
+      row.classList.toggle("is-draggable", active);
+    });
+    if (active) refreshOrderDisplays();
+  }
+
+  function submitReorder() {
+    if (!reorderForm || !reorderInputs || !reorderList) return;
+    reorderInputs.innerHTML = "";
+    reorderList.querySelectorAll("[data-level-row]").forEach((row) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "level_id";
+      input.value = row.dataset.levelId || "";
+      reorderInputs.appendChild(input);
+    });
+    reorderForm.submit();
+  }
+
+  startReorderBtn?.addEventListener("click", () => setReorderMode(true));
+  cancelReorderBtn?.addEventListener("click", () => window.location.reload());
+  saveReorderBtn?.addEventListener("click", submitReorder);
+
+  if (reorderList) {
+    reorderList.addEventListener("dragstart", (event) => {
+      if (!reorderActive) return;
+      const row = event.target.closest("[data-level-row]");
+      if (!row || !reorderList.contains(row)) return;
+      draggedRow = row;
+      row.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", row.dataset.levelId || "");
+    });
+
+    reorderList.addEventListener("dragend", () => {
+      if (!draggedRow) return;
+      draggedRow.classList.remove("is-dragging");
+      draggedRow = null;
+      reorderList.querySelectorAll(".is-drop-target").forEach((el) => el.classList.remove("is-drop-target"));
+      refreshOrderDisplays();
+    });
+
+    reorderList.addEventListener("dragover", (event) => {
+      if (!reorderActive || !draggedRow) return;
+      event.preventDefault();
+      const target = event.target.closest("[data-level-row]");
+      if (!target || target === draggedRow || !reorderList.contains(target)) return;
+      const rect = target.getBoundingClientRect();
+      const before = event.clientY < rect.top + rect.height / 2;
+      reorderList.insertBefore(draggedRow, before ? target : target.nextSibling);
+      reorderList.querySelectorAll(".is-drop-target").forEach((el) => el.classList.remove("is-drop-target"));
+      target.classList.add("is-drop-target");
+      refreshOrderDisplays();
+    });
+
+    reorderList.addEventListener("drop", (event) => {
+      if (!reorderActive) return;
+      event.preventDefault();
+      reorderList.querySelectorAll(".is-drop-target").forEach((el) => el.classList.remove("is-drop-target"));
+      refreshOrderDisplays();
+    });
+  }
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;

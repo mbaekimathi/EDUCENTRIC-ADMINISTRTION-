@@ -26,12 +26,13 @@ from .models import (
 class AcademicLevelForm(forms.ModelForm):
     class Meta:
         model = AcademicLevel
-        fields = ("name", "code", "category", "description", "status")
+        fields = ("name", "code", "category", "description", "order", "status")
         labels = {
             "name": "Level name",
             "code": "Level code",
             "category": "Level category",
             "description": "Description",
+            "order": "Level order",
             "status": "Status",
         }
         widgets = {
@@ -57,8 +58,25 @@ class AcademicLevelForm(forms.ModelForm):
                     "autocapitalize": "characters",
                 }
             ),
+            "order": forms.NumberInput(
+                attrs={
+                    "class": "uppercase-input",
+                    "min": "0",
+                    "step": "1",
+                    "placeholder": "AUTO",
+                }
+            ),
             "status": forms.Select(attrs={"class": "uppercase-input"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order"].required = False
+        if not self.instance.pk:
+            self.fields["order"].help_text = "Leave blank to auto-assign the next order."
+            if not self.is_bound:
+                self.initial["order"] = None
+                self.fields["order"].initial = None
 
     def clean_name(self):
         return self.cleaned_data["name"].strip().upper()
@@ -72,9 +90,19 @@ class AcademicLevelForm(forms.ModelForm):
     def clean_description(self):
         return self.cleaned_data.get("description", "").strip().upper()
 
+    def clean_order(self):
+        order = self.cleaned_data.get("order")
+        if order is None:
+            if self.instance.pk:
+                return self.instance.order
+            return None
+        if order < 0:
+            raise ValidationError("Level order cannot be negative.")
+        return order
+
     def save(self, commit=True):
         instance = super().save(commit=False)
-        if instance.pk is None:
+        if self.cleaned_data.get("order") is None:
             next_order = (
                 AcademicLevel.objects.aggregate(max_order=Max("order")).get("max_order") or 0
             ) + 1

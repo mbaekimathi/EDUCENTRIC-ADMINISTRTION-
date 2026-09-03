@@ -1,9 +1,14 @@
 <script>
 (function () {
   document.querySelectorAll("[data-exam-marks]").forEach(function (form) {
-    const editButton = form.querySelector("[data-exam-edit]");
-    const cancelButton = form.querySelector("[data-exam-cancel]");
-    const saveButton = form.querySelector("[data-exam-save]");
+    const sheetRoot =
+      form.closest(".marks-card") ||
+      form.closest(".it-marks-sheet") ||
+      form.closest(".teacher-marks-sheet") ||
+      form;
+    const editButton = sheetRoot.querySelector("[data-exam-edit]");
+    const cancelButton = sheetRoot.querySelector("[data-exam-cancel]");
+    const saveButton = sheetRoot.querySelector("[data-exam-save]");
     const inputs = form.querySelectorAll(".exam-mark-input");
 
     function syncOutOfAttributes(preferSaved) {
@@ -34,10 +39,11 @@
       syncStickyOffset();
     }
 
-    const bar = form.querySelector(".exam-record-bar");
+    const bar = sheetRoot.querySelector(".exam-record-bar");
     function syncStickyOffset() {
       if (!bar) return;
       form.style.setProperty("--exam-record-bar-h", `${bar.offsetHeight}px`);
+      sheetRoot.style.setProperty("--exam-record-bar-h", `${bar.offsetHeight}px`);
     }
     if (typeof ResizeObserver === "function" && bar) {
       new ResizeObserver(syncStickyOffset).observe(bar);
@@ -54,8 +60,9 @@
     const mainTable = scrollPanel?.querySelector(".exam-record-students-table");
     const meanTable = form.querySelector(".teacher-marks-mean-table")
       || form.querySelector(".it-marks-mean-table");
-    const sheet = form.closest(".it-marks-sheet") || form.closest(".teacher-marks-sheet");
-    const compactNameSheet = Boolean(sheet && mainTable);
+    const sheet = sheetRoot;
+    const fillCardSheet = Boolean(sheet && sheet.classList.contains("marks-workbench"));
+    const compactNameSheet = Boolean(sheet && mainTable && !fillCardSheet);
     const COLLAPSE_AT = 20;
     const EXPAND_AT = 2;
     let nameCollapsed = false;
@@ -216,13 +223,27 @@
         }
         return;
       }
+      // CSS colgroup owns layout for marks-card sheets.
+      if (fillCardSheet) {
+        if (mainTable) {
+          mainTable.style.removeProperty("table-layout");
+          mainTable.style.removeProperty("width");
+          mainTable.style.removeProperty("min-width");
+          mainTable.style.removeProperty("max-width");
+        }
+        nameCells().forEach(function (cell) {
+          cell.style.removeProperty("width");
+          cell.style.removeProperty("min-width");
+          cell.style.removeProperty("max-width");
+        });
+        return;
+      }
       // Collapsed: hug first name. Expanded: fit full name. Never leave empty sticky space.
       const colW = collapsed ? firstMin : measureExpandedNamePx();
       const root = sheet || form;
       root.style.setProperty("--exam-name-col-width", `${colW}px`);
       root.style.setProperty("--exam-name-first-min", `${firstMin}px`);
       root.style.setProperty("--exam-name-col-max", `${colW}px`);
-      // Keep table content-sized so fixed/min-width rules cannot redistribute into name.
       mainTable.style.tableLayout = "auto";
       mainTable.style.width = "max-content";
       mainTable.style.minWidth = "0";
@@ -254,6 +275,18 @@
     }
 
     function setScrollSpacer(px) {
+      // Fill-card sheets must stay inside the card — never inject an external spacer.
+      if (fillCardSheet) {
+        spacerPx = 0;
+        if (!scrollPanel || !mainTable) return;
+        const track = scrollPanel.querySelector(":scope > .exam-marks-scroll-track");
+        const spacer = track && track.querySelector(":scope > [data-exam-x-spacer]");
+        if (spacer) {
+          spacer.style.width = "0px";
+          spacer.style.minWidth = "0px";
+        }
+        return;
+      }
       // Spacer sits BESIDE the table (not inside it) so scrollWidth is preserved
       // without stretching the sticky name column.
       spacerPx = Math.max(0, Math.round(px || 0));
@@ -280,11 +313,18 @@
 
     function syncMeanBarWidth() {
       if (!mainTable || !meanTable) return;
-      const tableW = Math.max(mainTable.scrollWidth, mainTable.offsetWidth) + spacerPx;
-      meanTable.style.tableLayout = "auto";
-      meanTable.style.width = `${tableW}px`;
-      meanTable.style.minWidth = "0";
-      meanTable.style.maxWidth = "none";
+      if (fillCardSheet) {
+        meanTable.style.tableLayout = "fixed";
+        meanTable.style.width = "100%";
+        meanTable.style.minWidth = "100%";
+        meanTable.style.maxWidth = "100%";
+      } else {
+        const tableW = Math.max(mainTable.scrollWidth, mainTable.offsetWidth) + spacerPx;
+        meanTable.style.tableLayout = "auto";
+        meanTable.style.width = `${tableW}px`;
+        meanTable.style.minWidth = "0";
+        meanTable.style.maxWidth = "none";
+      }
       meanTable.style.paddingInlineEnd = "";
       meanTable.style.boxSizing = "";
       const colW = cachedFirstMin
@@ -309,9 +349,9 @@
           meanAdmit.style.border = "0";
           meanAdmit.style.overflow = "hidden";
         } else {
-          meanAdmit.style.width = "";
-          meanAdmit.style.minWidth = "";
-          meanAdmit.style.maxWidth = "";
+          meanAdmit.style.width = "6.5rem";
+          meanAdmit.style.minWidth = "6.5rem";
+          meanAdmit.style.maxWidth = "6.5rem";
           meanAdmit.style.padding = "";
           meanAdmit.style.border = "";
           meanAdmit.style.overflow = "";
@@ -485,6 +525,16 @@
       lastScrollX = 0;
       updateScrolledChrome(0);
       syncMeanBarScroll();
+    } else if (fillCardSheet && form) {
+      // Layout is CSS-owned (desktop fill / mobile horizontal scroll).
+      // Do not clamp width/max-width inline — that collapses subject columns on phones.
+      const cardTable = form.querySelector(".marks-card-table");
+      if (cardTable) {
+        cardTable.style.removeProperty("width");
+        cardTable.style.removeProperty("max-width");
+        cardTable.style.removeProperty("min-width");
+        cardTable.style.removeProperty("table-layout");
+      }
     }
 
     setEditing(false);

@@ -1,0 +1,199 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Advance {{ academic_class.display_label }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Advance academic level{% endblock %}
+{% block header_title %}{{ academic_class.display_label }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/student_management_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div class="exam-tool-page advance-level-page">
+{% include "employees/includes/nav/student_management.html" %}
+
+<p class="exam-back-row">
+  <a class="exam-back-link" href="{% url 'employees:it_support_advance_academic_level' %}">← All classes</a>
+</p>
+
+<section class="pending-admit-hero" aria-label="Class promotion summary">
+  <div class="pending-admit-hero-copy">
+    <p class="pending-admit-kicker">{{ level.name }} · {{ academic_class.code }}</p>
+    <h2>Select students to advance</h2>
+    <p>
+      {% if can_advance %}
+      Checked students move to <strong class="is-uppercase">{{ next_level.name }}{% if target_class %} · {{ target_class.display_label }}{% endif %}</strong>.
+      Uncheck anyone who should stay in {{ level.name }}.
+      {% else %}
+      This class has no next academic level configured by level order, so students cannot be advanced from here.
+      {% endif %}
+    </p>
+  </div>
+  <div class="pending-admit-hero-aside">
+    <div class="pending-admit-stat" aria-label="{{ student_count }} students">
+      <strong>{{ student_count }}</strong>
+      <span>Student{{ student_count|pluralize }}</span>
+    </div>
+  </div>
+</section>
+
+{% if students %}
+<form
+  method="post"
+  class="advance-level-form"
+  data-advance-form
+  data-from-level="{{ level.name }}"
+  data-to-level="{{ next_level.name|default:'' }}"
+  data-to-class="{% if target_class %}{{ target_class.display_label }}{% endif %}"
+  {% if not can_advance %}aria-disabled="true"{% endif %}
+>
+  {% csrf_token %}
+  <div class="pending-admit-panel">
+    <header class="pending-admit-panel-head">
+      <div>
+        <h3>Class roll</h3>
+        <p>
+          <span data-selected-count>{{ student_count }}</span> of {{ student_count }} selected
+        </p>
+      </div>
+      {% if can_advance %}
+      <div class="advance-level-toolbar">
+        <button type="button" class="ghost-button" data-select-all>Select all</button>
+        <button type="button" class="ghost-button" data-clear-all>Unselect all</button>
+      </div>
+      {% endif %}
+    </header>
+
+    <div class="pending-admit-table-wrap">
+      <table class="pending-admit-table">
+        <thead>
+          <tr>
+            <th class="advance-level-check-col">
+              {% if can_advance %}
+              <label class="sr-only" for="advance-select-all">Select all students</label>
+              <input type="checkbox" id="advance-select-all" data-select-all-toggle checked>
+              {% else %}
+              <span class="sr-only">Advance</span>
+              {% endif %}
+            </th>
+            <th>Student</th>
+            <th>Admission</th>
+            <th>Assessment</th>
+            <th>Class group</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td data-label="Advance" class="advance-level-check-col">
+              {% if can_advance %}
+              <label class="advance-level-check">
+                <input
+                  type="checkbox"
+                  name="student_id"
+                  value="{{ student.id }}"
+                  checked
+                  data-student-check
+                >
+                <span class="sr-only">Advance {{ student.display_name }}</span>
+              </label>
+              {% else %}
+              <span class="subtle">—</span>
+              {% endif %}
+            </td>
+            <td data-label="Student">
+              <strong class="is-uppercase">{{ student.display_name }}</strong>
+            </td>
+            <td data-label="Admission">
+              {% if student.admission_number %}<code>{{ student.admission_number }}</code>{% else %}—{% endif %}
+            </td>
+            <td data-label="Assessment">
+              {% if student.assessment_number %}<code>{{ student.assessment_number }}</code>{% else %}—{% endif %}
+            </td>
+            <td data-label="Class group">{{ student.class_group|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if can_advance %}
+  <div class="advance-level-actions">
+    <a class="ghost-button" href="{% url 'employees:it_support_advance_academic_level' %}">Cancel</a>
+    <button type="submit" class="primary-button" data-advance-submit>
+      Advance selected students
+    </button>
+  </div>
+  {% endif %}
+</form>
+{% else %}
+<p class="settings-empty">No students are linked to this class yet.</p>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+{% if can_advance and students %}
+<script>
+(function () {
+  const form = document.querySelector("[data-advance-form]");
+  if (!form) return;
+
+  const checks = () => Array.from(form.querySelectorAll("[data-student-check]"));
+  const selectedCount = form.querySelector("[data-selected-count]");
+  const selectAllToggle = form.querySelector("[data-select-all-toggle]");
+  const fromLevel = form.dataset.fromLevel || "this level";
+  const toLevel = form.dataset.toLevel || "the next level";
+  const toClass = form.dataset.toClass || "";
+
+  function refresh() {
+    const all = checks();
+    const selected = all.filter((input) => input.checked);
+    if (selectedCount) selectedCount.textContent = String(selected.length);
+    if (selectAllToggle) {
+      selectAllToggle.checked = all.length > 0 && selected.length === all.length;
+      selectAllToggle.indeterminate = selected.length > 0 && selected.length < all.length;
+    }
+  }
+
+  function setAll(checked) {
+    checks().forEach((input) => {
+      input.checked = checked;
+    });
+    refresh();
+  }
+
+  form.querySelector("[data-select-all]")?.addEventListener("click", () => setAll(true));
+  form.querySelector("[data-clear-all]")?.addEventListener("click", () => setAll(false));
+  selectAllToggle?.addEventListener("change", () => setAll(selectAllToggle.checked));
+  form.addEventListener("change", (event) => {
+    if (event.target.matches("[data-student-check]")) refresh();
+  });
+
+  form.addEventListener("submit", (event) => {
+    const selected = checks().filter((input) => input.checked);
+    if (!selected.length) {
+      event.preventDefault();
+      window.alert("Select at least one student to advance.");
+      return;
+    }
+    const skipped = checks().length - selected.length;
+    const destination = toClass ? `${toLevel} · ${toClass}` : toLevel;
+    let message =
+      `Advance ${selected.length} student${selected.length === 1 ? "" : "s"} ` +
+      `from ${fromLevel} to ${destination}?`;
+    if (skipped) {
+      message += `\n\n${skipped} student${skipped === 1 ? "" : "s"} will stay in ${fromLevel}.`;
+    }
+    message += "\n\nThis cannot be undone automatically.";
+    if (!window.confirm(message)) {
+      event.preventDefault();
+    }
+  });
+
+  refresh();
+})();
+</script>
+{% endif %}
+{% endblock %}

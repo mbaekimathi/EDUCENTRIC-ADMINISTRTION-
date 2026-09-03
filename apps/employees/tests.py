@@ -1957,6 +1957,179 @@ class StudentManagementTests(TestCase):
         )
         self.assertRedirects(legacy, profile_url)
 
+    def test_pending_admissions_lists_inactive_students(self):
+        response = self.client.get(reverse("employees:it_support_pending_admissions"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pending admissions")
+        self.assertContains(response, self.student.display_name)
+        self.assertContains(
+            response,
+            reverse(
+                "employees:it_support_pending_admission_detail",
+                kwargs={"student_id": self.student.id},
+            ),
+        )
+        self.assertContains(
+            response,
+            reverse("employees:it_support_module", kwargs={"module": "student-management"}),
+        )
+
+    def test_pending_admissions_excludes_active_and_suspended(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        active_parent = ParentGuardian.objects.create(
+            full_name="ACTIVE PARENT",
+            relationship_to_student="FATHER",
+            phone_number="+254700000333",
+        )
+        active_student = Student.objects.create(
+            first_name="ACTIVE",
+            last_name="STUDENT",
+            date_of_birth="2014-01-01",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_4,
+            admission_number="9001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=active_parent,
+            is_active=True,
+        )
+        self.student.is_suspended = True
+        self.student.save(update_fields=["is_suspended", "is_active"])
+
+        response = self.client.get(reverse("employees:it_support_pending_admissions"))
+        self.assertNotContains(response, active_student.display_name)
+        self.assertNotContains(response, self.student.display_name)
+
+    def test_can_review_and_approve_pending_admission(self):
+        detail_url = reverse(
+            "employees:it_support_pending_admission_detail",
+            kwargs={"student_id": self.student.id},
+        )
+        detail_response = self.client.get(detail_url)
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "Approve &amp; activate")
+        self.assertContains(detail_response, self.parent.full_name)
+
+        approve_response = self.client.post(
+            reverse(
+                "employees:approve_workspace_student",
+                kwargs={"student_id": self.student.id},
+            )
+        )
+        self.assertRedirects(
+            approve_response,
+            reverse("employees:it_support_pending_admissions"),
+        )
+        self.student.refresh_from_db()
+        self.parent.refresh_from_db()
+        self.assertTrue(self.student.is_active)
+        self.assertTrue(self.parent.is_active)
+
+        list_response = self.client.get(reverse("employees:it_support_pending_admissions"))
+        self.assertNotContains(list_response, self.student.display_name)
+
+    def test_student_management_shows_pending_admissions_nav(self):
+        response = self.client.get(
+            reverse("employees:it_support_module", kwargs={"module": "student-management"})
+        )
+        pending_url = reverse("employees:it_support_pending_admissions")
+        advance_url = reverse("employees:it_support_advance_academic_level")
+        self.assertContains(response, pending_url)
+        self.assertContains(response, advance_url)
+        self.assertContains(response, "Pending admissions")
+        self.assertContains(response, "Advance academic level")
+        self.assertContains(response, "Student register")
+
+    def test_advance_academic_level_lists_classes_and_promotes_selected_students(self):
+        from apps.admissions.models import ParentGuardian, Student
+        from apps.curriculum.models import AcademicClass, AcademicLevel
+
+        grade_4 = AcademicLevel.objects.create(name="Grade 4", code="G4", category="PRIMARY", order=4)
+        grade_5 = AcademicLevel.objects.create(name="Grade 5", code="G5", category="PRIMARY", order=5)
+        class_4x = AcademicClass.objects.create(
+            academic_level=grade_4,
+            name="X",
+            code="G4X",
+            order=1,
+        )
+        AcademicClass.objects.create(
+            academic_level=grade_5,
+            name="X",
+            code="G5X",
+            order=1,
+        )
+
+        parent = ParentGuardian.objects.create(
+            full_name="PROMOTE PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000901",
+        )
+        advancing = Student.objects.create(
+            first_name="MOVE",
+            last_name="UP",
+            date_of_birth="2015-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_4,
+            admission_number="ADV-001",
+            class_group="4X",
+            assessment_number="ADV001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        staying = Student.objects.create(
+            first_name="STAY",
+            last_name="BEHIND",
+            date_of_birth="2015-02-01",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_4,
+            admission_number="ADV-002",
+            class_group="4X",
+            assessment_number="ADV002",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+
+        list_response = self.client.get(reverse("employees:it_support_advance_academic_level"))
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, "Advance academic level")
+        self.assertContains(list_response, class_4x.display_label)
+        self.assertContains(
+            list_response,
+            reverse(
+                "employees:it_support_advance_academic_level_class",
+                kwargs={"class_id": class_4x.id},
+            ),
+        )
+
+        class_response = self.client.get(
+            reverse(
+                "employees:it_support_advance_academic_level_class",
+                kwargs={"class_id": class_4x.id},
+            )
+        )
+        self.assertEqual(class_response.status_code, 200)
+        self.assertContains(class_response, advancing.display_name)
+        self.assertContains(class_response, staying.display_name)
+        self.assertContains(class_response, "Grade 5")
+
+        promote_response = self.client.post(
+            reverse(
+                "employees:it_support_advance_academic_level_class",
+                kwargs={"class_id": class_4x.id},
+            ),
+            {"student_id": [str(advancing.id)]},
+        )
+        self.assertRedirects(promote_response, reverse("employees:it_support_advance_academic_level"))
+
+        advancing.refresh_from_db()
+        staying.refresh_from_db()
+        self.assertEqual(advancing.academic_level, Student.AcademicLevel.GRADE_5)
+        self.assertEqual(advancing.class_group, "5X")
+        self.assertEqual(staying.academic_level, Student.AcademicLevel.GRADE_4)
+        self.assertEqual(staying.class_group, "4X")
+
     def test_any_role_can_view_shared_student_profile(self):
         teacher = Employee.objects.create_user(
             employee_code="246813",
@@ -5319,10 +5492,26 @@ class TeacherExamRecordsTests(TestCase):
         self.assertFalse(ELearningLearningMaterial.objects.filter(name="Wrong format").exists())
 
     def test_exam_records_lists_all_exams(self):
+        latest = GeneratedExamTimetable.objects.create(
+            name="LATEST ASSESSMENT",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+        )
         response = self.client.get(reverse("employees:teacher_exam_records"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Registered assessments")
+        self.assertContains(response, "Newest registrations first")
+        self.assertContains(response, "teacher-exam-records-list")
         self.assertContains(response, "2026 TERM 3 assessment")
+        self.assertContains(response, "LATEST ASSESSMENT")
+        html = response.content.decode()
+        self.assertLess(html.find("LATEST ASSESSMENT"), html.find("2026 TERM 3 assessment"))
+        self.assertContains(
+            response,
+            reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": latest.id}),
+        )
         self.assertContains(
             response,
             reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": self.exam.id}),

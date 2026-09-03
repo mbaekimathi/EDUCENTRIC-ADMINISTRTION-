@@ -1,8 +1,8 @@
 {% extends "layouts/workspace.html" %}
 {% load static %}
 {% block title %}{{ exam_title }} | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Assessment records{% endblock %}
-{% block header_title %}{{ exam_title }}{% endblock %}
+{% block header_eyebrow %}{% if selected_class %}Marks sheet{% else %}Assessment records{% endif %}{% endblock %}
+{% block header_title %}{% if selected_class %}{{ selected_class.display_label }}{% else %}{{ exam_title }}{% endif %}{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/teacher_exam_classes_sidebar.html" %}
@@ -16,108 +16,114 @@
 {% include "employees/includes/nav/teacher_exam_classes.html" %}
 {% endif %}
 {% if selected_class %}
-<section class="exam-record-sheet teacher-marks-sheet teacher-exam-marks-view" data-student-sortable>
+<section class="marks-card teacher-marks-sheet marks-workbench" data-student-sortable>
   {% if students %}
-  <form method="post" class="exam-record-marks-form" data-teacher-marks data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
+  <header class="marks-card-head exam-record-bar" aria-label="Marks sheet">
+    <div class="marks-card-head-top">
+      <div class="marks-card-title">
+        <div class="marks-card-title-row">
+          <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
+          <span class="marks-card-status" data-status="{{ exam.status }}">{{ exam.get_status_display }}</span>
+        </div>
+        <p class="marks-card-meta">
+          {{ exam_title }}
+          {% if selected_level %}<span aria-hidden="true">·</span> {{ selected_level.name }}{% endif %}
+          <span aria-hidden="true">·</span>
+          {{ students|length }} student{{ students|length|pluralize }}
+          {% if subjects %}
+          <span aria-hidden="true">·</span>
+          {{ subjects|length }} subject{{ subjects|length|pluralize }}
+          {% endif %}
+        </p>
+      </div>
+      <div class="marks-card-actions">
+        <div class="marks-card-tools">
+          {% include "employees/includes/student_sort_toggle.html" %}
+        </div>
+        <div class="marks-card-cta">
+          {% if marks_editable %}
+          <button type="button" class="ghost-button" data-exam-edit>Edit</button>
+          <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
+          <button type="submit" class="primary-button" form="marks-sheet-form" data-exam-save hidden>Save</button>
+          {% else %}
+          <span class="marks-card-lock" title="Marks can only be edited while this assessment is in Marking status.">
+            Locked
+          </span>
+          {% endif %}
+          <a class="ghost-button" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">Subjects</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <form id="marks-sheet-form" method="post" class="marks-card-form exam-record-marks-form" data-teacher-marks data-exam-marks{% if out_of_settings_changed %} data-out-of-changed="1"{% endif %}>
     {% csrf_token %}
     {% if student_sort_is_admission %}
     <input type="hidden" name="sort" value="admission" data-student-sort-field>
     {% else %}
     <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
     {% endif %}
-    <header class="exam-record-bar teacher-marks-bar">
-      <div class="teacher-marks-bar-main">
-        <p class="exam-detail-kicker">Marks sheet · scores out of each subject total</p>
-        <div class="exam-record-bar-title">
-          <div class="teacher-marks-title-block">
-            <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
-            {% if selected_level %}
-            <p class="teacher-marks-meta">
-              {{ selected_level.name }}
-              <span aria-hidden="true">·</span>
-              {{ exam.get_status_display }}
-            </p>
-            {% endif %}
-          </div>
-          <div class="teacher-marks-chips">
-            <span class="student-count-chip is-quiet">
-              {{ students|length }} student{{ students|length|pluralize }}
-            </span>
-            {% for subject in subjects %}
-            <span class="teacher-marks-subject-chip" title="{{ subject.name }}">
-              {{ subject.code }}
-              <span class="teacher-marks-out-of">/ {{ subject.exam_out_of }}</span>
-            </span>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-      <div class="exam-record-bar-tools teacher-marks-tools">
-        {% include "employees/includes/student_sort_toggle.html" %}
-        {% if marks_editable %}
-        <button type="button" class="ghost-button" data-exam-edit>Edit marks</button>
-        <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
-        <button type="submit" class="primary-button" data-exam-save hidden>Save marks</button>
-        {% else %}
-        <span class="student-count-chip exam-marks-lock-chip" title="Marks can only be edited while this assessment is in Marking status.">
-          Locked · {{ exam.get_status_display }}
-        </span>
-        {% endif %}
-        <a class="exam-back-link teacher-marks-back" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">← All subjects</a>
-      </div>
-    </header>
+
     {% if not marks_editable %}
-    <div class="notice warning exam-marks-lock-notice teacher-marks-notice">
+    <div class="notice warning marks-card-notice">
       Marks are read-only while this assessment is {{ exam.get_status_display|lower }}. Editing opens when status is Marking.
     </div>
     {% endif %}
     {% if out_of_settings_changed %}
-    <div class="notice warning teacher-marks-notice" data-out-of-changed-notice>
+    <div class="notice warning marks-card-notice" data-out-of-changed-notice>
       Out-of marks settings have changed since some scores were saved. Saved percentages stay as they were until you edit and save; saving will apply the current out-of values.
     </div>
     {% endif %}
 
-    <div class="settings-table-panel exam-record-sheet-table teacher-marks-table-panel">
-      <div class="teacher-marks-table-scroll">
-        <table class="settings-table settings-table-responsive exam-record-students-table">
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Admission</th>
-              {% for subject in subjects %}
-              <th title="{{ subject.name }} · out of {{ subject.exam_out_of }}">
-                <span class="teacher-marks-subject-head">
-                  <span class="exam-subject-code">{{ subject.code }}</span>
-                  <span class="teacher-marks-out-of-head">/ {{ subject.exam_out_of }}</span>
-                </span>
-              </th>
-              <th title="{{ subject.name }} percentage"><span class="teacher-marks-pct-head">%</span></th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody data-student-sort-body>
-            {% for student in students %}
-            <tr
-              data-student-row
-              data-sort-name="{{ student.display_name }}"
-              data-sort-admission="{{ student.admission_number }}"
-            >
-              <td>
-                <strong class="is-uppercase exam-student-name" title="{{ student.display_name }}">
-                  <span class="exam-student-first">{{ student.first_name }}</span>
-                  <span class="exam-student-rest">
-                    {% if student.middle_name %}<span class="exam-student-middle">{{ student.middle_name }}</span>{% endif %}
-                    <span class="exam-student-last">{{ student.last_name }}</span>
-                  </span>
-                </strong>
-              </td>
-              <td>
-                <span class="exam-admission">{% if student.admission_number %}{{ student.admission_number }}{% else %}—{% endif %}</span>
-              </td>
-              {% for cell in student.mark_cells %}
-              <td data-label="{{ cell.subject.code }} / {{ cell.out_of }}">
-                <label class="sr-only" for="{{ cell.field_name }}">{{ cell.subject.name }} marks for {{ student.display_name }}, out of {{ cell.out_of }}</label>
-                <span class="exam-mark-out-of-field">
+    <div class="marks-card-body">
+      {% if subjects %}
+      <table class="marks-card-table">
+        <colgroup>
+          <col class="marks-col-student">
+          <col class="marks-col-admit">
+          {% for subject in subjects %}
+          <col class="marks-col-mark">
+          {% endfor %}
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="marks-student-cell">Student</th>
+            <th scope="col" class="marks-admit-cell">Admission</th>
+            {% for subject in subjects %}
+            <th scope="col" class="marks-mark-cell" title="{{ subject.name }} · out of {{ subject.exam_out_of }}">
+              <span class="marks-col-head">
+                <span class="marks-subject-code">{{ subject.code }}</span>
+                <span class="marks-out-of">/ {{ subject.exam_out_of }}</span>
+              </span>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody data-student-sort-body>
+          {% for student in students %}
+          <tr
+            data-student-row
+            data-sort-name="{{ student.display_name }}"
+            data-sort-admission="{{ student.admission_number }}"
+          >
+            <td class="marks-student-cell">
+              <strong class="is-uppercase exam-student-name" title="{{ student.display_name }}">
+                <span class="exam-student-first">{{ student.first_name }}</span>
+                {% if student.middle_name %} <span class="exam-student-middle">{{ student.middle_name }}</span>{% endif %}
+                <span class="exam-student-last">{{ student.last_name }}</span>
+              </strong>
+              {% if student.admission_number %}
+              <span class="marks-admit-mobile">{{ student.admission_number }}</span>
+              {% endif %}
+            </td>
+            <td class="marks-admit-cell">
+              {% if student.admission_number %}<code class="marks-admit">{{ student.admission_number }}</code>{% else %}—{% endif %}
+            </td>
+            {% for cell in student.mark_cells %}
+            <td class="marks-mark-cell">
+              <label class="sr-only" for="{{ cell.field_name }}">{{ cell.subject.name }} marks for {{ student.display_name }}, out of {{ cell.out_of }}</label>
+              <div class="marks-mark-stack">
+                <span class="marks-input-wrap">
                   <input
                     id="{{ cell.field_name }}"
                     class="exam-mark-input"
@@ -137,73 +143,64 @@
                     data-subject-id="{{ cell.subject.id }}"
                     readonly
                   >
-                  <span class="exam-mark-out-of-suffix" aria-hidden="true">/ {{ cell.out_of }}</span>
+                  <span class="marks-out-suffix" aria-hidden="true">/ {{ cell.out_of }}</span>
                 </span>
-              </td>
-              <td>
-                <span class="exam-mark-percent" data-converted-for="{{ cell.field_name }}">{% if cell.percent != None %}{{ cell.percent }}%{% endif %}</span>
-              </td>
-              {% endfor %}
-            </tr>
+                <span class="marks-pct" data-converted-for="{{ cell.field_name }}">{% if cell.percent != None %}{{ cell.percent }}%{% endif %}</span>
+              </div>
+            </td>
             {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% if subject_means %}
-      <div class="teacher-marks-mean-bar" aria-label="Class mean">
-        <div class="teacher-marks-mean-scroll">
-          <table class="settings-table settings-table-responsive exam-record-students-table teacher-marks-mean-table">
-            <tbody>
-              <tr class="exam-record-mean-row">
-                <td><strong>Class mean</strong></td>
-                <td></td>
-                {% for mean in subject_means %}
-                <td>
-                  <span class="exam-mark-mean exam-mark-out-of-field">
-                    <span data-mean-raw-for="{{ mean.subject.id }}">{% if mean.raw_mean != None %}{{ mean.raw_mean }}{% else %}—{% endif %}</span>
-                    {% if mean.out_of %}<span class="exam-mark-out-of-suffix" aria-hidden="true">/ {{ mean.out_of }}</span>{% endif %}
-                  </span>
-                </td>
-                <td>
-                  <span class="exam-mark-mean exam-mark-mean-percent" data-mean-percent-for="{{ mean.subject.id }}">
-                    {% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}
-                  </span>
-                </td>
-                {% endfor %}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if subject_means %}
+        <tfoot>
+          <tr class="marks-mean-row">
+            <th scope="row" class="marks-student-cell">Class mean</th>
+            <td class="marks-admit-cell"></td>
+            {% for mean in subject_means %}
+            <td class="marks-mark-cell">
+              <div class="marks-mark-stack">
+                <span class="marks-input-wrap marks-mean-value">
+                  <span data-mean-raw-for="{{ mean.subject.id }}">{% if mean.raw_mean != None %}{{ mean.raw_mean }}{% else %}—{% endif %}</span>
+                  {% if mean.out_of %}<span class="marks-out-suffix" aria-hidden="true">/ {{ mean.out_of }}</span>{% endif %}
+                </span>
+                <span class="marks-pct marks-mean-pct" data-mean-percent-for="{{ mean.subject.id }}">
+                  {% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}
+                </span>
+              </div>
+            </td>
+            {% endfor %}
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+      {% else %}
+      <div class="marks-card-empty">
+        <strong>No subjects for this class</strong>
+        <p>Allocate subjects to this class (or yourself) to enter marks here.</p>
       </div>
       {% endif %}
     </div>
   </form>
   {% else %}
-  <header class="exam-record-bar teacher-marks-bar">
-    <div class="teacher-marks-bar-main">
-      <p class="exam-detail-kicker">Marks sheet · scores out of each subject total</p>
-      <div class="exam-record-bar-title">
-        <div class="teacher-marks-title-block">
-          <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
-          {% if selected_level %}
-          <p class="teacher-marks-meta">
-            {{ selected_level.name }}
-            <span aria-hidden="true">·</span>
-            {{ exam.get_status_display }}
-          </p>
-          {% endif %}
-        </div>
-        <span class="student-count-chip is-quiet">0 students</span>
-      </div>
+  <header class="marks-card-head exam-record-bar" aria-label="Marks sheet">
+    <div class="marks-card-title">
+      <h2 class="is-uppercase">{{ selected_class.display_label }}</h2>
+      <p>
+        {{ exam_title }}
+        {% if selected_level %}<span aria-hidden="true">·</span> {{ selected_level.name }}{% endif %}
+        <span aria-hidden="true">·</span>
+        0 students
+        <span class="marks-card-status" data-status="{{ exam.status }}">{{ exam.get_status_display }}</span>
+      </p>
     </div>
-    <div class="exam-record-bar-tools teacher-marks-tools">
-      <a class="exam-back-link teacher-marks-back" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">← All subjects</a>
+    <div class="marks-card-actions">
+      <a class="ghost-button" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">All subjects</a>
     </div>
   </header>
-  <div class="exam-record-sheet-empty teacher-marks-empty">
-    <span class="exam-detail-empty-icon" aria-hidden="true">0</span>
+  <div class="marks-card-empty">
     <strong>No students yet</strong>
-    <p class="settings-empty">No students are registered in {{ selected_class.display_label }}.</p>
+    <p>No students are registered in {{ selected_class.display_label }}.</p>
   </div>
   {% endif %}
 </section>

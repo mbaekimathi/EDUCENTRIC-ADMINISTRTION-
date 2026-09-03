@@ -1084,6 +1084,24 @@ def _with_student_sort(url, sort_mode):
     return f"{path}{sep}sort={STUDENT_SORT_ADMISSION}{hash_part}"
 
 
+def _pending_admission_queryset():
+    return Student.objects.filter(is_active=False, is_suspended=False).select_related(
+        "parent_guardian"
+    )
+
+
+def _pending_admission_count():
+    return _pending_admission_queryset().count()
+
+
+def _student_management_nav_context(*, active_tool="register"):
+    return {
+        "active_module": "student-management",
+        "active_student_tool": active_tool,
+        "pending_admission_count": _pending_admission_count(),
+    }
+
+
 def _student_management_stats():
     from django.db.models import Count
 
@@ -1096,6 +1114,7 @@ def _student_management_stats():
         "level_count": len(level_counts),
         "class_count": Student.objects.values("academic_level", "class_group").distinct().count(),
         "level_counts": level_counts,
+        "pending_admission_count": _pending_admission_count(),
     }
 
 
@@ -1137,6 +1156,7 @@ def _student_management_context(request):
         "student_count": stats["student_count"],
         "class_count": stats["class_count"],
         "level_count": stats["level_count"],
+        "pending_admission_count": stats["pending_admission_count"],
         "selected_student_level": selected_level,
         "selected_student_level_label": level_labels.get(selected_level, ""),
         "student_level_filters": level_filters,
@@ -1145,6 +1165,7 @@ def _student_management_context(request):
         "gender_choices": Student.Gender.choices,
         "academic_level_choices": Student.AcademicLevel.choices,
         "sponsorship_choices": Student.SponsorshipCategory.choices,
+        **_student_management_nav_context(active_tool="register"),
         **_student_sort_template_context(request),
     }
 
@@ -2736,19 +2757,31 @@ def teacher_students_class_attendance_analytics(request, employee, led_classes, 
     )
 
 
+def _registered_exams_latest():
+    generations = list(
+        GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
+        .annotate(sitting_count=Count("sittings", distinct=True))
+        .order_by("-created_at", "-id")
+    )
+    for exam in generations:
+        _annotate_exam_workflow_flags(exam)
+    return generations, len(generations), _current_exam_for_dashboard()
+
+
 @login_required
 def teacher_exam_records(request):
     denied = _require_teacher_workspace(request)
     if denied:
         return denied
-    exam_groups, exam_count, _current_exam = _grouped_registered_exams()
+    exams, exam_count, current_exam = _registered_exams_latest()
     return render(
         request,
         "employees/teacher_exam_records.html",
         {
             "active_nav": "exam-records",
-            "exam_groups": exam_groups,
+            "exams": exams,
             "exam_count": exam_count,
+            "current_exam": current_exam,
         },
     )
 
@@ -5217,6 +5250,257 @@ def delete_workspace_employee(request, employee_id):
 
 def _redirect_student_management():
     return redirect("employees:it_support_module", module="student-management")
+
+
+def _redirect_pending_admissions():
+    return redirect("employees:it_support_pending_admissions")
+
+
+def _redirect_advance_academic_level():
+    return redirect("employees:it_support_advance_academic_level")
+
+
+def _next_academic_level(level):
+    return (
+        AcademicLevel.objects.filter(
+            status=AcademicLevel.Status.ACTIVE,
+            order__gt=level.order,
+        )
+        .order_by("order", "name")
+        .first()
+    )
+
+
+def _matching_class_at_level(source_class, target_level):
+    if target_level is None:
+        return None
+    name = (source_class.name or "").strip()
+    candidates = AcademicClass.objects.filter(
+        academic_level=target_level,
+        status=AcademicClass.Status.ACTIVE,
+    )
+    if name:
+        match = candidates.filter(name__iexact=name).order_by("order", "name").first()
+        if match:
+            return match
+    return candidates.filter(order=source_class.order).order_by("name").first() or candidates.order_by(
+        "order", "name"
+    ).first()
+
+
+def _advance_class_group_value(target_class, source_class_group=""):
+    if target_class is not None:
+        return target_class.display_label
+    return (source_class_group or "").strip()
+
+
+@login_required
+def it_support_advance_academic_level(request):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+
+    classes = list(
+        AcademicClass.objects.filter(status=AcademicClass.Status.ACTIVE)
+        .select_related("academic_level")
+        .order_by("academic_level__order", "academic_level__name", "order", "name")
+    )
+    level_groups = OrderedDict()
+    for academic_class in classes:
+        level = academic_class.academic_level
+        next_level = _next_academic_level(level)
+        target_class = _matching_class_at_level(academic_class, next_level)
+        students = list(_students_in_academic_level(level, academic_class))
+        group = level_groups.setdefault(
+            level.id,
+            {
+                "level": level,
+                "next_level": next_level,
+                "classes": [],
+            },
+        )
+        group["classes"].append(
+            {
+                "academic_class": academic_class,
+                "student_count": len(students),
+                "next_level": next_level,
+                "target_class": target_class,
+                "can_advance": bool(next_level and _student_level_choice(next_level)),
+            }
+        )
+
+    return render(
+        request,
+        "employees/it_support_advance_academic_level.html",
+        {
+            "active_nav": "dashboard",
+            "level_groups": list(level_groups.values()),
+            "class_count": len(classes),
+            **_student_management_nav_context(active_tool="advance-academic-level"),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def it_support_advance_academic_level_class(request, class_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+
+    academic_class = get_object_or_404(
+        AcademicClass.objects.select_related("academic_level"),
+        pk=class_id,
+        status=AcademicClass.Status.ACTIVE,
+    )
+    level = academic_class.academic_level
+    next_level = _next_academic_level(level)
+    target_class = _matching_class_at_level(academic_class, next_level)
+    next_choice = _student_level_choice(next_level) if next_level else ""
+    students = list(_students_in_academic_level(level, academic_class))
+    can_advance = bool(next_level and next_choice)
+
+    if request.method == "POST":
+        if not can_advance:
+            error(
+                request,
+                f"{academic_class.display_label} has no next academic level to advance into.",
+            )
+            return redirect(
+                "employees:it_support_advance_academic_level_class",
+                class_id=academic_class.id,
+            )
+
+        selected_ids = {
+            int(value)
+            for value in request.POST.getlist("student_id")
+            if str(value).isdigit()
+        }
+        selected_students = [student for student in students if student.id in selected_ids]
+        if not selected_students:
+            error(request, "Select at least one student to advance.")
+            return redirect(
+                "employees:it_support_advance_academic_level_class",
+                class_id=academic_class.id,
+            )
+
+        skipped_count = len(students) - len(selected_students)
+        target_class_group = _advance_class_group_value(
+            target_class,
+            selected_students[0].class_group if selected_students else "",
+        )
+
+        with transaction.atomic():
+            for student in selected_students:
+                student.academic_level = next_choice
+                student.class_group = target_class_group
+                student.save(update_fields=["academic_level", "class_group"])
+
+        target_label = (
+            f"{next_level.name}"
+            + (f" · {target_class.display_label}" if target_class else "")
+        )
+        message = (
+            f"Advanced {len(selected_students)} student"
+            f"{'' if len(selected_students) == 1 else 's'} "
+            f"from {level.name} ({academic_class.display_label}) to {target_label}."
+        )
+        if skipped_count:
+            message += f" {skipped_count} student{' was' if skipped_count == 1 else 's were'} left behind."
+        success(request, message)
+        return _redirect_advance_academic_level()
+
+    return render(
+        request,
+        "employees/it_support_advance_academic_level_class.html",
+        {
+            "active_nav": "dashboard",
+            "academic_class": academic_class,
+            "level": level,
+            "next_level": next_level,
+            "target_class": target_class,
+            "next_choice": next_choice,
+            "students": students,
+            "student_count": len(students),
+            "can_advance": can_advance,
+            **_student_management_nav_context(active_tool="advance-academic-level"),
+        },
+    )
+
+
+@login_required
+def it_support_pending_admissions(request):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    sort_mode = _resolve_student_sort(request)
+    students = list(
+        _pending_admission_queryset().order_by(
+            "-admitted_at",
+            *_student_sort_order_by(sort_mode, include_class_group=False),
+        )
+    )
+    return render(
+        request,
+        "employees/it_support_pending_admissions.html",
+        {
+            "active_nav": "dashboard",
+            "pending_students": students,
+            "pending_admission_count": len(students),
+            **_student_management_nav_context(active_tool="pending-admissions"),
+            **_student_sort_template_context(request),
+        },
+    )
+
+
+@login_required
+def it_support_pending_admission_detail(request, student_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    student = get_object_or_404(
+        _pending_admission_queryset(),
+        pk=student_id,
+    )
+    return render(
+        request,
+        "employees/it_support_pending_admission_detail.html",
+        {
+            "active_nav": "dashboard",
+            "student": student,
+            **_student_management_nav_context(active_tool="pending-admissions"),
+        },
+    )
+
+
+@login_required
+@require_POST
+def approve_workspace_student(request, student_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    student = get_object_or_404(
+        Student.objects.select_related("parent_guardian"),
+        pk=student_id,
+    )
+    if student.is_suspended:
+        error(request, f"{student.display_name} is suspended and cannot be activated.")
+        return _redirect_pending_admissions()
+    if student.is_active:
+        success(request, f"{student.display_name} is already active.")
+        return _redirect_pending_admissions()
+
+    student.is_active = True
+    student.save(update_fields=["is_active"])
+    parent = student.parent_guardian
+    if parent is not None and not parent.is_active:
+        parent.is_active = True
+        parent.save(update_fields=["is_active"])
+    success(
+        request,
+        f"{student.display_name} was approved and portal access is now active.",
+    )
+    return _redirect_pending_admissions()
 
 
 @login_required
@@ -9592,7 +9876,7 @@ def academic_levels_settings(request):
                 "classes",
                 queryset=AcademicClass.objects.order_by("order", "name"),
             )
-        ).all()
+        ).order_by("order", "name")
     )
     category_suggestions = (
         AcademicLevel.objects.exclude(category="")
@@ -9615,6 +9899,37 @@ def academic_levels_settings(request):
             "class_errors": class_errors,
         },
     )
+
+
+@login_required
+@require_POST
+def reorder_academic_levels(request):
+    ordered_ids = [value for value in request.POST.getlist("level_id") if value.isdigit()]
+    if not ordered_ids or len(ordered_ids) != len(set(ordered_ids)):
+        error(request, "No academic levels were provided to reorder.")
+        return redirect("employees:academic_levels_settings")
+
+    levels_by_id = {
+        str(level.id): level for level in AcademicLevel.objects.filter(pk__in=ordered_ids)
+    }
+    if len(levels_by_id) != len(ordered_ids):
+        error(request, "One or more academic levels could not be found.")
+        return redirect("employees:academic_levels_settings")
+
+    existing_ids = set(AcademicLevel.objects.values_list("id", flat=True))
+    if {int(level_id) for level_id in ordered_ids} != existing_ids:
+        error(request, "Reorder the full list of academic levels before saving.")
+        return redirect("employees:academic_levels_settings")
+
+    with transaction.atomic():
+        for index, level_id in enumerate(ordered_ids, start=1):
+            level = levels_by_id[level_id]
+            if level.order != index:
+                level.order = index
+                level.save(update_fields=["order", "updated_at"])
+
+    success(request, "Academic level order saved.")
+    return redirect("employees:academic_levels_settings")
 
 
 @login_required

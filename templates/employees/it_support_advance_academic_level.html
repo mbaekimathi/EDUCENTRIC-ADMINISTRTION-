@@ -1,0 +1,93 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}Advance academic level | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Student management{% endblock %}
+{% block header_title %}Advance academic level{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/student_management_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div class="exam-tool-page advance-level-page">
+{% include "employees/includes/nav/student_management.html" %}
+
+<section class="pending-admit-hero" aria-label="Advance academic level overview">
+  <div class="pending-admit-hero-copy">
+    <p class="pending-admit-kicker">Promotion</p>
+    <h2>Move classes to the next level</h2>
+    <p>Open a class, unselect students who should stay behind, then confirm to advance the rest to the next academic level by level order.</p>
+  </div>
+  <div class="pending-admit-hero-aside">
+    <div class="pending-admit-stat" aria-label="{{ class_count }} classes">
+      <strong>{{ class_count }}</strong>
+      <span>Class{{ class_count|pluralize }}</span>
+    </div>
+  </div>
+</section>
+
+{% if level_groups %}
+<div class="advance-level-groups">
+  {% for group in level_groups %}
+  <section class="settings-category" aria-label="{{ group.level.name }}">
+    <header class="settings-category-header">
+      <div>
+        <h3 class="settings-category-title is-uppercase">{{ group.level.name }}</h3>
+        <p class="subtle">
+          Order {{ group.level.order }}
+          {% if group.next_level %}
+          · Next: {{ group.next_level.name }}
+          {% else %}
+          · No next level
+          {% endif %}
+        </p>
+      </div>
+      <span class="settings-category-count">{{ group.classes|length }} class{{ group.classes|length|pluralize }}</span>
+    </header>
+    <div class="settings-table-panel">
+      <table class="settings-table settings-table-responsive">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Code</th>
+            <th>Students</th>
+            <th>Advances to</th>
+            <th><span class="sr-only">Open</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in group.classes %}
+          <tr>
+            <td data-label="Class">
+              <strong class="is-uppercase">{{ item.academic_class.display_label }}</strong>
+            </td>
+            <td data-label="Code"><code class="is-uppercase">{{ item.academic_class.code }}</code></td>
+            <td data-label="Students">{{ item.student_count }}</td>
+            <td data-label="Advances to">
+              {% if item.can_advance %}
+              <span class="is-uppercase">
+                {{ item.next_level.name }}{% if item.target_class %} · {{ item.target_class.display_label }}{% endif %}
+              </span>
+              {% else %}
+              <span class="subtle">Cannot advance</span>
+              {% endif %}
+            </td>
+            <td data-label="Open">
+              <a
+                class="record-action"
+                href="{% url 'employees:it_support_advance_academic_level_class' item.academic_class.id %}"
+              >Open class</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">No active classes are registered yet. Add classes under curriculum academic levels first.</p>
+{% endif %}
+</div>
+{% endblock %}

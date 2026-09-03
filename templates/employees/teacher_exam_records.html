@@ -9,49 +9,77 @@
 
 {% block workspace_content %}
 {% include "employees/includes/nav/teacher.html" %}
-<div class="sa-hub-page exam-hub-page">
-  {% if exam_groups %}
-  <div class="sa-hub-scroll">
-    <p class="sr-only">Registered assessments</p>
-    {% for group in exam_groups %}
-    <section class="sa-level-block" aria-label="{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}">
-      <header class="sa-level-head">
-        <div>
-          <h3 class="is-uppercase">{% if group.year %}{{ group.year.name }}{% else %}Unscheduled{% endif %}</h3>
-          <p class="subtle">Registered assessments for this academic year</p>
-        </div>
-        <span class="teacher-tt-badge">{{ group.exams|length }} assessment{{ group.exams|length|pluralize }}</span>
-      </header>
-      <div class="exam-hub-grid">
-        {% for exam in group.exams %}
-        <a class="exam-hub-card" href="{% url 'employees:teacher_exam_record_detail' exam.id %}">
-          <span class="exam-hub-card-icon" aria-hidden="true">EX</span>
-          <span class="exam-hub-card-copy">
+<div class="sa-hub-page exam-hub-page teacher-exam-records-page">
+  <div class="teacher-page-bar" aria-label="Assessment records overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ exam_count }}</strong>
+        <span>Assessment{{ exam_count|pluralize }}</span>
+      </div>
+      {% if current_exam %}
+      <div class="teacher-page-bar-stat all-exams-current-stat">
+        <strong class="is-uppercase">{{ current_exam.display_name }}</strong>
+        <span>Current · {{ current_exam.get_status_display }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if exams %}
+  <section class="teacher-exam-records-panel" aria-label="Registered assessments">
+    <header class="teacher-exam-records-head">
+      <div>
+        <h3>Registered assessments</h3>
+        <p>Newest registrations first</p>
+      </div>
+    </header>
+    <ul class="teacher-exam-records-list">
+      {% for exam in exams %}
+      <li>
+        <a
+          class="teacher-exam-record-row{% if exam.is_current_exam %} is-current{% endif %}"
+          href="{% url 'employees:teacher_exam_record_detail' exam.id %}"
+        >
+          <span class="teacher-exam-record-when">
+            {% if exam.start_date %}
+              <strong>{{ exam.start_date|date:"j M" }}</strong>
+              <span>{{ exam.start_date|date:"Y" }}</span>
+            {% else %}
+              <strong>{{ exam.created_at|date:"j M" }}</strong>
+              <span>{{ exam.created_at|date:"Y" }}</span>
+            {% endif %}
+          </span>
+          <span class="teacher-exam-record-copy">
             <strong class="is-uppercase">{{ exam.display_name }}</strong>
             <span>
-              {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}No term{% endif %}
+              {% if exam.academic_year %}{{ exam.academic_year.name }}{% else %}Unscheduled{% endif %}
               ·
+              {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}No term{% endif %}
               {% if exam.start_date and exam.end_date %}
-                {{ exam.start_date|date:"j M Y" }} – {{ exam.end_date|date:"j M Y" }}
-              {% else %}
-                Dates not set
+                · {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
               {% endif %}
             </span>
-            <span class="exam-hub-card-meta">
+          </span>
+          <span class="teacher-exam-record-flags">
+            <span class="teacher-exam-status-chip" data-status="{{ exam.status }}">
+              {{ exam.get_status_display }}
+            </span>
+            {% if exam.is_current_exam %}
+            <span class="all-exams-current-chip">Current</span>
+            {% endif %}
+            <span class="teacher-exam-record-sittings">
               {{ exam.sitting_count }} sitting{{ exam.sitting_count|pluralize }}
-              · Registered {{ exam.created_at|date:"j M Y" }}
             </span>
           </span>
-          <span class="exam-hub-card-go">Open records →</span>
+          <span class="teacher-exam-record-go">Open records</span>
         </a>
-        {% endfor %}
-      </div>
-    </section>
-    {% endfor %}
-  </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
   {% else %}
   <section class="sa-hub-empty">
-    <strong>No assessments registered</strong>
+    <strong>No assessments are registered yet.</strong>
     <p class="settings-empty">Registered assessments will appear here once IT Support generates an assessment timetable.</p>
   </section>
   {% endif %}
