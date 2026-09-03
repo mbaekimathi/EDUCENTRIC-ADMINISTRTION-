@@ -7281,7 +7281,6 @@ def it_support_exam_page(request, tool):
 def _grouped_registered_exams():
     generations = list(
         GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
-        .prefetch_related("academic_levels")
         .annotate(sitting_count=Count("sittings", distinct=True))
         .order_by("-academic_year__start_date", "academic_term__order", "-created_at")
     )

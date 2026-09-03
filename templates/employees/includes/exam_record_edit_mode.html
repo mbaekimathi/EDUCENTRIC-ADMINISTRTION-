@@ -44,8 +44,6 @@
     }
     window.addEventListener("resize", syncStickyOffset);
 
-    setEditing(false);
-
     const scrollPanel = form.querySelector(".teacher-marks-table-scroll")
       || form.querySelector(".it-marks-table-scroll")
       || form.querySelector(".exam-record-sheet-table");
@@ -57,7 +55,34 @@
     const mainTable = scrollPanel?.querySelector(".exam-record-students-table");
     const meanTable = form.querySelector(".teacher-marks-mean-table")
       || form.querySelector(".it-marks-mean-table");
+    const sheet = form.closest(".it-marks-sheet") || form.closest(".teacher-marks-sheet");
+    const compactNameSheet = Boolean(sheet);
     let nameCollapsed = false;
+    const scrollSources = [];
+
+    function nameColMaxPx() {
+      if (window.matchMedia("(max-width: 480px)").matches) return 9.5 * 16;
+      if (window.matchMedia("(max-width: 720px)").matches) return 11 * 16;
+      return 18 * 16;
+    }
+
+    function firstNameMinPx() {
+      let max = 0;
+      nameTables.forEach(function (table) {
+        table.querySelectorAll(".exam-student-first").forEach(function (el) {
+          max = Math.max(max, el.scrollWidth || 0);
+        });
+      });
+      // Cell horizontal padding so the full first name stays unclipped.
+      return max > 0 ? Math.ceil(max + 28) : 0;
+    }
+
+    function addScrollSource(el) {
+      if (el && scrollSources.indexOf(el) === -1) scrollSources.push(el);
+    }
+    addScrollSource(scrollPanel);
+    addScrollSource(tablePanel);
+    addScrollSource(form.closest(".workspace-content"));
 
     function syncMeanBarWidth() {
       if (!mainTable || !meanTable) return;
@@ -65,35 +90,56 @@
       meanTable.style.minWidth = `${mainTable.scrollWidth}px`;
     }
 
+    function currentScrollX() {
+      let x = 0;
+      scrollSources.forEach(function (el) {
+        x = Math.max(x, el.scrollLeft || 0);
+      });
+      return x;
+    }
+
     function syncMeanBarScroll() {
-      if (!meanScroll || !scrollPanel) return;
-      meanScroll.scrollLeft = scrollPanel.scrollLeft;
+      if (!meanScroll) return;
+      meanScroll.scrollLeft = currentScrollX();
+    }
+
+    function applyNameColumnSize(collapsed) {
+      const firstMin = firstNameMinPx();
+      const expandedMax = Math.max(nameColMaxPx(), firstMin);
+      nameTables.forEach(function (table) {
+        table.classList.toggle("is-name-collapsed", collapsed);
+        if (!compactNameSheet) return;
+        table.querySelectorAll("tr > :first-child").forEach(function (cell) {
+          // Always keep room for the full first name; only last/middle may ellipsis or hide.
+          cell.style.minWidth = firstMin ? `${firstMin}px` : "";
+          cell.style.maxWidth = collapsed ? "none" : `${expandedMax}px`;
+          cell.style.width = collapsed ? "1%" : "";
+        });
+      });
+      if (sheet) sheet.classList.toggle("is-name-collapsed", collapsed);
+      form.classList.toggle("is-name-collapsed", collapsed);
     }
 
     function syncNameCollapse() {
-      if (!scrollPanel || !nameTables.length) return;
-      const x = scrollPanel.scrollLeft;
-      const canScrollX = scrollPanel.scrollWidth > scrollPanel.clientWidth + 1;
-      if (!canScrollX) {
-        nameCollapsed = false;
-      } else if (!nameCollapsed && x > 28) {
+      if (!nameTables.length) return;
+      const x = currentScrollX();
+      // Only react to horizontal scroll: hide last name when scrolling right.
+      if (!nameCollapsed && x > 8) {
         nameCollapsed = true;
-      } else if (nameCollapsed && x < 6) {
+      } else if (nameCollapsed && x < 4) {
         nameCollapsed = false;
       }
-      nameTables.forEach(function (table) {
-        table.classList.toggle("is-name-collapsed", nameCollapsed);
-      });
-      if (tablePanel) {
-        tablePanel.classList.toggle("is-scrolled-x", x > 2);
-      } else {
-        scrollPanel.classList.toggle("is-scrolled-x", x > 2);
-      }
+      applyNameColumnSize(nameCollapsed);
+      const scrolled = x > 2;
+      if (tablePanel) tablePanel.classList.toggle("is-scrolled-x", scrolled);
+      if (scrollPanel) scrollPanel.classList.toggle("is-scrolled-x", scrolled);
       syncMeanBarScroll();
     }
 
-    if (scrollPanel && nameTables.length) {
-      scrollPanel.addEventListener("scroll", syncNameCollapse, { passive: true });
+    if (nameTables.length) {
+      scrollSources.forEach(function (el) {
+        el.addEventListener("scroll", syncNameCollapse, { passive: true });
+      });
       window.addEventListener("resize", function () {
         syncMeanBarWidth();
         syncNameCollapse();
@@ -105,8 +151,11 @@
         }).observe(mainTable);
       }
       syncMeanBarWidth();
+      applyNameColumnSize(false);
       syncNameCollapse();
     }
+
+    setEditing(false);
 
     editButton?.addEventListener("click", function () {
       syncOutOfAttributes(false);

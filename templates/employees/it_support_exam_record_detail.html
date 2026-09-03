@@ -104,8 +104,9 @@
             {% for student in students %}
             <tr>
               <td data-label="Student">
-                <strong class="is-uppercase exam-student-name">
+                <strong class="is-uppercase exam-student-name" title="{{ student.display_name }}">
                   <span class="exam-student-first">{{ student.first_name }}</span>
+                  {% if student.middle_name %}<span class="exam-student-middle">{{ student.middle_name }}</span>{% endif %}
                   <span class="exam-student-last">{{ student.last_name }}</span>
                 </strong>
               </td>

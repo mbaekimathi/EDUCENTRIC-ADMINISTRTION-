@@ -101,9 +101,11 @@
               data-student-row
               data-sort-name="{{ student.display_name }}"
               data-sort-admission="{{ student.admission_number }}"
-            >              <td>
-                <strong class="is-uppercase exam-student-name">
+            >
+              <td>
+                <strong class="is-uppercase exam-student-name" title="{{ student.display_name }}">
                   <span class="exam-student-first">{{ student.first_name }}</span>
+                  {% if student.middle_name %}<span class="exam-student-middle">{{ student.middle_name }}</span>{% endif %}
                   <span class="exam-student-last">{{ student.last_name }}</span>
                 </strong>
               </td>

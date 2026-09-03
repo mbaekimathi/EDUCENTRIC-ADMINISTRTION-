@@ -56,57 +56,40 @@
         <span class="all-exams-year-count">{{ group.exams|length }} assessment{{ group.exams|length|pluralize }}</span>
       </header>
 
-      <div class="all-exams-list-shell">
-        <div class="all-exams-list-head" aria-hidden="true">
-          <span>Assessment</span>
-          <span>Term</span>
-          <span>Dates</span>
-          <span>Sittings</span>
-          <span>Status</span>
-          <span>Actions</span>
-        </div>
-        <ul class="all-exams-list">
-          {% for exam in group.exams %}
-          <li>
-            <div class="all-exams-row{% if exam.is_current_exam %} is-current-exam{% endif %}">
-              <div class="all-exams-col-exam">
-                <strong class="is-uppercase">{{ exam.display_name }}</strong>
-                {% with levels=exam.academic_levels.all %}
-                {% if levels %}
-                <span class="all-exams-levels" aria-label="Academic levels">
-                  {% for level in levels %}
-                  <span class="all-exams-level-chip">{{ level.name }}</span>
-                  {% endfor %}
-                </span>
-                {% endif %}
-                {% endwith %}
-                <span class="all-exams-registered">Registered {{ exam.created_at|date:"j M Y" }}</span>
-              </div>
-              <span class="all-exams-col-term" data-label="Term">
-                {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}—{% endif %}
+      <div class="exam-hub-grid all-exams-grid">
+        {% for exam in group.exams %}
+        <a
+          class="exam-hub-card all-exams-card{% if exam.is_current_exam %} is-current-exam{% endif %}"
+          href="{% url 'employees:exam_record_detail' exam.id %}"
+        >
+          <span class="exam-hub-card-icon" aria-hidden="true">EX</span>
+          <span class="exam-hub-card-copy">
+            <strong class="is-uppercase">{{ exam.display_name }}</strong>
+            <span>
+              {% if exam.academic_term %}{{ exam.academic_term.name }}{% else %}No term{% endif %}
+              ·
+              {% if exam.start_date and exam.end_date %}
+                {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
+              {% else %}
+                Dates not set
+              {% endif %}
+            </span>
+            <span class="exam-hub-card-meta">
+              {{ exam.sitting_count }} sitting{{ exam.sitting_count|pluralize }}
+              · Registered {{ exam.created_at|date:"j M Y" }}
+            </span>
+            <span class="all-exams-card-flags">
+              <span class="teacher-exam-status-chip" data-status="{{ exam.status }}">
+                {{ exam.get_status_display }}
               </span>
-              <span class="all-exams-col-dates" data-label="Dates">
-                {% if exam.start_date and exam.end_date %}
-                  {{ exam.start_date|date:"j M Y" }}{% if exam.start_date != exam.end_date %} – {{ exam.end_date|date:"j M Y" }}{% endif %}
-                {% else %}
-                  —
-                {% endif %}
-              </span>
-              <span class="all-exams-col-sittings" data-label="Sittings">
-                <span class="all-exams-sitting-pill">{{ exam.sitting_count }}</span>
-              </span>
-              <span class="all-exams-col-status" data-label="Status">
-                <span class="teacher-exam-status-chip" data-status="{{ exam.status }}">
-                  {% if exam.is_current_exam %}Current · {% endif %}{{ exam.get_status_display }}
-                </span>
-              </span>
-              <div class="all-exams-row-actions" data-label="Actions">
-                <a class="record-action" href="{% url 'employees:exam_record_detail' exam.id %}">Open</a>
-              </div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
+              {% if exam.is_current_exam %}
+              <span class="all-exams-current-chip">Current</span>
+              {% endif %}
+            </span>
+          </span>
+          <span class="exam-hub-card-go">Open →</span>
+        </a>
+        {% endfor %}
       </div>
     </section>
     {% endfor %}
