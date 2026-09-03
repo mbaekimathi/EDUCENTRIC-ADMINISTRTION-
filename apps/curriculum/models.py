@@ -3,6 +3,8 @@ from django.db import models
 from django.db.models import Q
 import re
 
+from apps.curriculum.compat import check_constraint
+
 class AcademicLevel(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "ACTIVE", "ACTIVE"
@@ -808,8 +810,8 @@ class GradeBand(models.Model):
     class Meta:
         ordering = ["-end_percent", "-start_percent", "code"]
         constraints = [
-            models.CheckConstraint(
-                check=models.Q(end_percent__gte=models.F("start_percent")),
+            check_constraint(
+                condition=models.Q(end_percent__gte=models.F("start_percent")),
                 name="grade_band_end_gte_start",
             ),
             models.UniqueConstraint(

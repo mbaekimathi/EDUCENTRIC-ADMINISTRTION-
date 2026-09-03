@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from django.db import migrations, models
 
+from apps.curriculum.compat import check_constraint
+
 
 DEFAULT_GRADE_BANDS = [
     {
@@ -143,8 +145,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="gradeband",
-            constraint=models.CheckConstraint(
-                check=models.Q(end_percent__gte=models.F("start_percent")),
+            constraint=check_constraint(
+                condition=models.Q(end_percent__gte=models.F("start_percent")),
                 name="grade_band_end_gte_start",
             ),
         ),

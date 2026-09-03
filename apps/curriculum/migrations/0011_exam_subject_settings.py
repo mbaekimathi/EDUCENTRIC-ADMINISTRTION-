@@ -1,6 +1,8 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
+from apps.curriculum.compat import check_constraint
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -120,8 +122,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="combinedexamsubject",
-            constraint=models.CheckConstraint(
-                check=~models.Q(
+            constraint=check_constraint(
+                condition=~models.Q(
                     ("first_subject", models.F("second_subject")),
                 ),
                 name="combined_exam_subjects_must_differ",
