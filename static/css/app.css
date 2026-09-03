@@ -7775,17 +7775,17 @@ body.modal-open {
 
   .exam-record-students-table th:first-child,
   .exam-record-students-table td:first-child {
-    min-width: 8.5rem;
-    max-width: 10.5rem;
+    min-width: var(--exam-name-first-min, 8.5rem);
+    max-width: max(var(--exam-name-first-min, 8.5rem), 12rem);
     padding-left: 0.55rem;
     padding-right: 0.55rem;
   }
 
   .exam-record-students-table.is-name-collapsed th:first-child,
   .exam-record-students-table.is-name-collapsed td:first-child {
-    width: 1%;
-    min-width: 0;
-    max-width: none;
+    width: var(--exam-name-first-min, 7rem) !important;
+    min-width: var(--exam-name-first-min, 7rem) !important;
+    max-width: var(--exam-name-first-min, 7rem) !important;
   }
 }
 
@@ -7943,9 +7943,10 @@ body.modal-open {
   position: sticky;
   left: 0;
   z-index: 5;
-  width: 1%;
-  min-width: 11rem;
-  max-width: 14rem;
+  width: var(--exam-name-col-width, var(--exam-name-first-min, 11rem));
+  min-width: var(--exam-name-col-width, var(--exam-name-first-min, 11rem));
+  max-width: var(--exam-name-col-width, var(--exam-name-first-min, 11rem));
+  box-sizing: border-box;
   padding-left: 0.85rem;
   padding-right: 0.95rem;
   white-space: nowrap;
@@ -7953,11 +7954,7 @@ body.modal-open {
   background-clip: padding-box;
   background: #fff;
   box-shadow: 1px 0 0 #e8eef8;
-  transition:
-    min-width 0.2s ease,
-    max-width 0.2s ease,
-    padding 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .exam-record-sheet-table.is-scrolled-x .exam-record-students-table th:first-child,
@@ -7971,24 +7968,38 @@ body.modal-open {
 }
 
 .exam-record-students-table .exam-student-name {
-  display: flex;
-  width: max-content;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 0.35rem;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
 }
 
 .exam-record-students-table .exam-student-first {
-  flex: 0 0 auto;
+  grid-column: 1;
+  width: max-content;
+  max-width: none;
   min-width: max-content;
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
 }
 
+.exam-record-students-table .exam-student-rest {
+  grid-column: 2;
+  display: inline-flex;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .exam-record-students-table .exam-student-middle,
 .exam-record-students-table .exam-student-last {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7997,26 +8008,29 @@ body.modal-open {
 
 .exam-record-students-table.is-name-collapsed th:first-child,
 .exam-record-students-table.is-name-collapsed td:first-child {
-  width: 1%;
-  min-width: 0;
-  max-width: none;
+  width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
+  min-width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
+  max-width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
   padding-left: 0.55rem;
   padding-right: 0.45rem;
 }
 
+.exam-record-students-table.is-name-collapsed .exam-student-rest,
 .exam-record-students-table.is-name-collapsed .exam-student-middle,
 .exam-record-students-table.is-name-collapsed .exam-student-last {
   display: none;
 }
 
 .exam-record-students-table.is-name-collapsed .exam-student-name {
+  display: block;
   width: max-content;
   max-width: none;
   overflow: visible;
 }
 
 .exam-record-students-table.is-name-collapsed .exam-student-first {
-  flex: 0 0 auto;
+  display: inline;
+  width: max-content;
   min-width: max-content;
   max-width: none;
   overflow: visible;
@@ -8479,24 +8493,38 @@ body.modal-open {
   color: var(--blue-dark);
 }
 
+.teacher-marks-sheet .exam-record-students-table,
+.teacher-marks-sheet .settings-table.exam-record-students-table,
+.teacher-marks-sheet .settings-table-responsive.exam-record-students-table,
+.it-marks-sheet .exam-record-students-table,
+.it-marks-sheet .settings-table.exam-record-students-table,
+.it-marks-sheet .settings-table-responsive.exam-record-students-table {
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+}
+
 .teacher-marks-sheet .exam-record-students-table th:first-child,
 .teacher-marks-sheet .exam-record-students-table td:first-child {
-  width: auto;
-  min-width: 8rem;
-  max-width: 18rem;
+  width: var(--exam-name-col-width, var(--exam-name-first-min, 8rem));
+  min-width: var(--exam-name-col-width, var(--exam-name-first-min, 8rem));
+  max-width: var(--exam-name-col-width, var(--exam-name-first-min, 8rem));
+  box-sizing: border-box;
 }
 
-.teacher-marks-sheet.is-name-collapsed .exam-record-students-table th:first-child,
-.teacher-marks-sheet.is-name-collapsed .exam-record-students-table td:first-child,
-.teacher-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
-.teacher-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
-  width: 1%;
-  min-width: 0;
-  max-width: none;
+.teacher-marks-sheet.is-name-collapsed .teacher-marks-table-scroll .exam-record-students-table th:first-child,
+.teacher-marks-sheet.is-name-collapsed .teacher-marks-table-scroll .exam-record-students-table td:first-child,
+.teacher-marks-sheet .teacher-marks-table-scroll .exam-record-students-table.is-name-collapsed th:first-child,
+.teacher-marks-sheet .teacher-marks-table-scroll .exam-record-students-table.is-name-collapsed td:first-child {
+  width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
+  min-width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
+  max-width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
 }
 
+.teacher-marks-sheet.is-name-collapsed .exam-student-rest,
 .teacher-marks-sheet.is-name-collapsed .exam-student-middle,
 .teacher-marks-sheet.is-name-collapsed .exam-student-last,
+.teacher-marks-sheet .exam-record-students-table.is-name-collapsed .exam-student-rest,
 .teacher-marks-sheet .exam-record-students-table.is-name-collapsed .exam-student-middle,
 .teacher-marks-sheet .exam-record-students-table.is-name-collapsed .exam-student-last {
   display: none;
@@ -8597,22 +8625,25 @@ body.modal-open {
 
 .it-marks-sheet .exam-record-students-table th:first-child,
 .it-marks-sheet .exam-record-students-table td:first-child {
-  width: auto;
-  min-width: 8rem;
-  max-width: 18rem;
+  width: var(--exam-name-col-width, var(--exam-name-first-min, 8rem));
+  min-width: var(--exam-name-col-width, var(--exam-name-first-min, 8rem));
+  max-width: var(--exam-name-col-width, var(--exam-name-first-min, 8rem));
+  box-sizing: border-box;
 }
 
-.it-marks-sheet.is-name-collapsed .exam-record-students-table th:first-child,
-.it-marks-sheet.is-name-collapsed .exam-record-students-table td:first-child,
-.it-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
-.it-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
-  width: 1%;
-  min-width: 0;
-  max-width: none;
+.it-marks-sheet.is-name-collapsed .it-marks-table-scroll .exam-record-students-table th:first-child,
+.it-marks-sheet.is-name-collapsed .it-marks-table-scroll .exam-record-students-table td:first-child,
+.it-marks-sheet .it-marks-table-scroll .exam-record-students-table.is-name-collapsed th:first-child,
+.it-marks-sheet .it-marks-table-scroll .exam-record-students-table.is-name-collapsed td:first-child {
+  width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
+  min-width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
+  max-width: var(--exam-name-col-width, var(--exam-name-first-min, 7rem)) !important;
 }
 
+.it-marks-sheet.is-name-collapsed .exam-student-rest,
 .it-marks-sheet.is-name-collapsed .exam-student-middle,
 .it-marks-sheet.is-name-collapsed .exam-student-last,
+.it-marks-sheet .exam-record-students-table.is-name-collapsed .exam-student-rest,
 .it-marks-sheet .exam-record-students-table.is-name-collapsed .exam-student-middle,
 .it-marks-sheet .exam-record-students-table.is-name-collapsed .exam-student-last {
   display: none;
@@ -8679,6 +8710,7 @@ body.modal-open {
   min-height: 0;
   max-height: none;
   overflow: auto;
+  overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   overscroll-behavior-x: contain;
@@ -9912,19 +9944,19 @@ body.is-reordering-exam-subjects [data-marks-input] {
   .teacher-marks-sheet .exam-record-students-table th:first-child,
   .teacher-marks-sheet .exam-record-students-table td:first-child {
     width: auto;
-    min-width: 7rem;
-    max-width: 11rem;
+    min-width: var(--exam-name-first-min, 7rem);
+    max-width: var(--exam-name-col-max, max(var(--exam-name-first-min, 7rem), 14rem));
     padding-left: 0.4rem;
     padding-right: 0.4rem;
   }
 
-  .teacher-marks-sheet.is-name-collapsed .exam-record-students-table th:first-child,
-  .teacher-marks-sheet.is-name-collapsed .exam-record-students-table td:first-child,
-  .teacher-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
-  .teacher-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
-    width: 1%;
-    min-width: 0;
-    max-width: none;
+  .teacher-marks-sheet.is-name-collapsed .teacher-marks-table-scroll .exam-record-students-table th:first-child,
+  .teacher-marks-sheet.is-name-collapsed .teacher-marks-table-scroll .exam-record-students-table td:first-child,
+  .teacher-marks-sheet .teacher-marks-table-scroll .exam-record-students-table.is-name-collapsed th:first-child,
+  .teacher-marks-sheet .teacher-marks-table-scroll .exam-record-students-table.is-name-collapsed td:first-child {
+    width: var(--exam-name-first-min, 7rem) !important;
+    min-width: var(--exam-name-first-min, 7rem) !important;
+    max-width: var(--exam-name-first-min, 7rem) !important;
     padding-left: 0.3rem;
     padding-right: 0.2rem;
   }
@@ -10001,21 +10033,21 @@ body.is-reordering-exam-subjects [data-marks-input] {
     .it-marks-sheet .exam-record-students-table th:first-child,
     .it-marks-sheet .exam-record-students-table td:first-child {
       width: auto;
-      min-width: 6.5rem;
-      max-width: 9.5rem;
+      min-width: var(--exam-name-first-min, 6.5rem);
+      max-width: var(--exam-name-col-max, max(var(--exam-name-first-min, 6.5rem), 12rem));
     }
 
-    .teacher-marks-sheet.is-name-collapsed .exam-record-students-table th:first-child,
-    .teacher-marks-sheet.is-name-collapsed .exam-record-students-table td:first-child,
-    .teacher-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
-    .teacher-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child,
-    .it-marks-sheet.is-name-collapsed .exam-record-students-table th:first-child,
-    .it-marks-sheet.is-name-collapsed .exam-record-students-table td:first-child,
-    .it-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
-    .it-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
-      width: 1%;
-      min-width: 0;
-      max-width: none;
+    .teacher-marks-sheet.is-name-collapsed .teacher-marks-table-scroll .exam-record-students-table th:first-child,
+    .teacher-marks-sheet.is-name-collapsed .teacher-marks-table-scroll .exam-record-students-table td:first-child,
+    .teacher-marks-sheet .teacher-marks-table-scroll .exam-record-students-table.is-name-collapsed th:first-child,
+    .teacher-marks-sheet .teacher-marks-table-scroll .exam-record-students-table.is-name-collapsed td:first-child,
+    .it-marks-sheet.is-name-collapsed .it-marks-table-scroll .exam-record-students-table th:first-child,
+    .it-marks-sheet.is-name-collapsed .it-marks-table-scroll .exam-record-students-table td:first-child,
+    .it-marks-sheet .it-marks-table-scroll .exam-record-students-table.is-name-collapsed th:first-child,
+    .it-marks-sheet .it-marks-table-scroll .exam-record-students-table.is-name-collapsed td:first-child {
+      width: var(--exam-name-first-min, 6.5rem) !important;
+      min-width: var(--exam-name-first-min, 6.5rem) !important;
+      max-width: var(--exam-name-first-min, 6.5rem) !important;
       padding-left: 0.25rem;
       padding-right: 0.15rem;
     }
@@ -10115,19 +10147,19 @@ body.is-reordering-exam-subjects [data-marks-input] {
   .it-marks-sheet .exam-record-students-table th:first-child,
   .it-marks-sheet .exam-record-students-table td:first-child {
     width: auto;
-    min-width: 7rem;
-    max-width: 11rem;
+    min-width: var(--exam-name-first-min, 7rem);
+    max-width: var(--exam-name-col-max, max(var(--exam-name-first-min, 7rem), 14rem));
     padding-left: 0.4rem;
     padding-right: 0.4rem;
   }
 
-  .it-marks-sheet.is-name-collapsed .exam-record-students-table th:first-child,
-  .it-marks-sheet.is-name-collapsed .exam-record-students-table td:first-child,
-  .it-marks-sheet .exam-record-students-table.is-name-collapsed th:first-child,
-  .it-marks-sheet .exam-record-students-table.is-name-collapsed td:first-child {
-    width: 1%;
-    min-width: 0;
-    max-width: none;
+  .it-marks-sheet.is-name-collapsed .it-marks-table-scroll .exam-record-students-table th:first-child,
+  .it-marks-sheet.is-name-collapsed .it-marks-table-scroll .exam-record-students-table td:first-child,
+  .it-marks-sheet .it-marks-table-scroll .exam-record-students-table.is-name-collapsed th:first-child,
+  .it-marks-sheet .it-marks-table-scroll .exam-record-students-table.is-name-collapsed td:first-child {
+    width: var(--exam-name-first-min, 7rem) !important;
+    min-width: var(--exam-name-first-min, 7rem) !important;
+    max-width: var(--exam-name-first-min, 7rem) !important;
     padding-left: 0.3rem;
     padding-right: 0.2rem;
   }

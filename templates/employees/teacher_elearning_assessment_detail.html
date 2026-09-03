@@ -64,13 +64,14 @@
               <input
                 id="{{ cell.field_name }}"
                 class="exam-mark-input"
-                type="number"
+                type="text"
                 name="{{ cell.field_name }}"
                 value="{% if cell.raw != None %}{{ cell.raw }}{% endif %}"
                 min="0"
                 max="{{ cell.out_of }}"
                 step="1"
                 inputmode="numeric"
+                autocomplete="off"
                 placeholder="—"
                 data-exam-mark
                 data-out-of="{{ cell.out_of }}"

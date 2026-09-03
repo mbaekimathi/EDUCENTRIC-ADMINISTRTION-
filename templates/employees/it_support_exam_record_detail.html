@@ -106,8 +106,10 @@
               <td data-label="Student">
                 <strong class="is-uppercase exam-student-name" title="{{ student.display_name }}">
                   <span class="exam-student-first">{{ student.first_name }}</span>
-                  {% if student.middle_name %}<span class="exam-student-middle">{{ student.middle_name }}</span>{% endif %}
-                  <span class="exam-student-last">{{ student.last_name }}</span>
+                  <span class="exam-student-rest">
+                    {% if student.middle_name %}<span class="exam-student-middle">{{ student.middle_name }}</span>{% endif %}
+                    <span class="exam-student-last">{{ student.last_name }}</span>
+                  </span>
                 </strong>
               </td>
               <td data-label="Admission">
@@ -124,13 +126,14 @@
                 <input
                   id="{{ cell.field_name }}"
                   class="exam-mark-input"
-                  type="number"
+                  type="text"
                   name="{{ cell.field_name }}"
                   value="{% if cell.percent != None %}{{ cell.percent }}{% endif %}"
                   min="0"
                   max="100"
                   step="1"
                   inputmode="numeric"
+                  autocomplete="off"
                   placeholder="—"
                   readonly
                 >

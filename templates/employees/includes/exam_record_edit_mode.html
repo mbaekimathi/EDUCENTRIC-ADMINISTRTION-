@@ -51,108 +51,276 @@
       || form.querySelector(".it-marks-mean-scroll");
     const tablePanel = form.querySelector(".teacher-marks-table-panel")
       || form.querySelector(".it-marks-table-panel");
-    const nameTables = form.querySelectorAll(".exam-record-students-table");
     const mainTable = scrollPanel?.querySelector(".exam-record-students-table");
     const meanTable = form.querySelector(".teacher-marks-mean-table")
       || form.querySelector(".it-marks-mean-table");
     const sheet = form.closest(".it-marks-sheet") || form.closest(".teacher-marks-sheet");
-    const compactNameSheet = Boolean(sheet);
+    const compactNameSheet = Boolean(sheet && mainTable);
+    const COLLAPSE_AT = 24;
+    const EXPAND_AT = 2;
     let nameCollapsed = false;
-    const scrollSources = [];
+    // After collapse, browser may clamp scrollLeft to 0. Hold expand until the
+    // user moves right a bit so we don't immediately re-open (shake) — but never
+    // write scrollLeft ourselves (that blocked scrolling back).
+    let holdExpandAtOrigin = false;
+    let ignoreExpandUntil = 0;
+    let cachedFirstMin = 0;
+    let scrollRaf = 0;
 
-    function nameColMaxPx() {
-      if (window.matchMedia("(max-width: 480px)").matches) return 9.5 * 16;
-      if (window.matchMedia("(max-width: 720px)").matches) return 11 * 16;
-      return 18 * 16;
+    function nameColExtraPx() {
+      // Room for a truncated last/middle name when expanded — keep it modest.
+      if (window.matchMedia("(max-width: 480px)").matches) return 3.25 * 16;
+      if (window.matchMedia("(max-width: 720px)").matches) return 4 * 16;
+      return 5 * 16;
     }
 
-    function firstNameMinPx() {
+    function cellPadPx() {
+      if (window.matchMedia("(max-width: 720px)").matches) return 18;
+      return 24;
+    }
+
+    function measureFirstNameMinPx() {
+      if (!mainTable) return 0;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return 0;
       let max = 0;
-      nameTables.forEach(function (table) {
-        table.querySelectorAll(".exam-student-first").forEach(function (el) {
-          max = Math.max(max, el.scrollWidth || 0);
-        });
+      let fontSet = false;
+      mainTable.querySelectorAll(".exam-student-first").forEach(function (el) {
+        if (!fontSet) {
+          const cs = window.getComputedStyle(el);
+          ctx.font = cs.font || `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          fontSet = true;
+        }
+        const text = (el.textContent || "").replace(/\s+/g, " ").trim().toUpperCase();
+        if (!text) return;
+        max = Math.max(max, ctx.measureText(text).width);
       });
-      // Cell horizontal padding so the full first name stays unclipped.
-      return max > 0 ? Math.ceil(max + 28) : 0;
+      return max > 0 ? Math.ceil(max + cellPadPx()) : 0;
     }
 
-    function addScrollSource(el) {
-      if (el && scrollSources.indexOf(el) === -1) scrollSources.push(el);
+    function measureExpandedNamePx() {
+      if (!mainTable) return 0;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return 0;
+      let max = 0;
+      let fontSet = false;
+      mainTable.querySelectorAll(".exam-student-name").forEach(function (el) {
+        if (!fontSet) {
+          const cs = window.getComputedStyle(el);
+          ctx.font = cs.font || `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          fontSet = true;
+        }
+        const text = (el.textContent || "").replace(/\s+/g, " ").trim().toUpperCase();
+        if (!text) return;
+        max = Math.max(max, ctx.measureText(text).width);
+      });
+      const firstMin = cachedFirstMin || measureFirstNameMinPx();
+      const capped = firstMin + nameColExtraPx();
+      const measured = max > 0 ? Math.ceil(max + cellPadPx()) : 0;
+      return measured ? Math.min(measured, capped) : capped;
     }
-    addScrollSource(scrollPanel);
-    addScrollSource(tablePanel);
-    addScrollSource(form.closest(".workspace-content"));
 
-    function syncMeanBarWidth() {
-      if (!mainTable || !meanTable) return;
-      meanTable.style.width = `${mainTable.offsetWidth}px`;
-      meanTable.style.minWidth = `${mainTable.scrollWidth}px`;
+    function remeasureFirstNames() {
+      cachedFirstMin = measureFirstNameMinPx();
+      const root = sheet || form;
+      const firstMin = cachedFirstMin;
+      const colMax = firstMin ? measureExpandedNamePx() : 0;
+      if (firstMin) {
+        root.style.setProperty("--exam-name-first-min", `${firstMin}px`);
+        root.style.setProperty("--exam-name-col-max", `${colMax}px`);
+        root.style.setProperty(
+          "--exam-name-col-width",
+          `${nameCollapsed ? firstMin : colMax}px`
+        );
+      } else {
+        root.style.removeProperty("--exam-name-first-min");
+        root.style.removeProperty("--exam-name-col-max");
+        root.style.removeProperty("--exam-name-col-width");
+      }
+      return cachedFirstMin;
     }
 
     function currentScrollX() {
-      let x = 0;
-      scrollSources.forEach(function (el) {
-        x = Math.max(x, el.scrollLeft || 0);
+      return scrollPanel ? scrollPanel.scrollLeft || 0 : 0;
+    }
+
+    function nameCells() {
+      if (!mainTable) return [];
+      return Array.from(mainTable.querySelectorAll("tr > :first-child"));
+    }
+
+    function applyNameCellWidths(collapsed) {
+      const firstMin = cachedFirstMin || remeasureFirstNames();
+      if (!firstMin) {
+        nameCells().forEach(function (cell) {
+          cell.style.width = "";
+          cell.style.minWidth = "";
+          cell.style.maxWidth = "";
+        });
+        return;
+      }
+      // Same width/min/max so table-layout:fixed cannot stretch the sticky col.
+      const colW = collapsed ? firstMin : measureExpandedNamePx();
+      const root = sheet || form;
+      root.style.setProperty("--exam-name-col-width", `${colW}px`);
+      root.style.setProperty("--exam-name-col-max", `${colW}px`);
+      nameCells().forEach(function (cell) {
+        cell.style.width = `${colW}px`;
+        cell.style.minWidth = `${colW}px`;
+        cell.style.maxWidth = `${colW}px`;
       });
-      return x;
+    }
+
+    function syncMeanBarWidth() {
+      if (!mainTable || !meanTable) return;
+      meanTable.style.tableLayout = "fixed";
+      meanTable.style.width = `${Math.max(mainTable.offsetWidth, mainTable.scrollWidth)}px`;
+      meanTable.style.minWidth = `${Math.max(mainTable.offsetWidth, mainTable.scrollWidth)}px`;
+      const colW = cachedFirstMin
+        ? nameCollapsed
+          ? cachedFirstMin
+          : measureExpandedNamePx()
+        : 0;
+      const meanName = meanTable.querySelector("tr > :first-child");
+      const meanAdmit = meanTable.querySelector("tr > :nth-child(2)");
+      if (meanName && colW) {
+        meanName.style.width = `${colW}px`;
+        meanName.style.minWidth = `${colW}px`;
+        meanName.style.maxWidth = `${colW}px`;
+        meanName.style.boxSizing = "border-box";
+      }
+      if (meanAdmit) {
+        if (nameCollapsed) {
+          meanAdmit.style.width = "0";
+          meanAdmit.style.minWidth = "0";
+          meanAdmit.style.maxWidth = "0";
+          meanAdmit.style.padding = "0";
+          meanAdmit.style.border = "0";
+          meanAdmit.style.overflow = "hidden";
+        } else {
+          meanAdmit.style.width = "";
+          meanAdmit.style.minWidth = "";
+          meanAdmit.style.maxWidth = "";
+          meanAdmit.style.padding = "";
+          meanAdmit.style.border = "";
+          meanAdmit.style.overflow = "";
+        }
+      }
     }
 
     function syncMeanBarScroll() {
-      if (!meanScroll) return;
-      meanScroll.scrollLeft = currentScrollX();
+      if (!meanScroll || !scrollPanel) return;
+      if (meanScroll.scrollLeft !== scrollPanel.scrollLeft) {
+        meanScroll.scrollLeft = scrollPanel.scrollLeft;
+      }
     }
 
-    function applyNameColumnSize(collapsed) {
-      const firstMin = firstNameMinPx();
-      const expandedMax = Math.max(nameColMaxPx(), firstMin);
-      nameTables.forEach(function (table) {
-        table.classList.toggle("is-name-collapsed", collapsed);
-        if (!compactNameSheet) return;
-        table.querySelectorAll("tr > :first-child").forEach(function (cell) {
-          // Always keep room for the full first name; only last/middle may ellipsis or hide.
-          cell.style.minWidth = firstMin ? `${firstMin}px` : "";
-          cell.style.maxWidth = collapsed ? "none" : `${expandedMax}px`;
-          cell.style.width = collapsed ? "1%" : "";
-        });
-      });
+    function applyNameCollapsedClass(collapsed) {
+      if (!mainTable) return;
+      mainTable.classList.toggle("is-name-collapsed", collapsed);
+      if (meanTable) meanTable.classList.toggle("is-name-collapsed", collapsed);
       if (sheet) sheet.classList.toggle("is-name-collapsed", collapsed);
       form.classList.toggle("is-name-collapsed", collapsed);
     }
 
-    function syncNameCollapse() {
-      if (!nameTables.length) return;
-      const x = currentScrollX();
-      // Only react to horizontal scroll: hide last name when scrolling right.
-      if (!nameCollapsed && x > 8) {
-        nameCollapsed = true;
-      } else if (nameCollapsed && x < 4) {
-        nameCollapsed = false;
+    function setNameCollapsed(next) {
+      if (!compactNameSheet || !mainTable) return;
+      if (next === nameCollapsed) return;
+
+      nameCollapsed = next;
+      applyNameCollapsedClass(next);
+      applyNameCellWidths(next);
+      syncMeanBarWidth();
+      syncMeanBarScroll();
+
+      if (next) {
+        ignoreExpandUntil = performance.now() + 350;
+        // Detect clamp-to-start on the next frame without touching scrollLeft.
+        requestAnimationFrame(function () {
+          if (nameCollapsed && currentScrollX() <= EXPAND_AT) {
+            holdExpandAtOrigin = true;
+          }
+        });
+      } else {
+        holdExpandAtOrigin = false;
+        ignoreExpandUntil = 0;
       }
-      applyNameColumnSize(nameCollapsed);
+    }
+
+    function updateScrolledChrome(x) {
       const scrolled = x > 2;
       if (tablePanel) tablePanel.classList.toggle("is-scrolled-x", scrolled);
       if (scrollPanel) scrollPanel.classList.toggle("is-scrolled-x", scrolled);
+      if (sheet) sheet.classList.toggle("is-scrolled-x", scrolled);
+    }
+
+    function syncNameCollapse() {
+      if (!compactNameSheet || !scrollPanel) return;
+
+      const x = currentScrollX();
+
+      // Any rightward move while collapsed clears the origin hold so the user
+      // can scroll back left and restore full names.
+      if (nameCollapsed && x > EXPAND_AT + 6) {
+        holdExpandAtOrigin = false;
+      }
+
+      if (!nameCollapsed && x >= COLLAPSE_AT) {
+        setNameCollapsed(true);
+      } else if (
+        nameCollapsed &&
+        x <= EXPAND_AT &&
+        !holdExpandAtOrigin &&
+        performance.now() >= ignoreExpandUntil
+      ) {
+        setNameCollapsed(false);
+      }
+
+      updateScrolledChrome(x);
       syncMeanBarScroll();
     }
 
-    if (nameTables.length) {
-      scrollSources.forEach(function (el) {
-        el.addEventListener("scroll", syncNameCollapse, { passive: true });
-      });
-      window.addEventListener("resize", function () {
-        syncMeanBarWidth();
+    function onScrollPanelScroll() {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(function () {
+        scrollRaf = 0;
         syncNameCollapse();
       });
-      if (typeof ResizeObserver === "function" && mainTable) {
-        new ResizeObserver(function () {
-          syncMeanBarWidth();
-          syncNameCollapse();
-        }).observe(mainTable);
-      }
+    }
+
+    function onViewportChange() {
+      remeasureFirstNames();
+      applyNameCollapsedClass(nameCollapsed);
+      applyNameCellWidths(nameCollapsed);
       syncMeanBarWidth();
-      applyNameColumnSize(false);
-      syncNameCollapse();
+      updateScrolledChrome(currentScrollX());
+      syncMeanBarScroll();
+    }
+
+    if (compactNameSheet && scrollPanel) {
+      scrollPanel.addEventListener("scroll", onScrollPanelScroll, { passive: true });
+      window.addEventListener("resize", onViewportChange);
+      if (typeof ResizeObserver === "function") {
+        let lastPortWidth = scrollPanel.clientWidth;
+        new ResizeObserver(function () {
+          const portWidth = scrollPanel.clientWidth;
+          if (portWidth === lastPortWidth) {
+            syncMeanBarWidth();
+            syncMeanBarScroll();
+            return;
+          }
+          lastPortWidth = portWidth;
+          onViewportChange();
+        }).observe(scrollPanel);
+      }
+      remeasureFirstNames();
+      applyNameCollapsedClass(false);
+      applyNameCellWidths(false);
+      syncMeanBarWidth();
+      updateScrolledChrome(0);
+      syncMeanBarScroll();
     }
 
     setEditing(false);
@@ -212,8 +380,21 @@
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.focus();
-      const end = input.value.length;
-      input.setSelectionRange(end, end);
+      const end = String(input.value).length;
+      // number inputs throw on setSelectionRange; text/tel/search support it
+      if (typeof input.setSelectionRange === "function" && input.type !== "number") {
+        input.setSelectionRange(end, end);
+      }
+    }
+
+    function isFullySelected(input) {
+      const text = String(input.value);
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      if (typeof start !== "number" || typeof end !== "number") {
+        return text.length === 0;
+      }
+      return start === 0 && end === text.length;
     }
 
     function moveMark(input, rowDelta, wrapToNextColumn) {
@@ -249,8 +430,7 @@
       for (const digit of digits) {
         if (!/^\d$/.test(digit)) continue;
         const max = inputMax(input);
-        const selectedAll =
-          input.selectionStart === 0 && input.selectionEnd === String(input.value).length;
+        const selectedAll = isFullySelected(input);
         const base = selectedAll ? "" : String(input.value).replace(/\D/g, "");
         const combined = `${base}${digit}`;
         const value = Number(combined);
