@@ -8036,7 +8036,11 @@ def _student_edit_level_class_catalog():
                     "aliases": aliases,
                 }
             )
-    return {"levels": list(levels_by_choice.values())}
+    levels = []
+    for entry in levels_by_choice.values():
+        entry["classes_json"] = json.dumps(entry["classes"], separators=(",", ":"))
+        levels.append(entry)
+    return {"levels": levels}
 
 
 def _students_in_academic_level(level, academic_class=None, sort=STUDENT_SORT_NAME):

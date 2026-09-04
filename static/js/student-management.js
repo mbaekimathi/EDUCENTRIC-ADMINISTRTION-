@@ -34,6 +34,7 @@
   let hasServerPhoto = false;
 
   const catalogNode = document.getElementById("student-edit-level-catalog");
+  const classOptionsTemplate = document.getElementById("student-edit-class-options");
   let levelCatalog = { levels: [] };
   try {
     levelCatalog = catalogNode ? JSON.parse(catalogNode.textContent) : { levels: [] };
@@ -90,25 +91,60 @@
     if (fields.sponsorDetails) fields.sponsorDetails.required = required;
   }
 
-  function ensureLevelOption(value, label) {
+  function ensureLevelOption(value, label, classesJson) {
     if (!fields.academicLevel || !value) return;
     const key = String(value).toUpperCase();
-    const exists = Array.from(fields.academicLevel.options).some(
+    const existing = Array.from(fields.academicLevel.options).find(
       (option) => String(option.value || "").toUpperCase() === key
     );
-    if (exists) return;
+    if (existing) {
+      if (classesJson && !existing.getAttribute("data-classes")) {
+        existing.setAttribute("data-classes", classesJson);
+      }
+      return;
+    }
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label || value.replace(/_/g, " ");
+    option.setAttribute("data-classes", classesJson || "[]");
     fields.academicLevel.appendChild(option);
   }
 
   function classesForLevel(levelValue) {
-    const level = levelsByValue.get(String(levelValue || "").toUpperCase());
+    const key = String(levelValue || "").toUpperCase();
+    if (fields.academicLevel) {
+      const selected = Array.from(fields.academicLevel.options).find(
+        (option) => String(option.value || "").toUpperCase() === key
+      );
+      if (selected) {
+        try {
+          const embedded = JSON.parse(selected.getAttribute("data-classes") || "[]");
+          if (Array.isArray(embedded) && embedded.length) return embedded;
+        } catch (error) {
+          /* fall through */
+        }
+      }
+    }
+    if (classOptionsTemplate && key) {
+      const fromTemplate = Array.from(
+        classOptionsTemplate.content.querySelectorAll("option")
+      ).filter((option) => String(option.dataset.level || "").toUpperCase() === key);
+      if (fromTemplate.length) {
+        return fromTemplate.map((option) => ({
+          value: option.value,
+          label: option.dataset.label || option.textContent.trim(),
+          aliases: String(option.dataset.aliases || "")
+            .split("|")
+            .map((part) => part.trim())
+            .filter(Boolean),
+        }));
+      }
+    }
+    const level = levelsByValue.get(key);
     return level ? level.classes || [] : [];
   }
 
-  function valueMatchesClass(item, selectedKey) {
+  function catalogItemMatches(item, selectedKey) {
     if (!selectedKey) return false;
     if (String(item.value || "").toUpperCase() === selectedKey) return true;
     if (String(item.label || "").toUpperCase() === selectedKey) return true;
@@ -122,7 +158,8 @@
     const classes = classesForLevel(levelValue);
     const selected = (selectedValue || "").trim();
     const selectedKey = selected.toUpperCase();
-    fields.classGroup.replaceChildren();
+
+    fields.classGroup.innerHTML = "";
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
@@ -138,7 +175,7 @@
       const option = document.createElement("option");
       option.value = item.value;
       option.textContent = item.label || item.value;
-      if (valueMatchesClass(item, selectedKey)) {
+      if (!matched && catalogItemMatches(item, selectedKey)) {
         option.selected = true;
         matched = true;
       }
@@ -174,7 +211,12 @@
       fields.dateOfBirth.value = button.dataset.dateOfBirth || "";
       fields.gender.value = button.dataset.gender || "";
       const academicLevel = button.dataset.academicLevel || "";
-      ensureLevelOption(academicLevel, academicLevel.replace(/_/g, " "));
+      const levelMeta = levelsByValue.get(String(academicLevel).toUpperCase());
+      ensureLevelOption(
+        academicLevel,
+        levelMeta?.label || academicLevel.replace(/_/g, " "),
+        levelMeta ? JSON.stringify(levelMeta.classes || []) : "[]"
+      );
       fields.academicLevel.value = academicLevel;
       fields.admissionNumber.value = button.dataset.admissionNumber || "";
       fillClassOptions(academicLevel, button.dataset.classGroup || "");
