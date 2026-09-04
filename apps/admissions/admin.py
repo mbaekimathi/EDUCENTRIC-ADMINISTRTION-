@@ -76,10 +76,18 @@ class StudentAdmin(admin.ModelAdmin):
         "class_group",
         "academic_level",
         "parent_guardian",
+        "enrollment_status",
         "is_active",
         "is_suspended",
     )
-    list_filter = ("academic_level", "gender", "sponsorship_category", "is_active", "is_suspended")
+    list_filter = (
+        "academic_level",
+        "gender",
+        "sponsorship_category",
+        "enrollment_status",
+        "is_active",
+        "is_suspended",
+    )
     search_fields = (
         "admission_number",
         "assessment_number",
@@ -88,7 +96,7 @@ class StudentAdmin(admin.ModelAdmin):
         "last_name",
         "parent_guardian__full_name",
     )
-    readonly_fields = ("password", "admitted_at")
+    readonly_fields = ("password", "admitted_at", "cleared_at")
     fields = (
         "first_name",
         "middle_name",
@@ -107,6 +115,9 @@ class StudentAdmin(admin.ModelAdmin):
         "medical_notes",
         "special_needs",
         "emergency_contact",
+        "enrollment_status",
+        "clearance_reason",
+        "cleared_at",
         "is_active",
         "is_suspended",
         "new_password",

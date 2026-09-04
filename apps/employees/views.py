@@ -1085,9 +1085,19 @@ def _with_student_sort(url, sort_mode):
 
 
 def _pending_admission_queryset():
-    return Student.objects.filter(is_active=False, is_suspended=False).select_related(
-        "parent_guardian"
-    )
+    return Student.objects.filter(
+        is_active=False,
+        is_suspended=False,
+        enrollment_status=Student.EnrollmentStatus.ACTIVE,
+    ).select_related("parent_guardian")
+
+
+def _clearable_student_queryset():
+    return Student.objects.filter(
+        enrollment_status=Student.EnrollmentStatus.ACTIVE,
+        is_active=True,
+        is_suspended=False,
+    ).select_related("parent_guardian")
 
 
 def _pending_admission_count():
@@ -5260,6 +5270,16 @@ def _redirect_advance_academic_level():
     return redirect("employees:it_support_advance_academic_level")
 
 
+def _redirect_clearing_students():
+    return redirect("employees:it_support_clearing_students")
+
+
+CLEARANCE_REASON_TO_STATUS = {
+    Student.ClearanceReason.TRANSFER: Student.EnrollmentStatus.TRANSFER,
+    Student.ClearanceReason.COMPLETED_SCHOOL: Student.EnrollmentStatus.ALUMNAE,
+}
+
+
 def _next_academic_level(level):
     return (
         AcademicLevel.objects.filter(
@@ -5449,6 +5469,106 @@ def it_support_pending_admissions(request):
             "pending_admission_count": len(students),
             **_student_management_nav_context(active_tool="pending-admissions"),
             **_student_sort_template_context(request),
+        },
+    )
+
+
+@login_required
+def it_support_clearing_students(request):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    sort_mode = _resolve_student_sort(request)
+    search_query = (request.GET.get("q") or "").strip()
+    students_qs = _clearable_student_queryset().order_by(
+        "academic_level",
+        *_student_sort_order_by(sort_mode, include_class_group=True),
+    )
+    if search_query:
+        students_qs = students_qs.annotate(
+            full_name=Concat(
+                "first_name",
+                Value(" "),
+                "middle_name",
+                Value(" "),
+                "last_name",
+            )
+        ).filter(
+            Q(full_name__icontains=search_query)
+            | Q(first_name__icontains=search_query)
+            | Q(last_name__icontains=search_query)
+            | Q(admission_number__icontains=search_query)
+            | Q(assessment_number__icontains=search_query)
+        )
+    students = list(students_qs)
+    return render(
+        request,
+        "employees/it_support_clearing_students.html",
+        {
+            "active_nav": "dashboard",
+            "clearable_students": students,
+            "clearable_student_count": len(students),
+            "search_query": search_query,
+            **_student_management_nav_context(active_tool="clearing-students"),
+            **_student_sort_template_context(request),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def it_support_clearing_student_detail(request, student_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    student = get_object_or_404(
+        Student.objects.select_related("parent_guardian"),
+        pk=student_id,
+    )
+    if student.enrollment_status != Student.EnrollmentStatus.ACTIVE:
+        error(
+            request,
+            f"{student.display_name} is already cleared "
+            f"({student.get_enrollment_status_display()}).",
+        )
+        return _redirect_clearing_students()
+
+    if request.method == "POST":
+        reason = (request.POST.get("clearance_reason") or "").strip()
+        valid_reasons = {value for value, _label in Student.ClearanceReason.choices}
+        if reason not in valid_reasons:
+            error(request, "Select a valid clearance reason.")
+            return redirect(
+                "employees:it_support_clearing_student_detail",
+                student_id=student.id,
+            )
+        new_status = CLEARANCE_REASON_TO_STATUS[reason]
+        student.enrollment_status = new_status
+        student.clearance_reason = reason
+        student.cleared_at = timezone.now()
+        student.is_active = False
+        student.save(
+            update_fields=[
+                "enrollment_status",
+                "clearance_reason",
+                "cleared_at",
+                "is_active",
+            ]
+        )
+        success(
+            request,
+            f"{student.display_name} was cleared as {student.get_enrollment_status_display()}.",
+        )
+        return _redirect_clearing_students()
+
+    return render(
+        request,
+        "employees/it_support_clearing_student_detail.html",
+        {
+            "active_nav": "dashboard",
+            "student": student,
+            "clearance_reason_choices": Student.ClearanceReason.choices,
+            **_student_management_nav_context(active_tool="clearing-students"),
         },
     )
 
@@ -7873,8 +7993,17 @@ def _students_in_academic_level(level, academic_class=None, sort=STUDENT_SORT_NA
     if not choice:
         return Student.objects.none()
     sort_mode = sort if sort in STUDENT_SORT_CHOICES else STUDENT_SORT_NAME
-    students = Student.objects.select_related("parent_guardian").filter(academic_level=choice).order_by(
-        *_student_sort_order_by(sort_mode, include_class_group=True),
+    students = (
+        Student.objects.select_related("parent_guardian")
+        .filter(
+            academic_level=choice,
+            enrollment_status=Student.EnrollmentStatus.ACTIVE,
+            is_active=True,
+            is_suspended=False,
+        )
+        .order_by(
+            *_student_sort_order_by(sort_mode, include_class_group=True),
+        )
     )
     if academic_class is None:
         return students

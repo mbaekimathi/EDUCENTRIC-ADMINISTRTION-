@@ -66,6 +66,15 @@ class Student(PortalAccount):
         SELF = "SELF", "Self sponsored"
         BOTH = "BOTH", "Government and self sponsored"
 
+    class EnrollmentStatus(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        TRANSFER = "TRANSFER", "Transfer"
+        ALUMNAE = "ALUMNAE", "Alumnae"
+
+    class ClearanceReason(models.TextChoices):
+        TRANSFER = "TRANSFER", "Transfer to another school"
+        COMPLETED_SCHOOL = "COMPLETED_SCHOOL", "Completed school"
+
     first_name = models.CharField(max_length=150)
     middle_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150)
@@ -95,6 +104,19 @@ class Student(PortalAccount):
         default=False,
         help_text="Suspended students cannot use the student portal.",
     )
+    enrollment_status = models.CharField(
+        max_length=20,
+        choices=EnrollmentStatus.choices,
+        default=EnrollmentStatus.ACTIVE,
+        help_text="School enrollment status: active, transfer, or alumnae.",
+    )
+    clearance_reason = models.CharField(
+        max_length=30,
+        choices=ClearanceReason.choices,
+        blank=True,
+        help_text="Reason recorded when the student was cleared.",
+    )
+    cleared_at = models.DateTimeField(null=True, blank=True)
     admitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -106,6 +128,7 @@ class Student(PortalAccount):
                 fields=["academic_level", "class_group"],
                 name="student_level_class_idx",
             ),
+            models.Index(fields=["enrollment_status"], name="student_enrollment_status_idx"),
         ]
 
     def save(self, *args, **kwargs):

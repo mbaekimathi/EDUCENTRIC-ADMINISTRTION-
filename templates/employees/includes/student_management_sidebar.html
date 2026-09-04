@@ -32,6 +32,16 @@
   </span>
   Advance academic level
 </a>
+<a
+  class="workspace-nav-link {% if active_student_tool == 'clearing-students' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_clearing_students' %}"
+  {% if active_student_tool == 'clearing-students' %}aria-current="page"{% endif %}
+>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M16 3v4M8 3v4M4 9h16M7 13h2M11 13h2M15 13h2M7 17h2M11 17h6M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+  Clearing students
+</a>
 
 {% if student_level_filters %}
 <p class="workspace-nav-label">Grades</p>

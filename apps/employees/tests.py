@@ -813,6 +813,7 @@ class ITSupportWorkspaceTests(TestCase):
             assessment_number="A9001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=exam,
@@ -897,6 +898,7 @@ class ITSupportWorkspaceTests(TestCase):
             assessment_number="B006720544",
             sponsorship_category=Student.SponsorshipCategory.BOTH,
             parent_guardian=parent,
+            is_active=True,
         )
         response = self.client.get(
             reverse("employees:it_support_module", kwargs={"module": "student-management"})
@@ -1446,6 +1448,7 @@ class ExamManagementDashboardTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=self.exam,
@@ -1488,6 +1491,7 @@ class ExamManagementDashboardTests(TestCase):
             assessment_number="A1002",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=self.exam,
@@ -1527,6 +1531,7 @@ class ExamManagementDashboardTests(TestCase):
             assessment_number="A1003",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=self.exam,
@@ -2034,11 +2039,74 @@ class StudentManagementTests(TestCase):
         )
         pending_url = reverse("employees:it_support_pending_admissions")
         advance_url = reverse("employees:it_support_advance_academic_level")
+        clearing_url = reverse("employees:it_support_clearing_students")
         self.assertContains(response, pending_url)
         self.assertContains(response, advance_url)
+        self.assertContains(response, clearing_url)
         self.assertContains(response, "Pending admissions")
         self.assertContains(response, "Advance academic level")
+        self.assertContains(response, "Clearing students")
         self.assertContains(response, "Student register")
+
+    def test_clearing_students_lists_active_and_clears_to_transfer_or_alumnae(self):
+        from apps.admissions.models import Student
+
+        self.student.is_active = True
+        self.student.save(update_fields=["is_active"])
+
+        list_response = self.client.get(reverse("employees:it_support_clearing_students"))
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, self.student.display_name)
+        detail_url = reverse(
+            "employees:it_support_clearing_student_detail",
+            kwargs={"student_id": self.student.id},
+        )
+        self.assertContains(list_response, detail_url)
+
+        detail_response = self.client.get(detail_url)
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "Clearance reason")
+        self.assertContains(detail_response, "Transfer to another school")
+        self.assertContains(detail_response, "Completed school")
+
+        clear_response = self.client.post(
+            detail_url,
+            {"clearance_reason": Student.ClearanceReason.COMPLETED_SCHOOL},
+        )
+        self.assertRedirects(clear_response, reverse("employees:it_support_clearing_students"))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.enrollment_status, Student.EnrollmentStatus.ALUMNAE)
+        self.assertEqual(
+            self.student.clearance_reason,
+            Student.ClearanceReason.COMPLETED_SCHOOL,
+        )
+        self.assertFalse(self.student.is_active)
+        self.assertIsNotNone(self.student.cleared_at)
+
+        list_after = self.client.get(reverse("employees:it_support_clearing_students"))
+        self.assertNotContains(list_after, self.student.display_name)
+
+        # Cleared students must not reappear in pending admissions.
+        pending = self.client.get(reverse("employees:it_support_pending_admissions"))
+        self.assertNotContains(pending, self.student.display_name)
+
+    def test_clearing_students_transfer_reason_sets_transfer_status(self):
+        from apps.admissions.models import Student
+
+        self.student.is_active = True
+        self.student.save(update_fields=["is_active"])
+        response = self.client.post(
+            reverse(
+                "employees:it_support_clearing_student_detail",
+                kwargs={"student_id": self.student.id},
+            ),
+            {"clearance_reason": Student.ClearanceReason.TRANSFER},
+        )
+        self.assertRedirects(response, reverse("employees:it_support_clearing_students"))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.enrollment_status, Student.EnrollmentStatus.TRANSFER)
+        self.assertEqual(self.student.clearance_reason, Student.ClearanceReason.TRANSFER)
+        self.assertFalse(self.student.is_active)
 
     def test_advance_academic_level_lists_classes_and_promotes_selected_students(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -3969,6 +4037,7 @@ class ExamTimetableGenerationTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         Student.objects.create(
             first_name="BEN",
@@ -3981,6 +4050,7 @@ class ExamTimetableGenerationTests(TestCase):
             assessment_number="A1002",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
 
         level_page = self.client.get(level_url)
@@ -4111,6 +4181,7 @@ class ExamTimetableGenerationTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=generation,
@@ -4535,6 +4606,7 @@ class ExamTimetableGenerationTests(TestCase):
             assessment_number="A2001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=generation,
@@ -4869,6 +4941,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A9001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         url = reverse(
             "employees:teacher_my_class_page",
@@ -4935,6 +5008,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A9002",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         session = SubjectAttendanceSession.objects.create(
             allocation=ClassSubjectAllocation.objects.get(
@@ -5341,6 +5415,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="AEA001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         level_url = reverse(
             "employees:teacher_elearning_assessment_class",
@@ -5618,6 +5693,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1011",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         student_west = Student.objects.create(
             first_name="BEN",
@@ -5630,6 +5706,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1012",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=self.exam,
@@ -5691,6 +5768,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         student_west = Student.objects.create(
             first_name="BEN",
@@ -5703,6 +5781,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1002",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamMark.objects.create(
             generation=self.exam,
@@ -5774,6 +5853,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         Student.objects.create(
             first_name="BEN",
@@ -5786,6 +5866,34 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1002",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
+        )
+        Student.objects.create(
+            first_name="CLEARED",
+            last_name="ALUM",
+            date_of_birth="2018-03-03",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1003",
+            class_group="1E",
+            assessment_number="A1003",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=False,
+            enrollment_status=Student.EnrollmentStatus.ALUMNAE,
+        )
+        Student.objects.create(
+            first_name="PENDING",
+            last_name="ADMIT",
+            date_of_birth="2018-04-04",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1004",
+            class_group="1E",
+            assessment_number="A1004",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=False,
         )
         class_url = reverse(
             "employees:teacher_exam_record_class",
@@ -5803,6 +5911,8 @@ class TeacherExamRecordsTests(TestCase):
         self.assertNotContains(locked, "Save marks")
         self.assertContains(locked, "readonly")
         self.assertNotContains(locked, "BEN WEST")
+        self.assertNotContains(locked, "CLEARED ALUM")
+        self.assertNotContains(locked, "PENDING ADMIT")
         self.assertNotContains(locked, "English")
 
         self.exam.status = GeneratedExamTimetable.Status.MARKING
@@ -5833,6 +5943,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         class_url = reverse(
             "employees:teacher_exam_record_class",
@@ -5863,6 +5974,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         ExamSubjectSetting.objects.create(
             academic_level=self.level,
@@ -5912,6 +6024,7 @@ class TeacherExamRecordsTests(TestCase):
             assessment_number="A1001",
             sponsorship_category=Student.SponsorshipCategory.SELF,
             parent_guardian=parent,
+            is_active=True,
         )
         setting = ExamSubjectSetting.objects.create(
             academic_level=self.level,

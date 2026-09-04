@@ -120,6 +120,16 @@ urlpatterns = [
         name="it_support_advance_academic_level_class",
     ),
     path(
+        "workspace/it_support/student-management/clearing-students/",
+        views.it_support_clearing_students,
+        name="it_support_clearing_students",
+    ),
+    path(
+        "workspace/it_support/student-management/clearing-students/<int:student_id>/",
+        views.it_support_clearing_student_detail,
+        name="it_support_clearing_student_detail",
+    ),
+    path(
         "workspace/it_support/student-management/pending-admissions/<int:student_id>/",
         views.it_support_pending_admission_detail,
         name="it_support_pending_admission_detail",

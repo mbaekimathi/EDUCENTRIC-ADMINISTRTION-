@@ -32,4 +32,15 @@
       <span>Advance academic level</span>
     </span>
   </a>
+  <a
+    class="teacher-dash-action{% if active_student_tool == 'clearing-students' %} is-active{% endif %}"
+    href="{% url 'employees:it_support_clearing_students' %}"
+    {% if active_student_tool == 'clearing-students' %}aria-current="page"{% endif %}
+  >
+    <span class="teacher-dash-action-icon" aria-hidden="true">CS</span>
+    <span class="teacher-dash-action-copy">
+      <strong>Clearing students</strong>
+      <span>Clearing students</span>
+    </span>
+  </a>
 </section>
