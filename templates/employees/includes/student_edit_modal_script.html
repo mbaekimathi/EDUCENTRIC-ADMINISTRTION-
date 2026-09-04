@@ -1,0 +1,363 @@
+<script>
+/**
+ * Edit-student modal: show current academic level + class for editing.
+ * Lives in templates so it deploys with the app (no collectstatic dependency).
+ */
+(function () {
+  const modal = document.querySelector("[data-edit-student-modal]");
+  const form = document.querySelector("[data-edit-student-form]");
+  if (!modal || !form) return;
+
+  const sponsorField = document.querySelector("[data-sponsor-details-field]");
+  const fields = {
+    firstName: document.querySelector("#edit-student-first-name"),
+    middleName: document.querySelector("#edit-student-middle-name"),
+    lastName: document.querySelector("#edit-student-last-name"),
+    dateOfBirth: document.querySelector("#edit-student-dob"),
+    gender: document.querySelector("#edit-student-gender"),
+    academicLevel: document.querySelector("#edit-student-level"),
+    classGroup: document.querySelector("#edit-student-class-group"),
+    admissionNumber: document.querySelector("#edit-student-admission"),
+    assessmentNumber: document.querySelector("#edit-student-assessment"),
+    previousSchool: document.querySelector("#edit-student-previous-school"),
+    sponsorshipCategory: document.querySelector("#edit-student-sponsorship"),
+    sponsorDetails: document.querySelector("#edit-student-sponsor"),
+    parentGuardianName: document.querySelector("#edit-student-parent-name"),
+    relationshipToStudent: document.querySelector("#edit-student-relationship"),
+    parentPhone: document.querySelector("#edit-student-parent-phone"),
+    parentEmail: document.querySelector("#edit-student-parent-email"),
+    homeAddress: document.querySelector("#edit-student-address"),
+    medicalNotes: document.querySelector("#edit-student-medical"),
+    specialNeeds: document.querySelector("#edit-student-needs"),
+    emergencyContact: document.querySelector("#edit-student-emergency"),
+    profileImage: document.querySelector("#edit-student-photo"),
+    clearProfileImage: document.querySelector("[data-edit-student-clear-photo]"),
+  };
+
+  const photoPreview = document.querySelector("[data-edit-student-photo-preview]");
+  const photoInitials = document.querySelector("[data-edit-student-photo-initials]");
+  const photoTrigger = document.querySelector("[data-edit-student-photo-trigger]");
+  const photoFilename = document.querySelector("[data-edit-student-photo-filename]");
+  const removePhotoButton = document.querySelector("[data-edit-student-remove-photo]");
+  const classesUrl = modal.dataset.classesUrl || "";
+
+  let hasServerPhoto = false;
+  let fillToken = 0;
+
+  let catalog = { levels: [] };
+  try {
+    const node = document.getElementById("student-edit-level-catalog");
+    catalog = node ? JSON.parse(node.textContent) : { levels: [] };
+  } catch (error) {
+    catalog = { levels: [] };
+  }
+
+  const classesByLevel = new Map();
+  (catalog.levels || []).forEach(function (level) {
+    const key = String(level.value || "").toUpperCase();
+    if (!key) return;
+    classesByLevel.set(key, Array.isArray(level.classes) ? level.classes.slice() : []);
+  });
+
+  const classOptionsTemplate = document.getElementById("student-edit-class-options");
+  if (classOptionsTemplate) {
+    Array.from(classOptionsTemplate.content.querySelectorAll("option")).forEach(function (option) {
+      const key = String(option.dataset.level || "").toUpperCase();
+      if (!key) return;
+      if (!classesByLevel.has(key)) classesByLevel.set(key, []);
+      const list = classesByLevel.get(key);
+      const value = option.value || "";
+      if (list.some(function (item) { return String(item.value).toUpperCase() === value.toUpperCase(); })) {
+        return;
+      }
+      list.push({
+        value: value,
+        label: option.dataset.label || option.textContent.trim(),
+        aliases: String(option.dataset.aliases || "")
+          .split("|")
+          .map(function (part) { return part.trim(); })
+          .filter(Boolean),
+      });
+    });
+  }
+
+  function norm(value) {
+    return String(value || "").trim().toUpperCase();
+  }
+
+  function classesForLevel(levelValue) {
+    return classesByLevel.get(norm(levelValue)) || [];
+  }
+
+  function classMatches(item, selectedKey) {
+    if (!selectedKey) return false;
+    if (norm(item.value) === selectedKey) return true;
+    if (norm(item.label) === selectedKey) return true;
+    return (item.aliases || []).some(function (alias) { return norm(alias) === selectedKey; });
+  }
+
+  function ensureLevelOption(value) {
+    if (!fields.academicLevel || !value) return;
+    const key = norm(value);
+    const exists = Array.from(fields.academicLevel.options).some(function (option) {
+      return norm(option.value) === key;
+    });
+    if (exists) return;
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = String(value).replace(/_/g, " ");
+    fields.academicLevel.appendChild(option);
+  }
+
+  function setLevelValue(value) {
+    if (!fields.academicLevel) return;
+    ensureLevelOption(value);
+    const key = norm(value);
+    const match = Array.from(fields.academicLevel.options).find(function (option) {
+      return norm(option.value) === key;
+    });
+    fields.academicLevel.value = match ? match.value : value;
+  }
+
+  function renderClassOptions(levelValue, selectedValue) {
+    if (!fields.classGroup) return;
+    const list = classesForLevel(levelValue);
+    const selectedKey = norm(selectedValue);
+
+    fields.classGroup.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    if (!levelValue) {
+      placeholder.textContent = "Select academic level first…";
+    } else if (!list.length) {
+      placeholder.textContent = "No classes configured for this level";
+    } else {
+      placeholder.textContent = "Select class…";
+    }
+    fields.classGroup.appendChild(placeholder);
+
+    let matched = false;
+    list.forEach(function (item) {
+      const option = document.createElement("option");
+      option.value = item.value || "";
+      option.textContent = item.label || item.value || "";
+      if (!matched && classMatches(item, selectedKey)) {
+        option.selected = true;
+        matched = true;
+      }
+      fields.classGroup.appendChild(option);
+    });
+
+    if (selectedValue && !matched) {
+      const option = document.createElement("option");
+      option.value = selectedValue;
+      option.textContent = selectedValue + " (current)";
+      option.selected = true;
+      fields.classGroup.appendChild(option);
+    }
+
+    fields.classGroup.disabled = !levelValue;
+    fields.classGroup.required = Boolean(levelValue) && list.length > 0;
+  }
+
+  async function refreshClassesFromApi(levelValue) {
+    const key = norm(levelValue);
+    if (!key || !classesUrl) return classesForLevel(levelValue);
+    try {
+      const response = await fetch(classesUrl + "?level=" + encodeURIComponent(key), {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      if (!response.ok) return classesForLevel(levelValue);
+      const data = await response.json();
+      const classes = Array.isArray(data.classes) ? data.classes : [];
+      if (classes.length) {
+        classesByLevel.set(key, classes);
+      }
+      return classesForLevel(levelValue);
+    } catch (error) {
+      return classesForLevel(levelValue);
+    }
+  }
+
+  async function loadClassesForLevel(levelValue, selectedValue) {
+    const token = ++fillToken;
+    const level = String(levelValue || "").trim();
+    renderClassOptions(level, selectedValue);
+
+    const local = classesForLevel(level);
+    if (!level) return;
+
+    if (!local.length && fields.classGroup) {
+      fields.classGroup.disabled = true;
+      const placeholder = fields.classGroup.querySelector('option[value=""]');
+      if (placeholder) placeholder.textContent = "Loading classes…";
+    }
+
+    await refreshClassesFromApi(level);
+    if (token !== fillToken) return;
+    if (norm(fields.academicLevel && fields.academicLevel.value) !== norm(level)) return;
+    renderClassOptions(level, selectedValue);
+
+    if (selectedValue && fields.classGroup && !fields.classGroup.value) {
+      const selectedKey = norm(selectedValue);
+      const match = Array.from(fields.classGroup.options).find(function (option) {
+        return norm(option.value) === selectedKey || norm(option.textContent) === selectedKey;
+      });
+      if (match) fields.classGroup.value = match.value;
+    }
+  }
+
+  function initialsFromName(firstName, lastName) {
+    const first = (firstName || "").trim().charAt(0);
+    const last = (lastName || "").trim().charAt(0);
+    return (first + last).toUpperCase() || "--";
+  }
+
+  function updateInitials() {
+    if (!photoInitials) return;
+    photoInitials.textContent = initialsFromName(
+      fields.firstName && fields.firstName.value,
+      fields.lastName && fields.lastName.value
+    );
+  }
+
+  function setPhotoPreview(url, filename) {
+    const hasPhoto = Boolean(url);
+    if (photoPreview) {
+      photoPreview.hidden = !hasPhoto;
+      photoPreview.src = url || "";
+      photoPreview.onerror = function () {
+        photoPreview.hidden = true;
+        photoPreview.src = "";
+        if (photoInitials) photoInitials.hidden = false;
+        if (removePhotoButton) removePhotoButton.hidden = true;
+      };
+    }
+    if (photoInitials) photoInitials.hidden = hasPhoto;
+    if (removePhotoButton) removePhotoButton.hidden = !hasPhoto;
+    if (photoFilename) {
+      if (filename) {
+        photoFilename.textContent = filename;
+        photoFilename.hidden = false;
+      } else {
+        photoFilename.textContent = "";
+        photoFilename.hidden = true;
+      }
+    }
+    if (fields.clearProfileImage) fields.clearProfileImage.checked = false;
+    if (photoTrigger) photoTrigger.classList.toggle("has-photo", hasPhoto);
+  }
+
+  function toggleSponsorDetails() {
+    const value = fields.sponsorshipCategory && fields.sponsorshipCategory.value;
+    const required = value === "GOVERNMENT" || value === "BOTH";
+    if (sponsorField) sponsorField.hidden = !required;
+    if (fields.sponsorDetails) fields.sponsorDetails.required = required;
+  }
+
+  function setOpen(open) {
+    modal.hidden = !open;
+    modal.classList.toggle("is-open", open);
+    document.body.classList.toggle("modal-open", open);
+    if (open && fields.firstName) fields.firstName.focus();
+  }
+
+  function openFromButton(button) {
+    form.action = button.dataset.updateUrl || form.action;
+
+    if (fields.firstName) fields.firstName.value = button.dataset.firstName || "";
+    if (fields.middleName) fields.middleName.value = button.dataset.middleName || "";
+    if (fields.lastName) fields.lastName.value = button.dataset.lastName || "";
+    if (fields.dateOfBirth) fields.dateOfBirth.value = button.dataset.dateOfBirth || "";
+    if (fields.gender) fields.gender.value = button.dataset.gender || "";
+
+    const academicLevel = button.dataset.academicLevel || "";
+    const classGroup = button.dataset.classGroup || "";
+    setLevelValue(academicLevel);
+    loadClassesForLevel(academicLevel, classGroup);
+
+    if (fields.admissionNumber) fields.admissionNumber.value = button.dataset.admissionNumber || "";
+    if (fields.assessmentNumber) fields.assessmentNumber.value = button.dataset.assessmentNumber || "";
+    if (fields.previousSchool) fields.previousSchool.value = button.dataset.previousSchool || "";
+    if (fields.sponsorshipCategory) {
+      fields.sponsorshipCategory.value = button.dataset.sponsorshipCategory || "";
+    }
+    if (fields.sponsorDetails) fields.sponsorDetails.value = button.dataset.sponsorDetails || "";
+    if (fields.parentGuardianName) {
+      fields.parentGuardianName.value = button.dataset.parentGuardianName || "";
+    }
+    if (fields.relationshipToStudent) {
+      fields.relationshipToStudent.value = button.dataset.relationshipToStudent || "";
+    }
+    if (fields.parentPhone) fields.parentPhone.value = button.dataset.parentPhone || "";
+    if (fields.parentEmail) fields.parentEmail.value = button.dataset.parentEmail || "";
+    if (fields.homeAddress) fields.homeAddress.value = button.dataset.homeAddress || "";
+    if (fields.medicalNotes) fields.medicalNotes.value = button.dataset.medicalNotes || "";
+    if (fields.specialNeeds) fields.specialNeeds.value = button.dataset.specialNeeds || "";
+    if (fields.emergencyContact) fields.emergencyContact.value = button.dataset.emergencyContact || "";
+
+    if (fields.profileImage) fields.profileImage.value = "";
+    hasServerPhoto = Boolean(button.dataset.profileImageUrl);
+    updateInitials();
+    setPhotoPreview(button.dataset.profileImageUrl || "");
+    toggleSponsorDetails();
+    setOpen(true);
+  }
+
+  document.querySelectorAll("[data-edit-student]").forEach(function (button) {
+    button.addEventListener("click", function () { openFromButton(button); });
+  });
+
+  if (fields.academicLevel) {
+    fields.academicLevel.addEventListener("change", function () {
+      loadClassesForLevel(fields.academicLevel.value, "");
+    });
+  }
+
+  if (fields.firstName) fields.firstName.addEventListener("input", updateInitials);
+  if (fields.lastName) fields.lastName.addEventListener("input", updateInitials);
+  if (fields.sponsorshipCategory) {
+    fields.sponsorshipCategory.addEventListener("change", toggleSponsorDetails);
+  }
+
+  if (photoTrigger) {
+    photoTrigger.addEventListener("click", function () {
+      if (fields.profileImage) fields.profileImage.click();
+    });
+  }
+
+  if (fields.profileImage) {
+    fields.profileImage.addEventListener("change", function () {
+      const file = fields.profileImage.files && fields.profileImage.files[0];
+      if (!file) return;
+      hasServerPhoto = false;
+      setPhotoPreview(URL.createObjectURL(file), file.name);
+      if (fields.clearProfileImage) fields.clearProfileImage.checked = false;
+    });
+  }
+
+  if (removePhotoButton) {
+    removePhotoButton.addEventListener("click", function () {
+      if (fields.profileImage) fields.profileImage.value = "";
+      if (fields.clearProfileImage) fields.clearProfileImage.checked = hasServerPhoto;
+      hasServerPhoto = false;
+      setPhotoPreview("");
+      updateInitials();
+    });
+  }
+
+  modal.querySelectorAll("[data-edit-student-close]").forEach(function (button) {
+    button.addEventListener("click", function () { setOpen(false); });
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && modal.classList.contains("is-open")) {
+      setOpen(false);
+    }
+  });
+
+  renderClassOptions("", "");
+})();
+</script>

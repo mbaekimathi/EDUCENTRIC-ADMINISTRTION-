@@ -314,12 +314,12 @@
             <div class="field">
               <label for="edit-student-level">Academic level <span class="required">*</span></label>
               <select id="edit-student-level" class="uppercase-input" name="academic_level" required data-edit-student-level>
-                <option value="" data-classes="[]">Select academic level…</option>
+                <option value="">Select academic level…</option>
                 {% for level in student_edit_level_catalog.levels %}
-                <option value="{{ level.value }}" data-classes="{{ level.classes_json }}">{{ level.label }}</option>
+                <option value="{{ level.value }}">{{ level.label }}</option>
                 {% empty %}
                 {% for value, label in academic_level_choices %}
-                <option value="{{ value }}" data-classes="[]">{{ label }}</option>
+                <option value="{{ value }}">{{ label }}</option>
                 {% endfor %}
                 {% endfor %}
               </select>
@@ -332,8 +332,9 @@
                 name="class_group"
                 required
                 data-edit-student-class-group
+                disabled
               >
-                <option value="">Select class…</option>
+                <option value="">Select academic level first…</option>
               </select>
             </div>
             <div class="field">
@@ -432,175 +433,7 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script>
-(function () {
-  const levelSelect = document.querySelector("[data-edit-student-level]");
-  const classSelect = document.querySelector("[data-edit-student-class-group]");
-  const classOptionsTemplate = document.getElementById("student-edit-class-options");
-  const classesUrl = document.querySelector("[data-edit-student-modal]")?.dataset.classesUrl || "";
-  const catalogNode = document.getElementById("student-edit-level-catalog");
-  let catalog = { levels: [] };
-  try {
-    catalog = catalogNode ? JSON.parse(catalogNode.textContent) : { levels: [] };
-  } catch (error) {
-    catalog = { levels: [] };
-  }
-
-  const classCache = new Map(
-    (catalog.levels || []).map((level) => [
-      String(level.value || "").toUpperCase(),
-      Array.isArray(level.classes) ? level.classes : [],
-    ])
-  );
-
-  function classesFromTemplate(levelValue) {
-    const key = String(levelValue || "").toUpperCase();
-    if (!classOptionsTemplate || !key) return [];
-    return Array.from(classOptionsTemplate.content.querySelectorAll("option"))
-      .filter((option) => String(option.dataset.level || "").toUpperCase() === key)
-      .map((option) => ({
-        value: option.value,
-        label: option.dataset.label || option.textContent.trim(),
-        aliases: String(option.dataset.aliases || "")
-          .split("|")
-          .map((part) => part.trim())
-          .filter(Boolean),
-      }));
-  }
-
-  function classesFromLevelOption(levelValue) {
-    const key = String(levelValue || "").toUpperCase();
-    if (!key) return [];
-    const cached = classCache.get(key);
-    if (Array.isArray(cached) && cached.length) return cached;
-
-    const fromTemplate = classesFromTemplate(levelValue);
-    if (fromTemplate.length) {
-      classCache.set(key, fromTemplate);
-      return fromTemplate;
-    }
-
-    if (!levelSelect) return Array.isArray(cached) ? cached : [];
-    const option = Array.from(levelSelect.options).find(
-      (item) => String(item.value || "").toUpperCase() === key
-    );
-    if (!option) return Array.isArray(cached) ? cached : [];
-    try {
-      const embedded = JSON.parse(option.getAttribute("data-classes") || "[]");
-      if (Array.isArray(embedded) && embedded.length) {
-        classCache.set(key, embedded);
-        return embedded;
-      }
-    } catch (error) {
-      /* fall through */
-    }
-    return Array.isArray(cached) ? cached : [];
-  }
-
-  function matchesClass(item, selectedKey) {
-    if (!selectedKey) return false;
-    if (String(item.value || "").toUpperCase() === selectedKey) return true;
-    if (String(item.label || "").toUpperCase() === selectedKey) return true;
-    return (item.aliases || []).some(
-      (alias) => String(alias || "").toUpperCase() === selectedKey
-    );
-  }
-
-  function renderClasses(levelValue, classes, selectedValue) {
-    if (!classSelect) return;
-    const list = Array.isArray(classes) ? classes : [];
-    const selected = (selectedValue || "").trim();
-    const selectedKey = selected.toUpperCase();
-    classSelect.innerHTML = "";
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = list.length
-      ? "Select class…"
-      : levelValue
-        ? "No classes configured for this level"
-        : "Select academic level first…";
-    classSelect.appendChild(placeholder);
-
-    let matched = false;
-    list.forEach((item) => {
-      if (!item || typeof item !== "object") return;
-      const option = document.createElement("option");
-      option.value = item.value || "";
-      option.textContent = item.label || item.value || "";
-      if (!matched && matchesClass(item, selectedKey)) {
-        option.selected = true;
-        matched = true;
-      }
-      classSelect.appendChild(option);
-    });
-
-    if (selected && !matched) {
-      const option = document.createElement("option");
-      option.value = selected;
-      option.textContent = selected + " (current)";
-      option.selected = true;
-      classSelect.appendChild(option);
-    }
-
-    classSelect.disabled = !levelValue;
-    classSelect.required = Boolean(levelValue) && list.length > 0;
-  }
-
-  async function fetchClasses(levelValue) {
-    const key = String(levelValue || "").toUpperCase();
-    const local = classesFromLevelOption(levelValue);
-    if (!key || !classesUrl) return local;
-    try {
-      const response = await fetch(
-        classesUrl + "?level=" + encodeURIComponent(key),
-        { headers: { Accept: "application/json" }, credentials: "same-origin" }
-      );
-      if (!response.ok) return local;
-      const data = await response.json();
-      const classes = Array.isArray(data.classes) ? data.classes : [];
-      classCache.set(key, classes);
-      const option = Array.from(levelSelect?.options || []).find(
-        (item) => String(item.value || "").toUpperCase() === key
-      );
-      if (option) option.setAttribute("data-classes", JSON.stringify(classes));
-      return classes.length ? classes : local;
-    } catch (error) {
-      return local;
-    }
-  }
-
-  window.fillStudentEditClasses = async function fillStudentEditClasses(levelValue, selectedValue) {
-    const requestLevel = String(levelValue || "").toUpperCase();
-    const local = classesFromLevelOption(levelValue);
-    renderClasses(levelValue, local, selectedValue);
-    if (!requestLevel || !classesUrl) return;
-    if (!local.length && classSelect) {
-      classSelect.disabled = true;
-      const placeholder = classSelect.querySelector('option[value=""]');
-      if (placeholder) placeholder.textContent = "Loading classes…";
-    }
-    const classes = await fetchClasses(levelValue);
-    if (String(levelSelect?.value || "").toUpperCase() !== requestLevel) return;
-    renderClasses(levelValue, classes, selectedValue);
-  };
-
-  // Fill on Edit click here (non-deferred) so Class is not stuck on the static placeholder
-  // if deferred student-management.js is cached or late.
-  document.querySelectorAll("[data-edit-student]").forEach(function (button) {
-    button.addEventListener("click", function () {
-      const level = button.dataset.academicLevel || "";
-      const selected = button.dataset.classGroup || "";
-      if (levelSelect && level) levelSelect.value = level;
-      window.fillStudentEditClasses(level, selected);
-    });
-  });
-
-  levelSelect?.addEventListener("change", function () {
-    window.fillStudentEditClasses(levelSelect.value, "");
-  });
-})();
-</script>
-<script src="{% static 'js/student-management.js' %}?v=20260904editcls2"></script>
+{% include "employees/includes/student_edit_modal_script.html" %}
+<script src="{% static 'js/student-management.js' %}?v=20260904editrewrite" defer></script>
 <script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% endblock %}
