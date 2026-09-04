@@ -33,27 +33,6 @@
   const removePhotoButton = document.querySelector("[data-edit-student-remove-photo]");
   let hasServerPhoto = false;
 
-  const catalogNode = document.getElementById("student-edit-level-catalog");
-  const classOptionsTemplate = document.getElementById("student-edit-class-options");
-  const classesUrl = modal?.dataset.classesUrl || "";
-  const classCache = new Map();
-  let levelCatalog = { levels: [] };
-  try {
-    levelCatalog = catalogNode ? JSON.parse(catalogNode.textContent) : { levels: [] };
-  } catch (error) {
-    levelCatalog = { levels: [] };
-  }
-  const levelsByValue = new Map(
-    (levelCatalog.levels || []).map((level) => [String(level.value || "").toUpperCase(), level])
-  );
-  // Seed cache from embedded catalog so local/offline still works.
-  (levelCatalog.levels || []).forEach((level) => {
-    const key = String(level.value || "").toUpperCase();
-    if (key && Array.isArray(level.classes)) {
-      classCache.set(key, level.classes);
-    }
-  });
-
   function initialsFromName(firstName, lastName) {
     const first = (firstName || "").trim().charAt(0);
     const last = (lastName || "").trim().charAt(0);
@@ -100,159 +79,25 @@
     if (fields.sponsorDetails) fields.sponsorDetails.required = required;
   }
 
-  function ensureLevelOption(value, label, classesJson) {
+  function ensureLevelOption(value, label) {
     if (!fields.academicLevel || !value) return;
     const key = String(value).toUpperCase();
-    const existing = Array.from(fields.academicLevel.options).find(
+    const exists = Array.from(fields.academicLevel.options).some(
       (option) => String(option.value || "").toUpperCase() === key
     );
-    if (existing) {
-      if (classesJson && (!existing.getAttribute("data-classes") || existing.getAttribute("data-classes") === "[]")) {
-        existing.setAttribute("data-classes", classesJson);
-      }
-      return;
-    }
+    if (exists) return;
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label || value.replace(/_/g, " ");
-    option.setAttribute("data-classes", classesJson || "[]");
+    option.setAttribute("data-classes", "[]");
     fields.academicLevel.appendChild(option);
   }
 
-  function classesForLevelLocal(levelValue) {
-    const key = String(levelValue || "").toUpperCase();
-    if (!key) return [];
-    if (classCache.has(key) && classCache.get(key).length) {
-      return classCache.get(key);
+  function fillClasses(levelValue, selectedValue) {
+    if (typeof window.fillStudentEditClasses === "function") {
+      return window.fillStudentEditClasses(levelValue, selectedValue);
     }
-    if (fields.academicLevel) {
-      const selected = Array.from(fields.academicLevel.options).find(
-        (option) => String(option.value || "").toUpperCase() === key
-      );
-      if (selected) {
-        try {
-          const embedded = JSON.parse(selected.getAttribute("data-classes") || "[]");
-          if (Array.isArray(embedded) && embedded.length) {
-            classCache.set(key, embedded);
-            return embedded;
-          }
-        } catch (error) {
-          /* fall through */
-        }
-      }
-    }
-    if (classOptionsTemplate && key) {
-      const fromTemplate = Array.from(
-        classOptionsTemplate.content.querySelectorAll("option")
-      ).filter((option) => String(option.dataset.level || "").toUpperCase() === key);
-      if (fromTemplate.length) {
-        const mapped = fromTemplate.map((option) => ({
-          value: option.value,
-          label: option.dataset.label || option.textContent.trim(),
-          aliases: String(option.dataset.aliases || "")
-            .split("|")
-            .map((part) => part.trim())
-            .filter(Boolean),
-        }));
-        classCache.set(key, mapped);
-        return mapped;
-      }
-    }
-    const level = levelsByValue.get(key);
-    const classes = level ? level.classes || [] : [];
-    if (classes.length) classCache.set(key, classes);
-    return classes;
-  }
-
-  async function fetchClassesForLevel(levelValue) {
-    const key = String(levelValue || "").toUpperCase();
-    if (!key || !classesUrl) return classesForLevelLocal(levelValue);
-    try {
-      const response = await fetch(
-        `${classesUrl}?level=${encodeURIComponent(key)}`,
-        { headers: { Accept: "application/json" }, credentials: "same-origin" }
-      );
-      if (!response.ok) return classesForLevelLocal(levelValue);
-      const data = await response.json();
-      const classes = Array.isArray(data.classes) ? data.classes : [];
-      classCache.set(key, classes);
-      if (fields.academicLevel) {
-        const option = Array.from(fields.academicLevel.options).find(
-          (item) => String(item.value || "").toUpperCase() === key
-        );
-        if (option) option.setAttribute("data-classes", JSON.stringify(classes));
-      }
-      return classes;
-    } catch (error) {
-      return classesForLevelLocal(levelValue);
-    }
-  }
-
-  function catalogItemMatches(item, selectedKey) {
-    if (!selectedKey) return false;
-    if (String(item.value || "").toUpperCase() === selectedKey) return true;
-    if (String(item.label || "").toUpperCase() === selectedKey) return true;
-    return (item.aliases || []).some(
-      (alias) => String(alias || "").toUpperCase() === selectedKey
-    );
-  }
-
-  function renderClassOptions(levelValue, classes, selectedValue) {
-    if (!fields.classGroup) return;
-    const selected = (selectedValue || "").trim();
-    const selectedKey = selected.toUpperCase();
-
-    fields.classGroup.innerHTML = "";
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = classes.length
-      ? "Select class…"
-      : levelValue
-        ? "No classes configured for this level"
-        : "Select academic level first…";
-    fields.classGroup.appendChild(placeholder);
-
-    let matched = false;
-    classes.forEach((item) => {
-      const option = document.createElement("option");
-      option.value = item.value;
-      option.textContent = item.label || item.value;
-      if (!matched && catalogItemMatches(item, selectedKey)) {
-        option.selected = true;
-        matched = true;
-      }
-      fields.classGroup.appendChild(option);
-    });
-
-    if (selected && !matched) {
-      const option = document.createElement("option");
-      option.value = selected;
-      option.textContent = `${selected} (current)`;
-      option.selected = true;
-      fields.classGroup.appendChild(option);
-    }
-
-    fields.classGroup.disabled = !levelValue;
-    fields.classGroup.required = Boolean(levelValue) && classes.length > 0;
-  }
-
-  async function fillClassOptions(levelValue, selectedValue) {
-    if (!fields.classGroup) return;
-    const requestLevel = String(levelValue || "").toUpperCase();
-    const localClasses = classesForLevelLocal(levelValue);
-    renderClassOptions(levelValue, localClasses, selectedValue);
-    if (!requestLevel || !classesUrl) return;
-
-    if (!localClasses.length) {
-      fields.classGroup.disabled = true;
-      const placeholder = fields.classGroup.querySelector('option[value=""]');
-      if (placeholder) placeholder.textContent = "Loading classes…";
-    }
-
-    const classes = await fetchClassesForLevel(levelValue);
-    if (String(fields.academicLevel?.value || "").toUpperCase() !== requestLevel) return;
-    renderClassOptions(levelValue, classes, selectedValue);
+    return null;
   }
 
   function setOpen(open) {
@@ -272,15 +117,10 @@
       fields.dateOfBirth.value = button.dataset.dateOfBirth || "";
       fields.gender.value = button.dataset.gender || "";
       const academicLevel = button.dataset.academicLevel || "";
-      const levelMeta = levelsByValue.get(String(academicLevel).toUpperCase());
-      ensureLevelOption(
-        academicLevel,
-        levelMeta?.label || academicLevel.replace(/_/g, " "),
-        levelMeta ? JSON.stringify(levelMeta.classes || []) : "[]"
-      );
+      ensureLevelOption(academicLevel, academicLevel.replace(/_/g, " "));
       fields.academicLevel.value = academicLevel;
       fields.admissionNumber.value = button.dataset.admissionNumber || "";
-      fillClassOptions(academicLevel, button.dataset.classGroup || "");
+      fillClasses(academicLevel, button.dataset.classGroup || "");
       fields.assessmentNumber.value = button.dataset.assessmentNumber || "";
       fields.previousSchool.value = button.dataset.previousSchool || "";
       fields.sponsorshipCategory.value = button.dataset.sponsorshipCategory || "";
@@ -306,7 +146,7 @@
   fields.lastName?.addEventListener("input", updateInitials);
   fields.sponsorshipCategory?.addEventListener("change", toggleSponsorDetails);
   fields.academicLevel?.addEventListener("change", () => {
-    fillClassOptions(fields.academicLevel.value, "");
+    fillClasses(fields.academicLevel.value, "");
   });
 
   photoTrigger?.addEventListener("click", () => fields.profileImage?.click());
@@ -335,8 +175,6 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setOpen(false);
   });
-
-  fillClassOptions("", "");
 })();
 
 (function () {
