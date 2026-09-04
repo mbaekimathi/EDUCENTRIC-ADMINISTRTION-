@@ -8020,14 +8020,22 @@ def _student_edit_level_class_catalog():
             levels_by_choice[choice] = entry
         seen = {item["value"].casefold() for item in entry["classes"]}
         for academic_class in level.classes.all():
-            label = (academic_class.display_label or academic_class.name or "").strip()
-            if not label:
+            display = (academic_class.display_label or academic_class.name or "").strip()
+            class_name = (academic_class.name or academic_class.code or display).strip()
+            if not display:
                 continue
-            key = label.casefold()
+            key = display.casefold()
             if key in seen:
                 continue
             seen.add(key)
-            entry["classes"].append({"value": label, "label": label})
+            aliases = sorted(_class_group_values(academic_class))
+            entry["classes"].append(
+                {
+                    "value": display,
+                    "label": class_name,
+                    "aliases": aliases,
+                }
+            )
     return {"levels": list(levels_by_choice.values())}
 
 

@@ -303,9 +303,15 @@
               </select>
             </div>
             <div class="field">
-              <label for="edit-student-class-group">Class stream</label>
-              <select id="edit-student-class-group" class="uppercase-input" name="class_group" data-edit-student-class-group>
-                <option value="">Select class stream…</option>
+              <label for="edit-student-class-group">Class <span class="required">*</span></label>
+              <select
+                id="edit-student-class-group"
+                class="uppercase-input"
+                name="class_group"
+                required
+                data-edit-student-class-group
+              >
+                <option value="">Select class…</option>
               </select>
             </div>
             <div class="field">
@@ -404,6 +410,6 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/student-management.js' %}?v=20260904levels" defer></script>
+<script src="{% static 'js/student-management.js' %}?v=20260904classes" defer></script>
 <script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% endblock %}

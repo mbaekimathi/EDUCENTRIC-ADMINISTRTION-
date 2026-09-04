@@ -108,6 +108,15 @@
     return level ? level.classes || [] : [];
   }
 
+  function valueMatchesClass(item, selectedKey) {
+    if (!selectedKey) return false;
+    if (String(item.value || "").toUpperCase() === selectedKey) return true;
+    if (String(item.label || "").toUpperCase() === selectedKey) return true;
+    return (item.aliases || []).some(
+      (alias) => String(alias || "").toUpperCase() === selectedKey
+    );
+  }
+
   function fillClassOptions(levelValue, selectedValue) {
     if (!fields.classGroup) return;
     const classes = classesForLevel(levelValue);
@@ -118,7 +127,7 @@
     const placeholder = document.createElement("option");
     placeholder.value = "";
     placeholder.textContent = classes.length
-      ? "Select class stream…"
+      ? "Select class…"
       : levelValue
         ? "No classes configured for this level"
         : "Select academic level first…";
@@ -129,7 +138,7 @@
       const option = document.createElement("option");
       option.value = item.value;
       option.textContent = item.label || item.value;
-      if (selected && String(item.value || "").toUpperCase() === selectedKey) {
+      if (valueMatchesClass(item, selectedKey)) {
         option.selected = true;
         matched = true;
       }
@@ -145,6 +154,7 @@
     }
 
     fields.classGroup.disabled = !levelValue;
+    fields.classGroup.required = Boolean(levelValue) && classes.length > 0;
   }
 
   function setOpen(open) {
