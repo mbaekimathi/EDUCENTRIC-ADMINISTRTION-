@@ -33,6 +33,17 @@
   const removePhotoButton = document.querySelector("[data-edit-student-remove-photo]");
   let hasServerPhoto = false;
 
+  const catalogNode = document.getElementById("student-edit-level-catalog");
+  let levelCatalog = { levels: [] };
+  try {
+    levelCatalog = catalogNode ? JSON.parse(catalogNode.textContent) : { levels: [] };
+  } catch (error) {
+    levelCatalog = { levels: [] };
+  }
+  const levelsByValue = new Map(
+    (levelCatalog.levels || []).map((level) => [String(level.value || "").toUpperCase(), level])
+  );
+
   function initialsFromName(firstName, lastName) {
     const first = (firstName || "").trim().charAt(0);
     const last = (lastName || "").trim().charAt(0);
@@ -79,6 +90,63 @@
     if (fields.sponsorDetails) fields.sponsorDetails.required = required;
   }
 
+  function ensureLevelOption(value, label) {
+    if (!fields.academicLevel || !value) return;
+    const key = String(value).toUpperCase();
+    const exists = Array.from(fields.academicLevel.options).some(
+      (option) => String(option.value || "").toUpperCase() === key
+    );
+    if (exists) return;
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label || value.replace(/_/g, " ");
+    fields.academicLevel.appendChild(option);
+  }
+
+  function classesForLevel(levelValue) {
+    const level = levelsByValue.get(String(levelValue || "").toUpperCase());
+    return level ? level.classes || [] : [];
+  }
+
+  function fillClassOptions(levelValue, selectedValue) {
+    if (!fields.classGroup) return;
+    const classes = classesForLevel(levelValue);
+    const selected = (selectedValue || "").trim();
+    const selectedKey = selected.toUpperCase();
+    fields.classGroup.replaceChildren();
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = classes.length
+      ? "Select class stream…"
+      : levelValue
+        ? "No classes configured for this level"
+        : "Select academic level first…";
+    fields.classGroup.appendChild(placeholder);
+
+    let matched = false;
+    classes.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label || item.value;
+      if (selected && String(item.value || "").toUpperCase() === selectedKey) {
+        option.selected = true;
+        matched = true;
+      }
+      fields.classGroup.appendChild(option);
+    });
+
+    if (selected && !matched) {
+      const option = document.createElement("option");
+      option.value = selected;
+      option.textContent = `${selected} (current)`;
+      option.selected = true;
+      fields.classGroup.appendChild(option);
+    }
+
+    fields.classGroup.disabled = !levelValue;
+  }
+
   function setOpen(open) {
     if (!modal) return;
     modal.hidden = !open;
@@ -95,9 +163,11 @@
       fields.lastName.value = button.dataset.lastName || "";
       fields.dateOfBirth.value = button.dataset.dateOfBirth || "";
       fields.gender.value = button.dataset.gender || "";
-      fields.academicLevel.value = button.dataset.academicLevel || "";
+      const academicLevel = button.dataset.academicLevel || "";
+      ensureLevelOption(academicLevel, academicLevel.replace(/_/g, " "));
+      fields.academicLevel.value = academicLevel;
       fields.admissionNumber.value = button.dataset.admissionNumber || "";
-      fields.classGroup.value = button.dataset.classGroup || "";
+      fillClassOptions(academicLevel, button.dataset.classGroup || "");
       fields.assessmentNumber.value = button.dataset.assessmentNumber || "";
       fields.previousSchool.value = button.dataset.previousSchool || "";
       fields.sponsorshipCategory.value = button.dataset.sponsorshipCategory || "";
@@ -122,6 +192,9 @@
   fields.firstName?.addEventListener("input", updateInitials);
   fields.lastName?.addEventListener("input", updateInitials);
   fields.sponsorshipCategory?.addEventListener("change", toggleSponsorDetails);
+  fields.academicLevel?.addEventListener("change", () => {
+    fillClassOptions(fields.academicLevel.value, "");
+  });
 
   photoTrigger?.addEventListener("click", () => fields.profileImage?.click());
 
@@ -149,6 +222,8 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setOpen(false);
   });
+
+  fillClassOptions("", "");
 })();
 
 (function () {

@@ -215,6 +215,8 @@
 {% endif %}
 </div>
 
+{{ student_edit_level_catalog|json_script:"student-edit-level-catalog" }}
+
 <div class="app-modal" id="edit-student-modal" data-edit-student-modal hidden>
   <div class="app-modal-backdrop" data-edit-student-close></div>
   <div class="app-modal-dialog app-modal-dialog-wide edit-student-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-student-title">
@@ -292,8 +294,9 @@
           </div>
           <div class="form-grid">
             <div class="field">
-              <label for="edit-student-level">Class / level <span class="required">*</span></label>
-              <select id="edit-student-level" class="uppercase-input" name="academic_level" required>
+              <label for="edit-student-level">Academic level <span class="required">*</span></label>
+              <select id="edit-student-level" class="uppercase-input" name="academic_level" required data-edit-student-level>
+                <option value="">Select academic level…</option>
                 {% for value, label in academic_level_choices %}
                 <option value="{{ value }}">{{ label }}</option>
                 {% endfor %}
@@ -301,7 +304,9 @@
             </div>
             <div class="field">
               <label for="edit-student-class-group">Class stream</label>
-              <input id="edit-student-class-group" class="uppercase-input" name="class_group" maxlength="50">
+              <select id="edit-student-class-group" class="uppercase-input" name="class_group" data-edit-student-class-group>
+                <option value="">Select class stream…</option>
+              </select>
             </div>
             <div class="field">
               <label for="edit-student-admission">Admission number</label>
@@ -399,6 +404,6 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/student-management.js' %}?v=20260903middle" defer></script>
+<script src="{% static 'js/student-management.js' %}?v=20260904levels" defer></script>
 <script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% endblock %}

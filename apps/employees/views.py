@@ -1161,6 +1161,12 @@ def _student_management_context(request):
         if level_counts.get(value)
     ]
     search_query = (request.GET.get("q") or "").strip()
+    edit_catalog = _student_edit_level_class_catalog()
+    academic_level_choices = [
+        (item["value"], item["label"]) for item in edit_catalog["levels"]
+    ]
+    if not academic_level_choices:
+        academic_level_choices = list(Student.AcademicLevel.choices)
     return {
         "student_groups": student_groups,
         "student_count": stats["student_count"],
@@ -1173,7 +1179,8 @@ def _student_management_context(request):
         "level_student_count": len(students),
         "search_query": search_query,
         "gender_choices": Student.Gender.choices,
-        "academic_level_choices": Student.AcademicLevel.choices,
+        "academic_level_choices": academic_level_choices,
+        "student_edit_level_catalog": edit_catalog,
         "sponsorship_choices": Student.SponsorshipCategory.choices,
         **_student_management_nav_context(active_tool="register"),
         **_student_sort_template_context(request),
@@ -7986,6 +7993,42 @@ def _student_level_choice(level):
         if value.replace("_", " ").casefold() == name.casefold():
             return value
     return ""
+
+
+def _student_edit_level_class_catalog():
+    """Curriculum levels/classes for the student edit modal, keyed by Student.AcademicLevel."""
+    levels_by_choice = OrderedDict()
+    active_classes = AcademicClass.objects.filter(
+        status=AcademicClass.Status.ACTIVE
+    ).order_by("order", "name")
+    queryset = (
+        AcademicLevel.objects.filter(status=AcademicLevel.Status.ACTIVE)
+        .prefetch_related(Prefetch("classes", queryset=active_classes))
+        .order_by("order", "name")
+    )
+    for level in queryset:
+        choice = _student_level_choice(level)
+        if not choice:
+            continue
+        entry = levels_by_choice.get(choice)
+        if entry is None:
+            entry = {
+                "value": choice,
+                "label": level.name,
+                "classes": [],
+            }
+            levels_by_choice[choice] = entry
+        seen = {item["value"].casefold() for item in entry["classes"]}
+        for academic_class in level.classes.all():
+            label = (academic_class.display_label or academic_class.name or "").strip()
+            if not label:
+                continue
+            key = label.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            entry["classes"].append({"value": label, "label": label})
+    return {"levels": list(levels_by_choice.values())}
 
 
 def _students_in_academic_level(level, academic_class=None, sort=STUDENT_SORT_NAME):
