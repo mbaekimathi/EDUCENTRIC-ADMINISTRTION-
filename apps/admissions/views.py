@@ -113,10 +113,19 @@ def admit_student(request):
             },
         )
 
+    # Reuse curriculum level/class catalog from student management.
+    from apps.employees.views import _student_edit_level_class_catalog
+
+    level_catalog = _student_edit_level_class_catalog()
+    level_choices = [(item["value"], item["label"]) for item in level_catalog["levels"]]
+    if not level_choices:
+        level_choices = list(Student.AcademicLevel.choices)
+
     form = StudentAdmissionForm(
         request.POST or None,
         request.FILES or None,
         admission_settings=admission_settings,
+        level_choices=level_choices,
     )
     if request.method == "POST" and form.is_valid():
         student = form.save()
@@ -135,6 +144,7 @@ def admit_student(request):
             "admission_settings": admission_settings,
             "next_admission_number": admission_settings.preview_next_admission_number(),
             "admissions_disabled": False,
+            "student_edit_level_catalog": level_catalog,
         },
     )
 

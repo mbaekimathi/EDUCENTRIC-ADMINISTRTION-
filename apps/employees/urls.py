@@ -316,6 +316,11 @@ urlpatterns = [
         name="workspace_student_search",
     ),
     path(
+        "workspace/students/level-classes/",
+        views.workspace_student_level_classes,
+        name="workspace_student_level_classes",
+    ),
+    path(
         "workspace/students/<int:student_id>/profile/",
         views.workspace_student_profile,
         name="workspace_student_profile",

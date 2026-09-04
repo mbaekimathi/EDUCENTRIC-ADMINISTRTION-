@@ -4159,6 +4159,15 @@ def workspace_student_search(request):
 
 
 @login_required
+@require_http_methods(["GET"])
+def workspace_student_level_classes(request):
+    """Return curriculum classes for a student academic-level choice (edit modal)."""
+    level = (request.GET.get("level") or "").strip().upper()
+    classes = _classes_for_student_level_choice(level)
+    return JsonResponse({"level": level, "classes": classes})
+
+
+@login_required
 @require_POST
 def switch_workspace_role(request):
     if not can_switch_workspace_role(request.user):
@@ -7984,26 +7993,61 @@ def _exam_record_title(generation):
 
 def _student_level_choice(level):
     name = (level.name or "").strip()
+    code = (level.code or "").strip()
     slug = re.sub(r"[^A-Za-z0-9]+", "_", name).upper().strip("_")
+    collapsed_name = re.sub(r"[^A-Za-z0-9]+", "", name).upper()
+    collapsed_code = re.sub(r"[^A-Za-z0-9]+", "", code).upper()
+
     if slug in Student.AcademicLevel.values:
         return slug
+
     for value, label in Student.AcademicLevel.choices:
         if label.casefold() == name.casefold():
             return value
         if value.replace("_", " ").casefold() == name.casefold():
             return value
+        if value.replace("_", "").casefold() == collapsed_name.casefold():
+            return value
+        if re.sub(r"[^A-Za-z0-9]+", "", label).casefold() == collapsed_name.casefold():
+            return value
+
+    # Match common curriculum codes such as G1/G4 → GRADE_1/GRADE_4, F1 → FORM_1.
+    token = collapsed_code or collapsed_name
+    digit_match = re.search(r"(\d+)", token) or re.search(r"(\d+)", name) or re.search(
+        r"(\d+)", code
+    )
+    if digit_match:
+        number = digit_match.group(1)
+        token_upper = token.upper()
+        name_upper = name.upper()
+        if (
+            "FORM" in name_upper
+            or (token_upper.startswith("F") and not token_upper.startswith("G") and "PRE" not in name_upper)
+        ):
+            candidate = f"FORM_{number}"
+        elif (
+            "PRE" in name_upper
+            or token_upper.startswith("PP")
+            or "PRE_PRIMARY" in slug
+        ):
+            candidate = f"PRE_PRIMARY_{number}"
+        else:
+            candidate = f"GRADE_{number}"
+        if candidate in Student.AcademicLevel.values:
+            return candidate
     return ""
 
 
 def _student_edit_level_class_catalog():
     """Curriculum levels/classes for the student edit modal, keyed by Student.AcademicLevel."""
     levels_by_choice = OrderedDict()
-    active_classes = AcademicClass.objects.filter(
-        status=AcademicClass.Status.ACTIVE
+    # Include active levels/classes; also allow blank/legacy status values used on some hosts.
+    class_qs = AcademicClass.objects.exclude(
+        status=AcademicClass.Status.INACTIVE
     ).order_by("order", "name")
     queryset = (
-        AcademicLevel.objects.filter(status=AcademicLevel.Status.ACTIVE)
-        .prefetch_related(Prefetch("classes", queryset=active_classes))
+        AcademicLevel.objects.exclude(status=AcademicLevel.Status.INACTIVE)
+        .prefetch_related(Prefetch("classes", queryset=class_qs))
         .order_by("order", "name")
     )
     for level in queryset:
@@ -8041,6 +8085,17 @@ def _student_edit_level_class_catalog():
         entry["classes_json"] = json.dumps(entry["classes"], separators=(",", ":"))
         levels.append(entry)
     return {"levels": levels}
+
+
+def _classes_for_student_level_choice(level_choice):
+    """Return curriculum classes for a Student.AcademicLevel value."""
+    choice = (level_choice or "").strip().upper()
+    if choice not in Student.AcademicLevel.values:
+        return []
+    for entry in _student_edit_level_class_catalog()["levels"]:
+        if entry["value"] == choice:
+            return entry["classes"]
+    return []
 
 
 def _students_in_academic_level(level, academic_class=None, sort=STUDENT_SORT_NAME):

@@ -53,6 +53,7 @@ class AdmissionsTests(TestCase):
                 "date_of_birth": "2016-04-15",
                 "gender": "FEMALE",
                 "academic_level": "GRADE_3",
+                "class_group": "3X",
                 "admission_number": "ADM-1001",
                 "assessment_number": "ASSESS-002",
                 "previous_school": "Bright School",
@@ -72,6 +73,7 @@ class AdmissionsTests(TestCase):
         self.assertEqual(admitted.emergency_contact, "+254700000003")
         self.assertEqual(admitted.middle_name, "NJERI")
         self.assertEqual(admitted.admission_number, "ADM-1001")
+        self.assertEqual(admitted.class_group, "3X")
         self.assertEqual(admitted.display_name, "GRACE NJERI WANJIKU")
         settings = AdmissionSettings.get_solo()
         self.assertGreaterEqual(settings.admission_number_next, 1002)
@@ -87,6 +89,9 @@ class AdmissionsTests(TestCase):
         response = self.client.get(reverse("admissions:admit_student"))
         self.assertContains(response, 'value="5001"')
         self.assertContains(response, "Suggested automatically")
+        self.assertContains(response, "Academic level")
+        self.assertContains(response, "data-admit-class")
+        self.assertContains(response, reverse("employees:workspace_student_level_classes"))
 
     def test_employee_can_admit_student_without_assessment_number(self):
         settings = AdmissionSettings.get_solo()
@@ -105,6 +110,7 @@ class AdmissionsTests(TestCase):
                 "date_of_birth": "2017-08-20",
                 "gender": "FEMALE",
                 "academic_level": "GRADE_2",
+                "class_group": "2X",
                 "admission_number": "",
                 "assessment_number": "",
                 "previous_school": "",

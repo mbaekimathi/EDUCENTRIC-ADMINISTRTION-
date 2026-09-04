@@ -102,8 +102,13 @@ class StudentAdmissionForm(forms.Form):
     )
     gender = forms.ChoiceField(choices=Student.Gender.choices)
     academic_level = forms.ChoiceField(
-        label="Class / level",
+        label="Academic level",
         choices=Student.AcademicLevel.choices,
+    )
+    class_group = forms.CharField(
+        max_length=50,
+        label="Class",
+        widget=forms.Select(choices=[("", "Select class…")]),
     )
     admission_number = forms.CharField(
         max_length=40,
@@ -171,7 +176,7 @@ class StudentAdmissionForm(forms.Form):
         widget=forms.ClearableFileInput(attrs={"accept": "image/*"}),
     )
 
-    def __init__(self, *args, admission_settings=None, apply_admission_number_auto=None, **kwargs):
+    def __init__(self, *args, admission_settings=None, apply_admission_number_auto=None, level_choices=None, **kwargs):
         self.admission_settings = admission_settings or AdmissionSettings.get_solo()
         if apply_admission_number_auto is None:
             apply_admission_number_auto = True
@@ -179,17 +184,24 @@ class StudentAdmissionForm(forms.Form):
             apply_admission_number_auto and self.admission_settings.auto_generate_admission_number
         )
         super().__init__(*args, **kwargs)
+        if level_choices:
+            self.fields["academic_level"].choices = list(level_choices)
         for name, field in self.fields.items():
             if name not in {"parent_email", "date_of_birth", "profile_image"}:
                 existing = field.widget.attrs.get("class", "")
                 field.widget.attrs["class"] = f"{existing} uppercase-input".strip()
         self.fields["parent_email"].widget.attrs["autocomplete"] = "email"
         self.fields["parent_phone"].widget.attrs["autocomplete"] = "tel"
+        self.fields["academic_level"].widget.attrs["data-admit-level"] = "1"
+        self.fields["class_group"].widget.attrs["data-admit-class"] = "1"
         if self.apply_admission_number_auto:
             self.fields["admission_number"].required = False
             self.fields["admission_number"].widget.attrs["placeholder"] = "Suggested — editable"
             if not self.is_bound and not self.fields["admission_number"].initial:
                 self.fields["admission_number"].initial = AdmissionSettings.peek_next_admission_number()
+
+    def clean_class_group(self):
+        return uppercase_value(self.cleaned_data.get("class_group", ""))
 
     def clean_assessment_number(self):
         number = uppercase_value(self.cleaned_data.get("assessment_number", ""))
@@ -256,6 +268,7 @@ class StudentAdmissionForm(forms.Form):
             gender=data["gender"],
             academic_level=data["academic_level"],
             admission_number=admission_number,
+            class_group=uppercase_value(data.get("class_group", "")),
             assessment_number=data.get("assessment_number") or None,
             previous_school=uppercase_value(data["previous_school"]),
             profile_image=data.get("profile_image"),
@@ -270,17 +283,12 @@ class StudentAdmissionForm(forms.Form):
 
 
 class StudentWorkspaceForm(StudentAdmissionForm):
-    class_group = forms.CharField(
-        max_length=50,
-        required=False,
-        label="Class stream",
-        widget=forms.TextInput(attrs={"placeholder": "e.g. 4X"}),
-    )
-
     def __init__(self, *args, student=None, **kwargs):
         self.student = student
         kwargs["apply_admission_number_auto"] = False
         super().__init__(*args, **kwargs)
+        # Edit modal posts class_group as free text / select value; keep optional here.
+        self.fields["class_group"].required = False
 
     def clean_assessment_number(self):
         number = uppercase_value(self.cleaned_data.get("assessment_number", ""))

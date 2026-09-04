@@ -99,9 +99,42 @@
           {% for error in form.gender.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
         <div class="field">
-          <label for="{{ form.academic_level.id_for_label }}">Class / level <span class="required">*</span></label>
-          {{ form.academic_level }}
+          <label for="{{ form.academic_level.id_for_label }}">Academic level <span class="required">*</span></label>
+          <select
+            name="{{ form.academic_level.name }}"
+            id="{{ form.academic_level.id_for_label }}"
+            class="uppercase-input"
+            required
+            data-admit-level
+          >
+            <option value="" data-classes="[]">Select academic level…</option>
+            {% for level in student_edit_level_catalog.levels %}
+            <option
+              value="{{ level.value }}"
+              data-classes="{{ level.classes_json }}"
+              {% if form.academic_level.value == level.value %}selected{% endif %}
+            >{{ level.label }}</option>
+            {% empty %}
+            {% for value, label in form.fields.academic_level.choices %}
+            <option value="{{ value }}" data-classes="[]" {% if form.academic_level.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            {% endfor %}
+          </select>
           {% for error in form.academic_level.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.class_group.id_for_label }}">Class <span class="required">*</span></label>
+          <select
+            name="{{ form.class_group.name }}"
+            id="{{ form.class_group.id_for_label }}"
+            class="uppercase-input"
+            required
+            data-admit-class
+            data-initial-value="{{ form.class_group.value|default:'' }}"
+          >
+            <option value="">Select class…</option>
+          </select>
+          {% for error in form.class_group.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
         </div>
         <div class="field">
           <label for="{{ form.admission_number.id_for_label }}">Admission number</label>
@@ -197,15 +230,147 @@
 
 {% block workspace_scripts %}
 {% if not admissions_disabled %}
+{{ student_edit_level_catalog|json_script:"admit-level-catalog" }}
 <script>
+(function () {
   const category = document.getElementById("id_sponsorship_category");
   const sponsorDetails = document.getElementById("sponsor-details-field");
-  const toggleSponsorDetails = () => {
+  const levelSelect = document.querySelector("[data-admit-level]");
+  const classSelect = document.querySelector("[data-admit-class]");
+  const classesUrl = "{% url 'employees:workspace_student_level_classes' %}";
+  const catalogNode = document.getElementById("admit-level-catalog");
+  let catalog = { levels: [] };
+  try {
+    catalog = catalogNode ? JSON.parse(catalogNode.textContent) : { levels: [] };
+  } catch (error) {
+    catalog = { levels: [] };
+  }
+  const initialClassValue = (classSelect?.dataset.initialValue || "").trim();
+
+  const classCache = new Map(
+    (catalog.levels || []).map((level) => [
+      String(level.value || "").toUpperCase(),
+      Array.isArray(level.classes) ? level.classes : [],
+    ])
+  );
+
+  function toggleSponsorDetails() {
+    if (!category || !sponsorDetails) return;
     const required = category.value === "GOVERNMENT" || category.value === "BOTH";
     sponsorDetails.hidden = !required;
-  };
-  category.addEventListener("change", toggleSponsorDetails);
+  }
+
+  function classesFromLevelOption(levelValue) {
+    const key = String(levelValue || "").toUpperCase();
+    if (!levelSelect) return classCache.get(key) || [];
+    const option = Array.from(levelSelect.options).find(
+      (item) => String(item.value || "").toUpperCase() === key
+    );
+    if (!option) return classCache.get(key) || [];
+    try {
+      const embedded = JSON.parse(option.getAttribute("data-classes") || "[]");
+      if (Array.isArray(embedded) && embedded.length) {
+        classCache.set(key, embedded);
+        return embedded;
+      }
+    } catch (error) {
+      /* fall through */
+    }
+    return classCache.get(key) || [];
+  }
+
+  function matchesClass(item, selectedKey) {
+    if (!selectedKey) return false;
+    if (String(item.value || "").toUpperCase() === selectedKey) return true;
+    if (String(item.label || "").toUpperCase() === selectedKey) return true;
+    return (item.aliases || []).some(
+      (alias) => String(alias || "").toUpperCase() === selectedKey
+    );
+  }
+
+  function renderClasses(levelValue, classes, selectedValue) {
+    if (!classSelect) return;
+    const selected = (selectedValue || "").trim();
+    const selectedKey = selected.toUpperCase();
+    classSelect.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = classes.length
+      ? "Select class…"
+      : levelValue
+        ? "No classes configured for this level"
+        : "Select academic level first…";
+    classSelect.appendChild(placeholder);
+
+    let matched = false;
+    classes.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label || item.value;
+      if (!matched && matchesClass(item, selectedKey)) {
+        option.selected = true;
+        matched = true;
+      }
+      classSelect.appendChild(option);
+    });
+    if (selected && !matched) {
+      const option = document.createElement("option");
+      option.value = selected;
+      option.textContent = `${selected} (current)`;
+      option.selected = true;
+      classSelect.appendChild(option);
+    }
+    classSelect.disabled = !levelValue;
+    classSelect.required = Boolean(levelValue) && classes.length > 0;
+  }
+
+  async function fetchClasses(levelValue) {
+    const key = String(levelValue || "").toUpperCase();
+    const local = classesFromLevelOption(levelValue);
+    if (!key || !classesUrl) return local;
+    try {
+      const response = await fetch(
+        `${classesUrl}?level=${encodeURIComponent(key)}`,
+        { headers: { Accept: "application/json" }, credentials: "same-origin" }
+      );
+      if (!response.ok) return local;
+      const data = await response.json();
+      const classes = Array.isArray(data.classes) ? data.classes : [];
+      classCache.set(key, classes);
+      const option = Array.from(levelSelect?.options || []).find(
+        (item) => String(item.value || "").toUpperCase() === key
+      );
+      if (option) option.setAttribute("data-classes", JSON.stringify(classes));
+      return classes;
+    } catch (error) {
+      return local;
+    }
+  }
+
+  async function fillClasses(levelValue, selectedValue) {
+    const requestLevel = String(levelValue || "").toUpperCase();
+    const local = classesFromLevelOption(levelValue);
+    renderClasses(levelValue, local, selectedValue);
+    if (!requestLevel || !classesUrl) return;
+    if (!local.length) {
+      classSelect.disabled = true;
+      const placeholder = classSelect.querySelector('option[value=""]');
+      if (placeholder) placeholder.textContent = "Loading classes…";
+    }
+    const classes = await fetchClasses(levelValue);
+    if (String(levelSelect?.value || "").toUpperCase() !== requestLevel) return;
+    renderClasses(levelValue, classes, selectedValue);
+  }
+
+  category?.addEventListener("change", toggleSponsorDetails);
   toggleSponsorDetails();
+
+  levelSelect?.addEventListener("change", () => {
+    fillClasses(levelSelect.value, "");
+  });
+
+  fillClasses(levelSelect?.value || "", initialClassValue);
+})();
 </script>
 {% endif %}
 {% endblock %}
