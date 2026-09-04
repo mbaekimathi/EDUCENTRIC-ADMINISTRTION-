@@ -31,7 +31,23 @@
   const photoTrigger = document.querySelector("[data-edit-student-photo-trigger]");
   const photoFilename = document.querySelector("[data-edit-student-photo-filename]");
   const removePhotoButton = document.querySelector("[data-edit-student-remove-photo]");
+  const classOptionsTemplate = document.getElementById("student-edit-class-options");
+  const catalogNode = document.getElementById("student-edit-level-catalog");
+  const classesUrl = modal?.dataset.classesUrl || "";
   let hasServerPhoto = false;
+
+  let catalog = { levels: [] };
+  try {
+    catalog = catalogNode ? JSON.parse(catalogNode.textContent) : { levels: [] };
+  } catch (error) {
+    catalog = { levels: [] };
+  }
+  const classCache = new Map(
+    (catalog.levels || []).map((level) => [
+      String(level.value || "").toUpperCase(),
+      Array.isArray(level.classes) ? level.classes : [],
+    ])
+  );
 
   function initialsFromName(firstName, lastName) {
     const first = (firstName || "").trim().charAt(0);
@@ -93,11 +109,141 @@
     fields.academicLevel.appendChild(option);
   }
 
-  function fillClasses(levelValue, selectedValue) {
+  function classesFromTemplate(levelValue) {
+    const key = String(levelValue || "").toUpperCase();
+    if (!classOptionsTemplate || !key) return [];
+    return Array.from(classOptionsTemplate.content.querySelectorAll("option"))
+      .filter((option) => String(option.dataset.level || "").toUpperCase() === key)
+      .map((option) => ({
+        value: option.value,
+        label: option.dataset.label || option.textContent.trim(),
+        aliases: String(option.dataset.aliases || "")
+          .split("|")
+          .map((part) => part.trim())
+          .filter(Boolean),
+      }));
+  }
+
+  function classesFromLevelOption(levelValue) {
+    const key = String(levelValue || "").toUpperCase();
+    if (!key) return [];
+    const cached = classCache.get(key);
+    if (Array.isArray(cached) && cached.length) return cached;
+
+    const fromTemplate = classesFromTemplate(levelValue);
+    if (fromTemplate.length) {
+      classCache.set(key, fromTemplate);
+      return fromTemplate;
+    }
+
+    if (fields.academicLevel) {
+      const option = Array.from(fields.academicLevel.options).find(
+        (item) => String(item.value || "").toUpperCase() === key
+      );
+      if (option) {
+        try {
+          const embedded = JSON.parse(option.getAttribute("data-classes") || "[]");
+          if (Array.isArray(embedded) && embedded.length) {
+            classCache.set(key, embedded);
+            return embedded;
+          }
+        } catch (error) {
+          /* fall through */
+        }
+      }
+    }
+    return Array.isArray(cached) ? cached : [];
+  }
+
+  function matchesClass(item, selectedKey) {
+    if (!selectedKey) return false;
+    if (String(item.value || "").toUpperCase() === selectedKey) return true;
+    if (String(item.label || "").toUpperCase() === selectedKey) return true;
+    return (item.aliases || []).some(
+      (alias) => String(alias || "").toUpperCase() === selectedKey
+    );
+  }
+
+  function renderClasses(levelValue, classes, selectedValue) {
+    if (!fields.classGroup) return;
+    const list = Array.isArray(classes) ? classes : [];
+    const selected = (selectedValue || "").trim();
+    const selectedKey = selected.toUpperCase();
+    fields.classGroup.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = list.length
+      ? "Select class…"
+      : levelValue
+        ? "No classes configured for this level"
+        : "Select academic level first…";
+    fields.classGroup.appendChild(placeholder);
+
+    let matched = false;
+    list.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const option = document.createElement("option");
+      option.value = item.value || "";
+      option.textContent = item.label || item.value || "";
+      if (!matched && matchesClass(item, selectedKey)) {
+        option.selected = true;
+        matched = true;
+      }
+      fields.classGroup.appendChild(option);
+    });
+
+    if (selected && !matched) {
+      const option = document.createElement("option");
+      option.value = selected;
+      option.textContent = selected + " (current)";
+      option.selected = true;
+      fields.classGroup.appendChild(option);
+    }
+
+    fields.classGroup.disabled = !levelValue;
+    fields.classGroup.required = Boolean(levelValue) && list.length > 0;
+  }
+
+  async function fetchClasses(levelValue) {
+    const key = String(levelValue || "").toUpperCase();
+    const local = classesFromLevelOption(levelValue);
+    if (!key || !classesUrl) return local;
+    try {
+      const response = await fetch(classesUrl + "?level=" + encodeURIComponent(key), {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      if (!response.ok) return local;
+      const data = await response.json();
+      const classes = Array.isArray(data.classes) ? data.classes : [];
+      classCache.set(key, classes);
+      const option = Array.from(fields.academicLevel?.options || []).find(
+        (item) => String(item.value || "").toUpperCase() === key
+      );
+      if (option) option.setAttribute("data-classes", JSON.stringify(classes));
+      return classes.length ? classes : local;
+    } catch (error) {
+      return local;
+    }
+  }
+
+  async function fillClasses(levelValue, selectedValue) {
     if (typeof window.fillStudentEditClasses === "function") {
       return window.fillStudentEditClasses(levelValue, selectedValue);
     }
-    return null;
+    const requestLevel = String(levelValue || "").toUpperCase();
+    const local = classesFromLevelOption(levelValue);
+    renderClasses(levelValue, local, selectedValue);
+    if (!requestLevel || !classesUrl) return;
+    if (!local.length && fields.classGroup) {
+      fields.classGroup.disabled = true;
+      const placeholder = fields.classGroup.querySelector('option[value=""]');
+      if (placeholder) placeholder.textContent = "Loading classes…";
+    }
+    const classes = await fetchClasses(levelValue);
+    if (String(fields.academicLevel?.value || "").toUpperCase() !== requestLevel) return;
+    renderClasses(levelValue, classes, selectedValue);
   }
 
   function setOpen(open) {
