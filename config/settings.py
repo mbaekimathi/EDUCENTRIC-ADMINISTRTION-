@@ -141,8 +141,9 @@ STORAGES = {
 WHITENOISE_MANIFEST_STRICT = False
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-# cPanel has no Nginx media alias — enable via .env. On VPS, prefer Nginx and set False.
-SERVE_MEDIA = env.bool("SERVE_MEDIA", default=False)
+# Serve uploaded media from Django by default (cPanel / shared hosting has no media alias).
+# On a VPS with Nginx media mapping, set SERVE_MEDIA=False in .env.
+SERVE_MEDIA = env.bool("SERVE_MEDIA", default=True)
 
 AUTH_USER_MODEL = "employees.Employee"
 LOGIN_URL = "employees:login"

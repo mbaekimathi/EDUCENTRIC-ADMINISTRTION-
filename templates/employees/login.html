@@ -8,11 +8,11 @@
   <section class="auth-panel auth-panel-login">
     <div class="auth-card auth-card-elevated auth-card-login">
       <div class="auth-card-school">
-        <span class="auth-card-school-mark {% if school_profile and school_profile.school_logo %}has-image{% endif %}">
-          {% if school_profile and school_profile.school_logo %}
+        <span class="auth-card-school-mark {% if school_profile and school_profile.has_logo_file %}has-image{% endif %}">
+          {% if school_profile and school_profile.has_logo_file %}
           <img
             src="{{ school_profile.school_logo.url }}"
-            alt="{{ school_profile.brand_official_name }} logo"
+            alt=""
             width="88"
             height="88"
             decoding="async"

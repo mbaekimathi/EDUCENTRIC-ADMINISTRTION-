@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f4fd6">
+  <meta name="theme-color" content="{% if school_profile %}{{ school_profile.brand_accent }}{% else %}#0f4fd6{% endif %}">
   <meta name="color-scheme" content="light">
   <title>{% block title %}Edu-Centric{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,10 +18,10 @@
   <noscript>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   </noscript>
-  <link rel="preload" href="{% static 'css/app.css' %}?v=20260905logocenter" as="style">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260905logocenter">
+  <link rel="preload" href="{% static 'css/app.css' %}?v=20260905brandfix" as="style">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260905brandfix">
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}"{% if school_profile %} style="--school-accent: {{ school_profile.brand_accent }}; --blue: {{ school_profile.brand_accent }};"{% endif %}{% block body_attrs %}{% endblock %}>
   {% block content %}{% endblock %}
   {% include "partials/app_notifications.html" %}
   <script src="{% static 'js/notifications.js' %}?v=20260902notify" defer></script>

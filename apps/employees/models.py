@@ -132,6 +132,25 @@ class SchoolProfile(models.Model):
             return "".join(part[0] for part in parts[:2]).upper()
         return source[:2].upper() if source else "EC"
 
+    @property
+    def brand_accent(self):
+        color = (self.primary_color or "").strip()
+        if len(color) == 7 and color.startswith("#"):
+            return color
+        if len(color) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in color):
+            return f"#{color}"
+        return "#1f5cf0"
+
+    @property
+    def has_logo_file(self):
+        name = getattr(self.school_logo, "name", "") or ""
+        if not name:
+            return False
+        try:
+            return self.school_logo.storage.exists(name)
+        except Exception:
+            return False
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         try:

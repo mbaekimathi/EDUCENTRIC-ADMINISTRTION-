@@ -1,6 +1,6 @@
 <section
-  class="brand-panel brand-panel-school{% if school_profile and school_profile.school_logo %} has-logo{% endif %}"
-  {% if school_profile and school_profile.primary_color %}style="--school-accent: {{ school_profile.primary_color }}"{% endif %}
+  class="brand-panel brand-panel-school{% if school_profile and school_profile.has_logo_file %} has-logo{% endif %}"
+  style="--school-accent: {% if school_profile %}{{ school_profile.brand_accent }}{% else %}#1f5cf0{% endif %}"
   aria-label="{% if school_profile %}{{ school_profile.brand_official_name }}{% else %}Edu-Centric{% endif %}"
 >
   <div class="brand-panel-glow" aria-hidden="true"></div>
@@ -12,10 +12,10 @@
   </a>
 
   <div class="brand-copy school-brand-copy">
-    <div class="school-brand-emblem {% if school_profile and school_profile.school_logo %}has-image{% endif %}" aria-hidden="true">
+    <div class="school-brand-emblem {% if school_profile and school_profile.has_logo_file %}has-image{% endif %}" aria-hidden="true">
       <span class="school-brand-emblem-ring"></span>
       <span class="school-brand-emblem-core">
-        {% if school_profile and school_profile.school_logo %}
+        {% if school_profile and school_profile.has_logo_file %}
         <img src="{{ school_profile.school_logo.url }}" alt="" width="224" height="224" decoding="async">
         {% else %}
         <span>{% if school_profile %}{{ school_profile.brand_initials }}{% else %}EC{% endif %}</span>

@@ -15,7 +15,7 @@
 
   <section class="settings-panel school-profile-panel">
     <div class="settings-profile-card">
-      {% if school_profile.school_logo %}
+      {% if school_profile.has_logo_file %}
       <img class="school-logo-preview" src="{{ school_profile.school_logo.url }}" alt="">
       {% else %}
       <span class="module-icon" aria-hidden="true">SP</span>
@@ -39,9 +39,9 @@
       </div>
       <div class="field span-two">
         <label for="{{ form.school_logo.id_for_label }}">School logo</label>
-        {% if school_profile.school_logo %}
+        {% if school_profile.has_logo_file %}
         <div class="school-logo-current">
-          <img src="{{ school_profile.school_logo.url }}" alt="Current school logo">
+          <img src="{{ school_profile.school_logo.url }}" alt="">
           <small class="field-hint">Current logo. Upload a new file below to replace it.</small>
         </div>
         {% endif %}

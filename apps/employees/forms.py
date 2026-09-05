@@ -233,6 +233,16 @@ class SchoolProfileBrandingForm(UppercaseFieldsMixin, forms.ModelForm):
         else:
             self.fields["primary_color"].initial = "#1f5cf0"
 
+    def clean_primary_color(self):
+        color = (self.cleaned_data.get("primary_color") or "").strip()
+        if not color:
+            return "#1f5cf0"
+        if len(color) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in color):
+            color = f"#{color}"
+        if not (len(color) == 7 and color.startswith("#") and all(ch in "0123456789abcdefABCDEF" for ch in color[1:])):
+            raise forms.ValidationError("Choose a valid colour.")
+        return color.lower()
+
 
 class SchoolProfileLeadershipForm(UppercaseFieldsMixin, forms.ModelForm):
     uppercase_fields = (
