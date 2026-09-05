@@ -32,7 +32,7 @@
 </section>
 <section class="teacher-dash-actions is-nav-links" aria-label="Assessment levels">
   {% for level in academic_levels %}
-  <a class="teacher-dash-action" href="{% url 'employees:exam_record_level' exam.id level.id %}">
+  <a class="teacher-dash-action" href="{% url exam_record_level_url exam.id level.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">{{ level.code|default:level.name|slice:":2" }}</span>
     <span class="teacher-dash-action-copy">
       <strong class="is-uppercase">{{ level.name }}</strong>

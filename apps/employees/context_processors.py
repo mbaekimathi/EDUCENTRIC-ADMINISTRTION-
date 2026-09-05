@@ -1,9 +1,10 @@
 from django.core.cache import cache
 
-from .models import Employee
+from .models import Employee, SchoolProfile
 from .workspace import (
     can_choose_own_workspace_role,
     can_switch_workspace_role,
+    exam_management_url_names,
     is_workspace_preview,
     prefetch_user_roles,
     uses_profile_settings,
@@ -12,6 +13,15 @@ from .workspace import (
     workspace_role_label,
     workspace_view_employee,
 )
+
+
+def school_branding(request):
+    """Expose the singleton school profile on public auth pages and workspaces."""
+    try:
+        profile = SchoolProfile.objects.filter(pk=1).first()
+    except Exception:
+        profile = None
+    return {"school_profile": profile}
 
 
 def workspace(request):
@@ -60,6 +70,7 @@ def workspace(request):
         "teacher_has_elearning": teacher_has_elearning,
         "is_role_preview": is_workspace_preview(request),
         "admissions_enabled": _admissions_enabled(),
+        **exam_management_url_names(role),
     }
 
 

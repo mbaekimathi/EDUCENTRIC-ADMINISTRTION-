@@ -284,6 +284,56 @@ urlpatterns = [
     ),
     path("workspace/teacher/e-learning/", views.teacher_elearning, name="teacher_elearning"),
     path(
+        "workspace/secretary/assessment-management/exam-timetable-generation/manual-allocation/",
+        views.exam_manual_supervisor_allocation,
+        name="secretary_exam_manual_supervisor_allocation",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/levels/<int:level_id>/",
+        views.exam_record_detail,
+        name="secretary_exam_record_level",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/update/",
+        views.update_exam_record,
+        name="secretary_update_exam_record",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/status/",
+        views.update_exam_record_status,
+        name="secretary_update_exam_record_status",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/set-current/",
+        views.set_current_exam_record,
+        name="secretary_set_current_exam_record",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/deadline/",
+        views.update_exam_record_deadline,
+        name="secretary_update_exam_record_deadline",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/delete/",
+        views.delete_exam_record,
+        name="secretary_delete_exam_record",
+    ),
+    path(
+        "workspace/secretary/assessment-management/exam-records/<int:exam_id>/",
+        views.exam_record_detail,
+        name="secretary_exam_record_detail",
+    ),
+    path(
+        "workspace/secretary/assessment-management/<slug:tool>/",
+        views.secretary_exam_page,
+        name="secretary_exam_page",
+    ),
+    path(
+        "workspace/secretary/assessment-management/",
+        views.secretary_assessment_management,
+        name="secretary_assessment_management",
+    ),
+    path(
         "workspace/secretary/reports/curriculum-reports/exam-reports/students/",
         views.secretary_exam_report_students,
         name="secretary_exam_report_students",

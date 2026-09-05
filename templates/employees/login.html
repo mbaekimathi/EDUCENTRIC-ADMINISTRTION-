@@ -1,15 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Employee sign in | Edu-Centric{% endblock %}
-{% block body_class %}auth-body{% endblock %}
+{% block body_class %}auth-body auth-body-login{% endblock %}
 {% block content %}
-<main class="auth-shell">
-  {% include "partials/brand_panel.html" with eyebrow="Employee access" headline="Sign in to your<br>workspace." copy="Enter your employment number and password to continue." trust="Secure staff access" %}
+<main class="auth-shell auth-shell-login">
+  {% include "partials/brand_panel.html" with eyebrow="Staff workspace" headline="Sign in to your<br>school workspace." copy="Secure access for teachers, administrators, and support staff." trust="Live secure session" %}
 
-  <section class="auth-panel">
-    <div class="auth-card auth-card-elevated">
+  <section class="auth-panel auth-panel-login">
+    <div class="auth-card auth-card-elevated auth-card-login">
+      <div class="auth-card-school">
+        <span class="auth-card-school-mark {% if school_profile and school_profile.school_logo %}has-image{% endif %}">
+          {% if school_profile and school_profile.school_logo %}
+          <img
+            src="{{ school_profile.school_logo.url }}"
+            alt="{{ school_profile.brand_official_name }} logo"
+            width="88"
+            height="88"
+            decoding="async"
+          >
+          {% else %}
+          <span aria-hidden="true">{% if school_profile %}{{ school_profile.brand_initials }}{% else %}EC{% endif %}</span>
+          {% endif %}
+        </span>
+        <div class="auth-card-school-copy">
+          <strong>{% if school_profile %}{{ school_profile.brand_name }}{% else %}Edu-Centric{% endif %}</strong>
+          <span>Employee sign in</span>
+        </div>
+      </div>
+
       <div class="form-page-heading">
-        <span class="eyebrow">Staff</span>
-        <h2>Welcome back</h2>
+        <span class="eyebrow">Welcome back</span>
+        <h2>Sign in to continue</h2>
+        <p class="auth-card-lead">Enter your employment number and password to open your workspace.</p>
       </div>
 
       {% if form.non_field_errors %}{% include "partials/notify_trigger.html" with type="error" message=form.non_field_errors|striptags %}{% endif %}

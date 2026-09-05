@@ -1,19 +1,19 @@
 <section class="teacher-dash-actions is-nav-links" aria-label="Assessment management tools">
-  <a class="teacher-dash-action" href="{% url 'employees:it_support_exam_page' 'allocate-supervisors' %}">
+  <a class="teacher-dash-action" href="{% url exam_page_url 'allocate-supervisors' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">AS</span>
     <span class="teacher-dash-action-copy">
       <strong>Allocate supervisors</strong>
       <span>Allocate supervisors</span>
     </span>
   </a>
-  <a class="teacher-dash-action" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}">
+  <a class="teacher-dash-action" href="{% url exam_page_url 'exam-timetable-generation' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">GE</span>
     <span class="teacher-dash-action-copy">
       <strong>Generate assessment timetable</strong>
       <span>Generate assessment timetable</span>
     </span>
   </a>
-  <a class="teacher-dash-action" href="{% url 'employees:it_support_exam_page' 'exam-records' %}">
+  <a class="teacher-dash-action" href="{% url exam_page_url 'exam-records' %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">AE</span>
     <span class="teacher-dash-action-copy">
       <strong>All assessments</strong>

@@ -45,7 +45,7 @@
 {% for level in academic_levels %}
 <a
   class="workspace-nav-link {% if selected_level and selected_level.id == level.id %}is-active{% endif %}"
-  href="{% url 'employees:exam_record_level' exam.id level.id %}"
+  href="{% url exam_record_level_url exam.id level.id %}"
   {% if selected_level and selected_level.id == level.id %}aria-current="page"{% endif %}
 >
   <span class="workspace-nav-icon" aria-hidden="true">

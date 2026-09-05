@@ -296,7 +296,317 @@ button, input, select, textarea { font: inherit; }
   background: #7dffd2;
   box-shadow: 0 0 0 4px #7dffd224;
   vertical-align: middle;
+  animation: pulse-live 2.4s ease-in-out infinite;
 }
+
+/* School-branded auth panel */
+.brand-panel-school {
+  --school-accent: #2f6af7;
+  background: linear-gradient(158deg, #061833 0%, #0b2f6b 48%, #0a1f4d 100%);
+  background:
+    radial-gradient(circle at 86% 10%, color-mix(in srgb, var(--school-accent) 55%, #ffffff) 0, transparent 28%),
+    radial-gradient(circle at 8% 88%, color-mix(in srgb, var(--school-accent) 35%, #0b3ea8) 0, transparent 34%),
+    linear-gradient(158deg, #061833 0%, #0b2f6b 42%, color-mix(in srgb, var(--school-accent) 42%, #0a1f4d) 100%);
+}
+.brand-panel-glow {
+  position: absolute;
+  inset: -20% auto auto -10%;
+  width: 70%;
+  height: 55%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--school-accent) 40%, transparent) 0%, transparent 70%);
+  filter: blur(18px);
+  opacity: 0.7;
+  pointer-events: none;
+  animation: glow-breathe 8s ease-in-out infinite;
+}
+.brand-panel-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#ffffff0c 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff0c 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 30% 40%, #000 0%, transparent 72%);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.school-brand-hero {
+  align-items: center;
+  max-width: 100%;
+}
+.school-brand-mark {
+  position: relative;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  color: color-mix(in srgb, var(--school-accent) 75%, #0b2f6b);
+  background: #fff;
+  font: 800 0.95rem/1 var(--display);
+  letter-spacing: -0.04em;
+  box-shadow:
+    0 10px 24px #04122655,
+    inset 0 0 0 1px #ffffffd0;
+}
+.school-brand-mark.has-image {
+  background: #fff;
+  padding: 0.28rem;
+}
+.school-brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.school-brand-text {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.school-brand-text .brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1.05rem, 1.8vw, 1.28rem);
+}
+.school-brand-official {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #c7dbff;
+  font: 600 0.72rem/1.2 var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.school-brand-copy {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  width: 100%;
+  max-width: 34rem;
+  margin-inline: auto;
+  text-align: center;
+  animation: school-brand-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.school-brand-emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(15rem, 46vw);
+  height: min(15rem, 46vw);
+  margin: 0 auto 0.5rem;
+}
+.school-brand-emblem-ring {
+  display: none;
+}
+.school-brand-emblem-core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  border-radius: 0;
+  color: #fff;
+  background: transparent;
+  font: 800 3rem/1 var(--display);
+  letter-spacing: -0.05em;
+  box-shadow: none;
+  animation:
+    school-logo-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both,
+    school-logo-live 4.8s ease-in-out 0.85s infinite;
+}
+.school-brand-emblem.has-image .school-brand-emblem-core {
+  padding: 0;
+  background: transparent;
+}
+.school-brand-emblem-core img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 32px #04122673);
+}
+.school-brand-copy .eyebrow {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+}
+.school-brand-copy h1 {
+  max-width: 14ch;
+  margin: 0.15rem 0 0;
+  font-size: clamp(2.35rem, 4.2vw, 3.45rem);
+  line-height: 1.05;
+  text-wrap: balance;
+  text-align: center;
+}
+.school-brand-motto {
+  max-width: 30rem;
+  color: #f2f7ff;
+  font: italic 650 clamp(1.1rem, 1.6vw, 1.3rem)/1.45 var(--display);
+}
+.school-brand-vision,
+.school-brand-support {
+  max-width: 28rem;
+  color: #d5e6ff;
+  font-size: clamp(0.98rem, 1.3vw, 1.08rem);
+  line-height: 1.55;
+}
+.school-brand-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.school-brand-meta li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid #ffffff2e;
+  border-radius: 999px;
+  background: #ffffff14;
+  color: #e8f0ff;
+  font: 650 0.78rem/1 var(--font);
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(8px);
+}
+.brand-panel-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.school-brand-powered {
+  color: #9fc0f5;
+  font-size: 0.75rem;
+}
+.school-brand-powered span {
+  color: #fff;
+  font-weight: 700;
+}
+
+.auth-card-login {
+  display: grid;
+  gap: 0.15rem;
+}
+.auth-card-school {
+  display: none;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e7eef8;
+}
+.auth-card-school-mark {
+  display: grid;
+  width: 5.5rem;
+  height: 5.5rem;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 1.15rem;
+  color: #fff;
+  background: linear-gradient(145deg, #2f6af7, #1c4fd4);
+  font: 800 1.25rem/1 var(--display);
+  box-shadow: 0 10px 22px #1c4fd433;
+}
+.auth-card-school-mark.has-image {
+  background: #fff;
+  border: 1px solid #dbe5f4;
+  padding: 0.4rem;
+  box-shadow: 0 8px 18px #15233f12;
+}
+.auth-card-school-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.auth-card-school-copy {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+.auth-card-school-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 0.88rem/1.2 var(--display);
+  color: var(--ink);
+}
+.auth-card-school-copy span {
+  color: var(--muted);
+  font: 650 0.68rem/1.2 var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.auth-card-lead {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.auth-body-login .auth-panel-login {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--blue) 18%, #fff) 0, transparent 34%),
+    radial-gradient(circle at 0% 100%, #d9f3f1 0, transparent 28%),
+    linear-gradient(180deg, #f4f7fc 0%, #eef3fa 100%);
+}
+.auth-shell-login .auth-card-elevated {
+  box-shadow: 0 22px 55px #15233f14, 0 1px 0 #ffffffaa inset;
+}
+
+@keyframes pulse-live {
+  0%, 100% { box-shadow: 0 0 0 4px #7dffd224; transform: scale(1); }
+  50% { box-shadow: 0 0 0 7px #7dffd212; transform: scale(1.08); }
+}
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.45; transform: translate3d(0, 0, 0) scale(1); }
+  50% { opacity: 0.8; transform: translate3d(4%, 3%, 0) scale(1.05); }
+}
+@keyframes emblem-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes emblem-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.35rem); }
+}
+@keyframes school-brand-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes school-logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes school-logo-live {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-0.55rem) scale(1.045);
+  }
+}
+
 
 .auth-panel {
   position: relative;
@@ -1000,9 +1310,16 @@ button.workspace-nav-action.workspace-nav-action-danger:hover {
 .allocation-table {
   min-width: 36rem;
 }
+.allocation-table.is-stackable {
+  min-width: 0;
+}
 .allocation-table th,
 .allocation-table td {
   white-space: nowrap;
+}
+.allocation-table.is-stackable th,
+.allocation-table.is-stackable td {
+  white-space: normal;
 }
 .allocation-table td:has(.settings-stack) {
   white-space: normal;
@@ -1013,6 +1330,11 @@ button.workspace-nav-action.workspace-nav-action-danger:hover {
   width: auto;
   min-height: 2.55rem;
   padding: 0.45rem 0.7rem;
+}
+.allocation-table.is-stackable select {
+  min-width: 0;
+  width: 100%;
+  max-width: 22rem;
 }
 .allocation-table-supervisors {
   min-width: 48rem;
@@ -6525,27 +6847,13 @@ body.modal-open {
   .auth-shell,
   .auth-shell-wide {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: 1fr;
   }
   .brand-panel {
-    min-height: auto;
-    gap: 0.55rem;
-    padding: 0.95rem 1.15rem 1.05rem;
-  }
-  .brand-panel::before,
-  .brand-panel::after {
-    animation: none;
-  }
-  .brand-copy {
-    margin: 0;
-  }
-  .brand-copy h1 {
-    font-size: clamp(1.2rem, 4vw, 1.45rem);
-    margin: 0.2rem 0 0;
-  }
-  .brand-copy p,
-  .trust-note {
     display: none;
+  }
+  .auth-card-school {
+    display: flex;
   }
   .auth-panel {
     align-items: start;
@@ -6602,30 +6910,13 @@ body.modal-open {
   .auth-shell,
   .auth-shell-wide {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: 1fr;
   }
   .brand-panel {
-    min-height: auto;
-    gap: 0.55rem;
-    padding: 0.95rem 1.15rem 1.05rem;
-  }
-  .brand-panel::before,
-  .brand-panel::after {
-    animation: none;
-  }
-  .brand-hero {
-    margin-bottom: 0;
-  }
-  .brand-copy {
-    margin: 0;
-  }
-  .brand-copy h1 {
-    font-size: clamp(1.25rem, 4.5vw, 1.55rem);
-    margin: 0.2rem 0 0;
-  }
-  .brand-copy p,
-  .trust-note {
     display: none;
+  }
+  .auth-card-school {
+    display: flex;
   }
   .auth-panel {
     align-items: start;
@@ -9985,11 +10276,95 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   /* Matrix / marks sheets keep horizontal scroll */
-  .allocation-table,
+  .allocation-table:not(.is-stackable),
   .allocation-table-supervisors,
   .exam-record-students-table,
   .exam-analytics-table {
     min-width: 36rem;
+  }
+
+  /* Simple allocation lists (class teachers, etc.) → stacked cards */
+  .settings-table-panel:has(.allocation-table.is-stackable) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .allocation-table.is-stackable {
+    min-width: 0;
+    width: 100%;
+    display: block;
+  }
+
+  .allocation-table.is-stackable thead {
+    display: none;
+  }
+
+  .allocation-table.is-stackable tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .allocation-table.is-stackable tr {
+    display: grid;
+    gap: 0.35rem;
+    border: 1px solid #dde6f4;
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 0.95rem;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .allocation-table.is-stackable td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.2rem 0;
+    border: 0;
+    white-space: normal;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .allocation-table.is-stackable tbody tr:hover td {
+    background: transparent;
+  }
+
+  .allocation-table.is-stackable td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    max-width: 42%;
+    color: var(--muted);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .allocation-table.is-stackable td:first-child::before {
+    display: none;
+  }
+
+  .allocation-table.is-stackable select {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+  }
+
+  .allocation-table.is-stackable td[data-label="Class teacher"],
+  .allocation-table.is-stackable td:has(select) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding-top: 0.45rem;
+  }
+
+  .allocation-table.is-stackable td[data-label="Class teacher"]::before,
+  .allocation-table.is-stackable td:has(select)::before {
+    display: block;
+    max-width: none;
   }
 
   .teacher-marks-sheet .exam-record-students-table,
@@ -13856,7 +14231,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .schedule-timetable-wrap,
-  .settings-table-panel:has(.allocation-table),
+  .settings-table-panel:has(.allocation-table:not(.is-stackable)),
   .settings-table-panel:has(.exam-record-students-table),
   .settings-table-panel:has(.exam-analytics-table),
   .settings-table-panel:has(.attendance-students-table),
@@ -13919,19 +14294,19 @@ body.is-reordering-academic-levels [data-normal-only] {
     padding-inline: 0.85rem;
   }
 
-  .exam-tool-block .settings-table-panel:has(.allocation-table) {
+  .exam-tool-block .settings-table-panel:has(.allocation-table:not(.is-stackable)) {
     margin-inline: -0.85rem;
     border-radius: 0;
     border-left: 0;
     border-right: 0;
   }
 
-  .allocation-table,
+  .allocation-table:not(.is-stackable),
   .allocation-table-supervisors {
     min-width: 30rem;
   }
 
-  .allocation-table select {
+  .allocation-table:not(.is-stackable) select {
     min-width: 9.5rem;
     max-width: 100%;
   }

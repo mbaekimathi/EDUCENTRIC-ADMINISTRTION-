@@ -1,7 +1,7 @@
 {% if can_toggle_current %}
 <form
   method="post"
-  action="{% url 'employees:set_current_exam_record' exam.id %}"
+  action="{% url set_current_exam_record_url exam.id %}"
   class="exam-current-toggle-form"
   data-exam-current-toggle-form
 >

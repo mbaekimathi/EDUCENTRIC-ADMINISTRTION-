@@ -25,7 +25,7 @@
           <span class="marks-card-status" data-status="{{ exam.status }}">{{ exam.get_status_display }}</span>
         </div>
         <p class="marks-card-meta">
-          <a href="{% url 'employees:exam_record_detail' exam.id %}">{{ exam_title }}</a>
+          <a href="{% url exam_record_detail_url exam.id %}">{{ exam_title }}</a>
           <span aria-hidden="true">·</span>
           out of 100%
           <span aria-hidden="true">·</span>
@@ -44,10 +44,10 @@
           <div class="exam-class-filter">
             <label for="exam-class-filter">Class</label>
             <select id="exam-class-filter" name="class_filter" onchange="window.location.href=this.value">
-              <option value="{% url 'employees:exam_record_level' exam.id selected_level.id %}">All classes</option>
+              <option value="{% url exam_record_level_url exam.id selected_level.id %}">All classes</option>
               {% for academic_class in level_classes %}
               <option
-                value="{% url 'employees:exam_record_level' exam.id selected_level.id %}?class_id={{ academic_class.id }}"
+                value="{% url exam_record_level_url exam.id selected_level.id %}?class_id={{ academic_class.id }}"
                 {% if selected_class and selected_class.id == academic_class.id %}selected{% endif %}
               >
                 {{ academic_class.name }}
@@ -62,7 +62,7 @@
           <button type="button" class="ghost-button" data-exam-edit>Edit</button>
           <button type="button" class="ghost-button" data-exam-cancel hidden>Cancel</button>
           <button type="submit" class="primary-button" form="marks-sheet-form" data-exam-save hidden>Save</button>
-          <a class="ghost-button" href="{% url 'employees:exam_record_detail' exam.id %}">Levels</a>
+          <a class="ghost-button" href="{% url exam_record_detail_url exam.id %}">Levels</a>
         </div>
       </div>
     </div>
@@ -96,9 +96,6 @@
             <th scope="col" class="marks-mark-cell" title="{% if column.kind == 'combined' %}{{ column.name }} · {{ column.component_codes }} · combined{% else %}{{ column.name }}{% endif %}">
               <span class="marks-col-head">
                 <span class="marks-subject-code{% if column.kind == 'combined' %} is-combined{% endif %}">{{ column.code }}</span>
-                {% if column.kind == "combined" %}
-                <span class="marks-out-of">{{ column.component_codes }}</span>
-                {% endif %}
               </span>
             </th>
             {% endfor %}
@@ -180,7 +177,7 @@
         <span class="marks-card-status" data-status="{{ exam.status }}">{{ exam.get_status_display }}</span>
       </div>
       <p class="marks-card-meta">
-        <a href="{% url 'employees:exam_record_detail' exam.id %}">{{ exam_title }}</a>
+        <a href="{% url exam_record_detail_url exam.id %}">{{ exam_title }}</a>
         <span aria-hidden="true">·</span>
         {% if selected_class %}{{ selected_class.name }}{% else %}All classes{% endif %}
         <span aria-hidden="true">·</span>
@@ -205,7 +202,7 @@
         {% endif %}
       </div>
       <div class="marks-card-cta">
-        <a class="ghost-button" href="{% url 'employees:exam_record_detail' exam.id %}">Levels</a>
+        <a class="ghost-button" href="{% url exam_record_detail_url exam.id %}">Levels</a>
       </div>
     </div>
   </header>
@@ -255,7 +252,7 @@
           <span>Sitting{{ exam.sitting_count|pluralize }}</span>
         </div>
       </div>
-      <a class="ghost-button exam-detail-back" href="{% url 'employees:it_support_exam_page' 'exam-records' %}">
+      <a class="ghost-button exam-detail-back" href="{% url exam_page_url 'exam-records' %}">
         Back to all assessments
       </a>
     </div>
@@ -273,7 +270,7 @@
     <ul class="exam-detail-level-list">
       {% for level in academic_levels %}
       <li>
-        <a class="exam-detail-level-row" href="{% url 'employees:exam_record_level' exam.id level.id %}">
+        <a class="exam-detail-level-row" href="{% url exam_record_level_url exam.id level.id %}">
           <span class="exam-detail-level-main">
             <strong class="is-uppercase">{{ level.name }}</strong>
             <span>{{ level.code }}{% if level.category %} · {{ level.category }}{% endif %}</span>

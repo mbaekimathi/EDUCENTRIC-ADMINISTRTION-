@@ -30,7 +30,7 @@
     <div class="teacher-page-bar-actions">
       <a
         class="primary-button"
-        href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
+        href="{% url exam_page_url 'exam-timetable-generation' %}?generate=1"
       >
         Generate assessment timetable
       </a>
@@ -60,7 +60,7 @@
         {% for exam in group.exams %}
         <a
           class="exam-hub-card all-exams-card{% if exam.is_current_exam %} is-current-exam{% endif %}"
-          href="{% url 'employees:exam_record_detail' exam.id %}"
+          href="{% url exam_record_detail_url exam.id %}"
         >
           <span class="exam-hub-card-icon" aria-hidden="true">EX</span>
           <span class="exam-hub-card-copy">
@@ -101,7 +101,7 @@
     <p>Generate an assessment timetable to create the first registered assessment.</p>
     <a
       class="primary-button"
-      href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1"
+      href="{% url exam_page_url 'exam-timetable-generation' %}?generate=1"
     >
       Generate assessment timetable
     </a>

@@ -116,6 +116,31 @@ class SchoolProfile(models.Model):
     def __str__(self):
         return self.official_name
 
+    @property
+    def brand_name(self):
+        return (self.display_name or self.official_name or "School").strip()
+
+    @property
+    def brand_official_name(self):
+        return (self.official_name or self.display_name or "School").strip()
+
+    @property
+    def brand_initials(self):
+        source = self.brand_name
+        parts = [part for part in source.replace("-", " ").split() if part]
+        if len(parts) >= 2:
+            return "".join(part[0] for part in parts[:2]).upper()
+        return source[:2].upper() if source else "EC"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        try:
+            from django.core.cache import cache
+
+            cache.delete("school_profile_branding_v1")
+        except Exception:
+            pass
+
 
 class Employee(AbstractUser):
     class Title(models.TextChoices):

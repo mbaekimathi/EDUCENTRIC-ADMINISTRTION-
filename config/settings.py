@@ -68,6 +68,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.employees.context_processors.school_branding',
                 'apps.employees.context_processors.workspace',
             ],
         },

@@ -146,7 +146,7 @@ class SchoolProfileForm(UppercaseFieldsMixin, forms.ModelForm):
             "knec_centre_number": "KNEC centre number",
         }
         help_texts = {
-            "school_logo": "Shown with the school name on assessment reports and mark sheets.",
+            "school_logo": "Shown on the sign-in page, assessment reports, and mark sheets.",
         }
         widgets = {
             "official_name": forms.TextInput(
@@ -162,6 +162,12 @@ class SchoolProfileForm(UppercaseFieldsMixin, forms.ModelForm):
             "nemis_number": forms.TextInput(attrs={"placeholder": "OPTIONAL"}),
             "knec_centre_number": forms.TextInput(attrs={"placeholder": "OPTIONAL"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.curricula:
+            self.fields["curricula"].initial = self.instance.curricula
+        self.fields["school_logo"].required = False
 
 
 class SchoolProfileContactLocationForm(UppercaseFieldsMixin, forms.ModelForm):
@@ -209,16 +215,23 @@ class SchoolProfileBrandingForm(UppercaseFieldsMixin, forms.ModelForm):
             "primary_color": "Primary colour",
         }
         help_texts = {
-            "school_logo": "Appears beside the school name on generated and printed assessment reports.",
+            "school_logo": "Appears on the sign-in page, assessment reports, and mark sheets.",
+            "primary_color": "Used as the accent colour on the public sign-in experience.",
         }
         widgets = {
             "school_logo": forms.ClearableFileInput(attrs={"accept": "image/*"}),
             "vision_statement": forms.Textarea(attrs={"rows": 4}),
             "mission_statement": forms.Textarea(attrs={"rows": 4}),
-            "primary_color": forms.TextInput(
-                attrs={"type": "color", "value": "#1f5cf0"}
-            ),
+            "primary_color": forms.TextInput(attrs={"type": "color"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["school_logo"].required = False
+        if self.instance and self.instance.pk and self.instance.primary_color:
+            self.fields["primary_color"].initial = self.instance.primary_color
+        else:
+            self.fields["primary_color"].initial = "#1f5cf0"
 
 
 class SchoolProfileLeadershipForm(UppercaseFieldsMixin, forms.ModelForm):

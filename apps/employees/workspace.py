@@ -137,3 +137,34 @@ def workspace_view_employee(request):
 def clear_workspace_preview(request):
     request.session.pop(WORKSPACE_ROLE_SESSION_KEY, None)
     request.session.pop(WORKSPACE_VIEW_EMPLOYEE_SESSION_KEY, None)
+
+
+def exam_management_url_names(role=None):
+    """Named URL map for assessment management (IT Support + Secretary)."""
+    if role == Employee.Role.SECRETARY:
+        return {
+            "exam_hub_url": "employees:secretary_assessment_management",
+            "exam_hub_section": None,
+            "exam_page_url": "employees:secretary_exam_page",
+            "exam_record_detail_url": "employees:secretary_exam_record_detail",
+            "exam_record_level_url": "employees:secretary_exam_record_level",
+            "exam_manual_allocation_url": "employees:secretary_exam_manual_supervisor_allocation",
+            "update_exam_record_url": "employees:secretary_update_exam_record",
+            "update_exam_record_status_url": "employees:secretary_update_exam_record_status",
+            "set_current_exam_record_url": "employees:secretary_set_current_exam_record",
+            "update_exam_record_deadline_url": "employees:secretary_update_exam_record_deadline",
+            "delete_exam_record_url": "employees:secretary_delete_exam_record",
+        }
+    return {
+        "exam_hub_url": "employees:it_support_curriculum_section",
+        "exam_hub_section": "exam-management",
+        "exam_page_url": "employees:it_support_exam_page",
+        "exam_record_detail_url": "employees:exam_record_detail",
+        "exam_record_level_url": "employees:exam_record_level",
+        "exam_manual_allocation_url": "employees:exam_manual_supervisor_allocation",
+        "update_exam_record_url": "employees:update_exam_record",
+        "update_exam_record_status_url": "employees:update_exam_record_status",
+        "set_current_exam_record_url": "employees:set_current_exam_record",
+        "update_exam_record_deadline_url": "employees:update_exam_record_deadline",
+        "delete_exam_record_url": "employees:delete_exam_record",
+    }

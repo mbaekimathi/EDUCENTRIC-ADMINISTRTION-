@@ -13,7 +13,7 @@
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-edit" aria-label="Close">×</button>
     </div>
-    <form method="post" action="{% url 'employees:update_exam_record' exam.id %}" class="app-modal-form exam-manage-dialog-form" data-exam-edit-form>
+    <form method="post" action="{% url update_exam_record_url exam.id %}" class="app-modal-form exam-manage-dialog-form" data-exam-edit-form>
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ manage_next_url }}">
       {% if selected_level %}<input type="hidden" name="level_id" value="{{ selected_level.id }}">{% endif %}
@@ -126,7 +126,7 @@
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-status" aria-label="Close">×</button>
     </div>
-    <form method="post" action="{% url 'employees:update_exam_record_status' exam.id %}" class="app-modal-form exam-manage-dialog-form">
+    <form method="post" action="{% url update_exam_record_status_url exam.id %}" class="app-modal-form exam-manage-dialog-form">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ manage_next_url }}">
       {% if selected_level %}<input type="hidden" name="level_id" value="{{ selected_level.id }}">{% endif %}
@@ -209,7 +209,7 @@
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-deadline" aria-label="Close">×</button>
     </div>
-    <form method="post" action="{% url 'employees:update_exam_record_deadline' exam.id %}" class="app-modal-form exam-manage-dialog-form">
+    <form method="post" action="{% url update_exam_record_deadline_url exam.id %}" class="app-modal-form exam-manage-dialog-form">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ manage_next_url }}">
       {% if selected_level %}<input type="hidden" name="level_id" value="{{ selected_level.id }}">{% endif %}
@@ -272,7 +272,7 @@
       </div>
       <button type="button" class="app-modal-close exam-manage-dialog-close" data-modal-close="exam-delete" aria-label="Close">×</button>
     </div>
-    <form method="post" action="{% url 'employees:delete_exam_record' exam.id %}" class="app-modal-form exam-manage-dialog-form">
+    <form method="post" action="{% url delete_exam_record_url exam.id %}" class="app-modal-form exam-manage-dialog-form">
       {% csrf_token %}
       <div class="exam-manage-dialog-body">
         <div class="exam-delete-warning">

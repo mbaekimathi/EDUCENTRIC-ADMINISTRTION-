@@ -17,7 +17,7 @@
       <span class="teacher-exam-status-chip" data-status="{{ exam_dashboard.status }}">
         {{ exam_dashboard.status_label }}
       </span>
-      <a class="ghost-button" href="{% url 'employees:exam_record_detail' exam_dashboard.current_exam.id %}">Open assessment</a>
+      <a class="ghost-button" href="{% url exam_record_detail_url exam_dashboard.current_exam.id %}">Open assessment</a>
     </div>
   </header>
 
@@ -66,7 +66,7 @@
     <div class="exam-mgmt-empty">
       <strong>No assessments today</strong>
       <p>There are no assessment sittings on today's date. Check the full timetable or upcoming days.</p>
-      <a class="ghost-button" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}">View timetables</a>
+      <a class="ghost-button" href="{% url exam_page_url 'exam-timetable-generation' %}">View timetables</a>
     </div>
     {% endif %}
   </section>
@@ -84,6 +84,6 @@
 <section class="exam-mgmt-empty exam-mgmt-empty--page">
   <strong>No assessments registered yet</strong>
   <p>Generate an assessment timetable to start tracking assessment status, timetables, marking, and results.</p>
-  <a class="primary-button" href="{% url 'employees:it_support_exam_page' 'exam-timetable-generation' %}?generate=1">Generate assessment timetable</a>
+  <a class="primary-button" href="{% url exam_page_url 'exam-timetable-generation' %}?generate=1">Generate assessment timetable</a>
 </section>
 {% endif %}

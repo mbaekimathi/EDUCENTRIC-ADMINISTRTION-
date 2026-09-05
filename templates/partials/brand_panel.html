@@ -1,12 +1,63 @@
-<section class="brand-panel">
+<section
+  class="brand-panel brand-panel-school{% if school_profile and school_profile.school_logo %} has-logo{% endif %}"
+  {% if school_profile and school_profile.primary_color %}style="--school-accent: {{ school_profile.primary_color }}"{% endif %}
+  aria-label="{% if school_profile %}{{ school_profile.brand_official_name }}{% else %}Edu-Centric{% endif %}"
+>
+  <div class="brand-panel-glow" aria-hidden="true"></div>
+  <div class="brand-panel-grid" aria-hidden="true"></div>
+
   <a class="brand brand-hero" href="{% url 'employees:login' %}">
     <span class="brand-mark">E</span>
     <span class="brand-name">Edu-Centric</span>
   </a>
-  <div class="brand-copy">
+
+  <div class="brand-copy school-brand-copy">
+    <div class="school-brand-emblem {% if school_profile and school_profile.school_logo %}has-image{% endif %}" aria-hidden="true">
+      <span class="school-brand-emblem-ring"></span>
+      <span class="school-brand-emblem-core">
+        {% if school_profile and school_profile.school_logo %}
+        <img src="{{ school_profile.school_logo.url }}" alt="" width="224" height="224" decoding="async">
+        {% else %}
+        <span>{% if school_profile %}{{ school_profile.brand_initials }}{% else %}EC{% endif %}</span>
+        {% endif %}
+      </span>
+    </div>
+
     <span class="eyebrow">{{ eyebrow }}</span>
+    {% if school_profile %}
+    <h1>{{ school_profile.brand_official_name }}</h1>
+    {% if school_profile.motto %}
+    <p class="school-brand-motto">“{{ school_profile.motto }}”</p>
+    {% else %}
+    <p>{{ headline|safe }}</p>
+    {% endif %}
+    {% if school_profile.vision_statement %}
+    <p class="school-brand-vision">{{ school_profile.vision_statement|truncatechars:140 }}</p>
+    {% elif copy %}
+    <p class="school-brand-support">{{ copy }}</p>
+    {% endif %}
+    {% else %}
     <h1>{{ headline|safe }}</h1>
     <p>{{ copy }}</p>
+    {% endif %}
+
+    {% if school_profile %}
+    <ul class="school-brand-meta">
+      {% if school_profile.get_school_type_display %}
+      <li>{{ school_profile.get_school_type_display }}</li>
+      {% endif %}
+      {% if school_profile.county %}
+      <li>{{ school_profile.county }}{% if school_profile.sub_county %}, {{ school_profile.sub_county }}{% endif %}</li>
+      {% endif %}
+      {% if school_profile.moe_code %}
+      <li>MOE {{ school_profile.moe_code }}</li>
+      {% endif %}
+    </ul>
+    {% endif %}
   </div>
-  <div class="trust-note"><span class="trust-dot" aria-hidden="true"></span>{{ trust }}</div>
+
+  <div class="brand-panel-foot">
+    <div class="trust-note"><span class="trust-dot" aria-hidden="true"></span>{{ trust }}</div>
+    <p class="school-brand-powered">Workspace by <span>Edu-Centric</span></p>
+  </div>
 </section>

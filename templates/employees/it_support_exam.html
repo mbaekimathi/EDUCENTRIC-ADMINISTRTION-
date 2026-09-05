@@ -1,6 +1,6 @@
 {% extends "layouts/workspace.html" %}
 {% block title %}Assessment management | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Curriculum management{% endblock %}
+{% block header_eyebrow %}{% if workspace_role == 'SECRETARY' %}Secretary{% else %}Curriculum management{% endif %}{% endblock %}
 {% block header_title %}Assessment management{% endblock %}
 
 {% block sidebar_modules %}
@@ -8,6 +8,7 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% include "employees/includes/nav/exam_management.html" %}
 <div class="exam-tool-page">
   {% include "employees/includes/exam_management_status_dashboard.html" %}
 </div>

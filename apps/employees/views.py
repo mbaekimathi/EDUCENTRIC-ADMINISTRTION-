@@ -128,6 +128,7 @@ from .workspace import (
     clear_active_workspace_role,
     clear_workspace_preview,
     employees_for_workspace_role,
+    exam_management_url_names,
     is_workspace_preview,
     needs_login_role_selection,
     set_active_workspace_role,
@@ -677,6 +678,28 @@ def _require_secretary(request):
     if workspace_role(request) != Employee.Role.SECRETARY:
         return redirect_to_role_dashboard(request)
     return None
+
+
+def _require_exam_management(request):
+    role = workspace_role(request)
+    if role not in (Employee.Role.IT_SUPPORT, Employee.Role.SECRETARY):
+        return redirect_to_role_dashboard(request), None
+    return None, role
+
+
+def _exam_urls(request):
+    return exam_management_url_names(workspace_role(request))
+
+
+def _redirect_exam_hub(request):
+    urls = _exam_urls(request)
+    if urls.get("exam_hub_section"):
+        return redirect(urls["exam_hub_url"], section=urls["exam_hub_section"])
+    return redirect(urls["exam_hub_url"])
+
+
+def _redirect_exam_page(request, tool):
+    return redirect(_exam_urls(request)["exam_page_url"], tool=tool)
 
 
 def _require_curriculum_reports(request):
@@ -1383,6 +1406,47 @@ def role_dashboard(request, role):
         "employees/role_dashboard.html",
         {"active_nav": "dashboard"},
     )
+
+
+@login_required
+def secretary_assessment_management(request):
+    denied = _require_secretary(request)
+    if denied:
+        return denied
+    return render(
+        request,
+        "employees/it_support_exam.html",
+        {
+            "active_nav": "dashboard",
+            "active_module": "assessment-management",
+            "section": {
+                "slug": "exam-management",
+                "title": "Assessment management",
+                "icon": "EM",
+                "summary": "Assessment settings, timetables, supervisors, and grading.",
+                "copy": "Manage assessment configuration, supervisors, timetables, and academic grading.",
+            },
+            "exam_pages": IT_SUPPORT_EXAM_PAGES,
+            "exam_dashboard": _build_exam_management_dashboard(),
+        },
+    )
+
+
+@login_required
+def secretary_exam_page(request, tool):
+    denied = _require_secretary(request)
+    if denied:
+        return denied
+    current = _it_support_exam_page(tool)
+    if current is None:
+        return redirect("employees:secretary_assessment_management")
+    if current["slug"] == "allocate-supervisors":
+        return exam_supervisor_allocation(request, current)
+    if current["slug"] == "exam-timetable-generation":
+        return exam_timetable_generation(request, current)
+    if current["slug"] == "exam-records":
+        return exam_records(request, current)
+    return redirect("employees:secretary_assessment_management")
 
 
 @login_required
@@ -7683,19 +7747,21 @@ def learning_manual_teacher_allocation(request):
 
 @login_required
 def it_support_exam_page(request, tool):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
+    if workspace_role(request) == Employee.Role.SECRETARY:
+        return redirect("employees:secretary_exam_page", tool=tool)
     current = _it_support_exam_page(tool)
     if current is None:
-        return redirect("employees:it_support_curriculum_section", section="exam-management")
+        return _redirect_exam_hub(request)
     if current["slug"] == "allocate-supervisors":
         return exam_supervisor_allocation(request, current)
     if current["slug"] == "exam-timetable-generation":
         return exam_timetable_generation(request, current)
     if current["slug"] == "exam-records":
         return exam_records(request, current)
-    return redirect("employees:it_support_curriculum_section", section="exam-management")
+    return _redirect_exam_hub(request)
 
 
 def _grouped_registered_exams():
@@ -7726,6 +7792,7 @@ def exam_records(request, current):
         "employees/it_support_exam_records.html",
         {
             "active_nav": "dashboard",
+            "active_module": "assessment-management",
             "page": current,
             "active_exam_tool": "exam-records",
             "exam_groups": exam_groups,
@@ -7768,9 +7835,10 @@ def _exam_record_manage_redirect(request, exam_id, level_id=None):
         require_https=request.is_secure(),
     ):
         return redirect(next_url)
+    urls = _exam_urls(request)
     if level_id is not None:
-        return redirect("employees:exam_record_level", exam_id=exam_id, level_id=level_id)
-    return redirect("employees:exam_record_detail", exam_id=exam_id)
+        return redirect(urls["exam_record_level_url"], exam_id=exam_id, level_id=level_id)
+    return redirect(urls["exam_record_detail_url"], exam_id=exam_id)
 
 
 def _parse_exam_datetime(value):
@@ -7791,7 +7859,7 @@ def _parse_exam_datetime(value):
 @login_required
 @require_POST
 def update_exam_record(request, exam_id):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
@@ -7861,7 +7929,7 @@ def update_exam_record(request, exam_id):
 @login_required
 @require_POST
 def update_exam_record_status(request, exam_id):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
@@ -7908,11 +7976,11 @@ def update_exam_record_status(request, exam_id):
 @login_required
 @require_POST
 def set_current_exam_record(request, exam_id):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
-    records_url = reverse("employees:it_support_exam_page", kwargs={"tool": "exam-records"})
+    records_url = reverse(_exam_urls(request)["exam_page_url"], kwargs={"tool": "exam-records"})
     next_url = (request.POST.get("next") or "").strip()
     redirect_target = records_url
     if next_url and url_has_allowed_host_and_scheme(
@@ -7950,7 +8018,7 @@ def set_current_exam_record(request, exam_id):
 @login_required
 @require_POST
 def update_exam_record_deadline(request, exam_id):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
@@ -7977,14 +8045,14 @@ def update_exam_record_deadline(request, exam_id):
 @login_required
 @require_POST
 def delete_exam_record(request, exam_id):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
     name = exam.display_name
     exam.delete()
     success(request, f"{name} was deleted.")
-    return redirect("employees:it_support_exam_page", tool="exam-records")
+    return _redirect_exam_page(request, "exam-records")
 
 
 def _exam_record_title(generation):
@@ -8524,7 +8592,7 @@ def _save_exam_record_marks(
 @login_required
 @require_http_methods(["GET", "POST"])
 def exam_record_detail(request, exam_id, level_id=None):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     generation = get_object_or_404(
@@ -8536,7 +8604,7 @@ def exam_record_detail(request, exam_id, level_id=None):
         pk=exam_id,
     )
     if request.method == "POST" and level_id is None:
-        return redirect("employees:exam_record_detail", exam_id=exam_id)
+        return redirect(_exam_urls(request)["exam_record_detail_url"], exam_id=exam_id)
     academic_levels = list(generation.academic_levels.order_by("order", "name"))
     if not academic_levels:
         academic_levels = list(AcademicLevel.objects.order_by("order", "name"))
@@ -8614,7 +8682,7 @@ def exam_record_detail(request, exam_id, level_id=None):
             else:
                 success(request, "Student marks were saved.")
                 redirect_url = reverse(
-                    "employees:exam_record_level",
+                    _exam_urls(request)["exam_record_level_url"],
                     kwargs={"exam_id": generation.id, "level_id": selected_level.id},
                 )
                 if selected_class:
@@ -8639,6 +8707,7 @@ def exam_record_detail(request, exam_id, level_id=None):
         "employees/it_support_exam_record_detail.html",
         {
             "active_nav": "dashboard",
+            "active_module": "assessment-management",
             "page": _it_support_exam_page("exam-records"),
             "exam": generation,
             "exam_title": _exam_record_title(generation),
@@ -8720,7 +8789,7 @@ def _exam_supervisor_allocation_levels():
 @login_required
 @require_http_methods(["GET", "POST"])
 def exam_supervisor_allocation(request, page=None):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     current = page or _it_support_exam_page("allocate-supervisors")
@@ -8779,7 +8848,7 @@ def exam_supervisor_allocation(request, page=None):
                 request,
                 f"Supervisors shuffled for {level.name}. Classes in this level sit as one group.",
             )
-        return redirect("employees:it_support_exam_page", tool="allocate-supervisors")
+        return _redirect_exam_page(request, "allocate-supervisors")
 
     levels = _exam_supervisor_allocation_levels()
     return render(
@@ -8787,6 +8856,7 @@ def exam_supervisor_allocation(request, page=None):
         "employees/it_support_exam_supervisor_allocation.html",
         {
             "active_nav": "dashboard",
+            "active_module": "assessment-management",
             "page": current,
             "active_exam_tool": "allocate-supervisors",
             "teachers": teachers,
@@ -9174,7 +9244,7 @@ def _parse_exam_date(value):
 @login_required
 @require_http_methods(["GET", "POST"])
 def exam_timetable_generation(request, page=None):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     current = page or _it_support_exam_page("exam-timetable-generation")
@@ -9321,7 +9391,7 @@ def exam_timetable_generation(request, page=None):
                         f"{exam_name} timetable generated for {names} in {academic_year.name} {term.name} "
                         f"({start:%d %b %Y} to {end:%d %b %Y}). {detail}",
                     )
-                    return redirect("employees:it_support_exam_page", tool="exam-timetable-generation")
+                    return _redirect_exam_page(request, "exam-timetable-generation")
 
     terms_by_year = {
         str(year.id): [
@@ -9344,6 +9414,7 @@ def exam_timetable_generation(request, page=None):
         "employees/it_support_exam_timetable_generation.html",
         {
             "active_nav": "dashboard",
+            "active_module": "assessment-management",
             "page": current,
             "active_exam_tool": "exam-timetable-generation",
             "level_groups": group_academic_levels_by_category(levels),
@@ -9368,7 +9439,7 @@ def exam_timetable_generation(request, page=None):
 @login_required
 @require_http_methods(["GET", "POST"])
 def exam_manual_supervisor_allocation(request):
-    denied = _require_it_support(request)
+    denied, _role = _require_exam_management(request)
     if denied:
         return denied
     levels, _allocations, _supervisor_ids = _exam_timetable_generation_levels()
@@ -9394,7 +9465,7 @@ def exam_manual_supervisor_allocation(request):
             supervisor_id = None
         if supervisor_id not in teacher_ids:
             error(request, "Select an available teacher for this session.")
-            return redirect("employees:exam_manual_supervisor_allocation")
+            return redirect(_exam_urls(request)["exam_manual_allocation_url"])
         others = GeneratedExamSitting.objects.filter(
             supervisor_id=supervisor_id,
             exam_date=sitting.exam_date,
@@ -9409,14 +9480,14 @@ def exam_manual_supervisor_allocation(request):
                 f"{conflict.supervisor.first_name} {conflict.supervisor.last_name} is already supervising "
                 f"{conflict.academic_class.name} in this session.",
             )
-            return redirect("employees:exam_manual_supervisor_allocation")
+            return redirect(_exam_urls(request)["exam_manual_allocation_url"])
         sitting.supervisor_id = supervisor_id
         sitting.save(update_fields=["supervisor"])
         success(
             request,
             f"Supervisor updated for {sitting.learning_area.code} in {sitting.academic_class.name}.",
         )
-        return redirect("employees:exam_manual_supervisor_allocation")
+        return redirect(_exam_urls(request)["exam_manual_allocation_url"])
 
     sitting_meta = {
         str(sitting.id): {
@@ -9434,6 +9505,7 @@ def exam_manual_supervisor_allocation(request):
         "employees/it_support_exam_manual_allocation.html",
         {
             "active_nav": "dashboard",
+            "active_module": "assessment-management",
             "page": _it_support_exam_page("exam-timetable-generation"),
             "active_exam_tool": "exam-timetable-generation",
             "manual_allocation": True,
@@ -9683,16 +9755,14 @@ def profile_settings(request):
 @require_http_methods(["GET", "POST"])
 def school_profile_settings(request):
     profile, _ = SchoolProfile.objects.get_or_create(pk=1)
-    form = SchoolProfileForm(
-        request.POST or None,
-        request.FILES or None,
-        instance=profile,
-    )
-
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        success(request, "School profile saved.")
-        return redirect("employees:school_profile_settings")
+    if request.method == "POST":
+        form = SchoolProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            success(request, "School profile saved.")
+            return redirect("employees:school_profile_settings")
+    else:
+        form = SchoolProfileForm(instance=profile)
 
     return render(
         request,
@@ -9715,12 +9785,14 @@ def _school_profile_section(
     current_enrollment=None,
 ):
     profile, _ = SchoolProfile.objects.get_or_create(pk=1)
-    form = form_class(request.POST or None, request.FILES or None, instance=profile)
-
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        success(request, f"{title} saved.")
-        return redirect(redirect_name)
+    if request.method == "POST":
+        form = form_class(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            success(request, f"{title} saved.")
+            return redirect(redirect_name)
+    else:
+        form = form_class(instance=profile)
 
     return render(
         request,
@@ -9756,7 +9828,7 @@ def school_profile_branding_settings(request):
         request,
         SchoolProfileBrandingForm,
         "Branding",
-        "Upload the school logo used on assessment reports, then set motto, vision, mission, and colour.",
+        "Upload the school logo shown on the sign-in page and reports, then set motto, vision, mission, and colour.",
         "employees:school_profile_branding_settings",
     )
 
