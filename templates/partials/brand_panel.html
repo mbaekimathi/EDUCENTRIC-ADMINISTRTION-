@@ -13,10 +13,18 @@
 
   <div class="brand-copy school-brand-copy">
     <div class="school-brand-emblem {% if school_profile and school_profile.has_logo_file %}has-image{% endif %}" aria-hidden="true">
+      <span class="school-brand-emblem-glow"></span>
       <span class="school-brand-emblem-ring"></span>
       <span class="school-brand-emblem-core">
         {% if school_profile and school_profile.has_logo_file %}
-        <img src="{{ school_profile.school_logo.url }}" alt="" width="224" height="224" decoding="async">
+        <img
+          src="{{ school_profile.school_logo.url }}"
+          alt=""
+          width="224"
+          height="224"
+          decoding="async"
+          fetchpriority="high"
+        >
         {% else %}
         <span>{% if school_profile %}{{ school_profile.brand_initials }}{% else %}EC{% endif %}</span>
         {% endif %}
@@ -28,17 +36,15 @@
     <h1>{{ school_profile.brand_official_name }}</h1>
     {% if school_profile.motto %}
     <p class="school-brand-motto">“{{ school_profile.motto }}”</p>
-    {% else %}
-    <p>{{ headline|safe }}</p>
     {% endif %}
     {% if school_profile.vision_statement %}
     <p class="school-brand-vision">{{ school_profile.vision_statement|truncatechars:140 }}</p>
-    {% elif copy %}
-    <p class="school-brand-support">{{ copy }}</p>
     {% endif %}
     {% else %}
-    <h1>{{ headline|safe }}</h1>
+    <h1>{{ headline|default:"Edu-Centric"|safe }}</h1>
+    {% if copy %}
     <p>{{ copy }}</p>
+    {% endif %}
     {% endif %}
 
     {% if school_profile %}

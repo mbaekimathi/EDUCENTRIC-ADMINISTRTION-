@@ -3,7 +3,7 @@
 {% block body_class %}auth-body auth-body-login{% endblock %}
 {% block content %}
 <main class="auth-shell auth-shell-login">
-  {% include "partials/brand_panel.html" with eyebrow="Staff workspace" headline="Sign in to your<br>school workspace." copy="Secure access for teachers, administrators, and support staff." trust="Live secure session" %}
+  {% include "partials/brand_panel.html" with eyebrow="Staff workspace" trust="Live secure session" %}
 
   <section class="auth-panel auth-panel-login">
     <div class="auth-card auth-card-elevated auth-card-login">
@@ -16,6 +16,7 @@
             width="88"
             height="88"
             decoding="async"
+            fetchpriority="high"
           >
           {% else %}
           <span aria-hidden="true">{% if school_profile %}{{ school_profile.brand_initials }}{% else %}EC{% endif %}</span>

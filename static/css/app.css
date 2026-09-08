@@ -272,6 +272,18 @@ button, input, select, textarea { font: inherit; }
   max-width: 28rem;
   animation: rise-in 0.45s ease both;
 }
+.brand-panel-school .brand-copy.school-brand-copy {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  align-content: center;
+  width: min(100%, 34rem);
+  max-width: 34rem;
+  margin: auto;
+  padding-inline: 0.25rem;
+  text-align: center;
+  animation: school-brand-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 .brand-copy h1 {
   margin: 0.8rem 0;
   font-size: clamp(1.9rem, 3.4vw, 3rem);
@@ -302,11 +314,18 @@ button, input, select, textarea { font: inherit; }
 /* School-branded auth panel */
 .brand-panel-school {
   --school-accent: #1f5cf0;
+  align-items: center;
   background: linear-gradient(158deg, #061833 0%, #0b2f6b 48%, #0a1f4d 100%);
   background:
     radial-gradient(circle at 86% 10%, color-mix(in srgb, var(--school-accent) 55%, #ffffff) 0, transparent 28%),
     radial-gradient(circle at 8% 88%, color-mix(in srgb, var(--school-accent) 35%, #0b3ea8) 0, transparent 34%),
     linear-gradient(158deg, #061833 0%, color-mix(in srgb, var(--school-accent) 35%, #0b2f6b) 42%, color-mix(in srgb, var(--school-accent) 42%, #0a1f4d) 100%);
+}
+.brand-panel-school .brand-hero {
+  align-self: flex-start;
+}
+.brand-panel-school .brand-panel-foot {
+  align-self: stretch;
 }
 .brand-panel-glow {
   position: absolute;
@@ -388,46 +407,74 @@ button, input, select, textarea { font: inherit; }
   max-width: 34rem;
   margin-inline: auto;
   text-align: center;
-  animation: school-brand-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: school-brand-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .school-brand-emblem {
   position: relative;
   display: grid;
   place-items: center;
-  width: min(15rem, 46vw);
-  height: min(15rem, 46vw);
-  margin: 0 auto 0.5rem;
+  width: min(15.5rem, 58vw);
+  height: min(15.5rem, 58vw);
+  margin: 0 auto 0.65rem;
+  justify-self: center;
+  isolation: isolate;
+}
+.school-brand-emblem-glow {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--school-accent, #1f5cf0) 55%, #ffffff) 0%,
+    transparent 72%
+  );
+  filter: blur(18px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: school-logo-glow 3.6s ease-in-out infinite;
 }
 .school-brand-emblem-ring {
-  display: none;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff38;
+  box-shadow:
+    0 0 0 10px #ffffff10,
+    inset 0 0 0 1px #ffffff20;
+  pointer-events: none;
+  animation: school-logo-ring 6.5s linear infinite;
 }
 .school-brand-emblem-core {
   position: relative;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  border-radius: 0;
+  width: 84%;
+  height: 84%;
+  overflow: hidden;
+  border-radius: 50%;
   color: #fff;
-  background: transparent;
+  background: #ffffff;
   font: 800 3rem/1 var(--display);
   letter-spacing: -0.05em;
-  box-shadow: none;
+  box-shadow:
+    0 18px 40px #04122666,
+    0 0 0 6px #ffffff22;
   animation:
-    school-logo-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both,
-    school-logo-live 4.8s ease-in-out 0.85s infinite;
+    school-logo-in 0.95s cubic-bezier(0.22, 1, 0.36, 1) both,
+    school-logo-live 4.2s ease-in-out 0.95s infinite;
 }
 .school-brand-emblem.has-image .school-brand-emblem-core {
-  padding: 0;
-  background: transparent;
+  padding: 0.55rem;
+  background: #fff;
 }
 .school-brand-emblem-core img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 18px 32px #04122673);
+  border-radius: 50%;
+  filter: none;
+  transform-origin: center center;
 }
 .school-brand-copy .eyebrow {
   font-size: 0.78rem;
@@ -499,40 +546,53 @@ button, input, select, textarea { font: inherit; }
 }
 .auth-card-school {
   display: none;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.85rem;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  margin: 0 auto 1.15rem;
+  padding: 0.35rem 0 1.15rem;
   border-bottom: 1px solid #e7eef8;
+  text-align: center;
 }
 .auth-card-school-mark {
   display: grid;
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 6.5rem;
+  height: 6.5rem;
   place-items: center;
   flex: 0 0 auto;
   overflow: hidden;
-  border-radius: 1.15rem;
+  border-radius: 50%;
   color: #fff;
   background: linear-gradient(145deg, var(--school-accent, var(--blue)), color-mix(in srgb, var(--school-accent, var(--blue)) 72%, #0b1f44));
   font: 800 1.25rem/1 var(--display);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--school-accent, var(--blue)) 28%, transparent);
+  box-shadow:
+    0 14px 28px color-mix(in srgb, var(--school-accent, var(--blue)) 28%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--school-accent, var(--blue)) 12%, #fff);
+  animation:
+    school-logo-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both,
+    school-logo-live 4.2s ease-in-out 0.85s infinite;
 }
 .auth-card-school-mark.has-image {
   background: #fff;
   border: 1px solid #dbe5f4;
-  padding: 0.4rem;
-  box-shadow: 0 8px 18px #15233f12;
+  padding: 0.45rem;
+  box-shadow:
+    0 12px 26px #15233f14,
+    0 0 0 6px #eef4ff;
 }
 .auth-card-school-mark img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  border-radius: 50%;
 }
 .auth-card-school-copy {
   display: grid;
-  gap: 0.08rem;
+  gap: 0.12rem;
   min-width: 0;
+  justify-items: center;
+  text-align: center;
 }
 .auth-card-school-copy strong {
   overflow: hidden;
@@ -588,7 +648,7 @@ button, input, select, textarea { font: inherit; }
 @keyframes school-brand-in {
   from {
     opacity: 0;
-    transform: translateY(1.1rem);
+    transform: translateY(1.15rem);
   }
   to {
     opacity: 1;
@@ -598,11 +658,11 @@ button, input, select, textarea { font: inherit; }
 @keyframes school-logo-in {
   from {
     opacity: 0;
-    transform: translateY(1.25rem) scale(0.86);
+    transform: translateY(1.4rem) scale(0.72) rotate(-8deg);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1) rotate(0deg);
   }
 }
 @keyframes school-logo-live {
@@ -610,10 +670,38 @@ button, input, select, textarea { font: inherit; }
     transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-0.55rem) scale(1.045);
+    transform: translateY(-0.65rem) scale(1.04);
+  }
+}
+@keyframes school-logo-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.08);
+  }
+}
+@keyframes school-logo-ring {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .school-brand-emblem-glow,
+  .school-brand-emblem-ring,
+  .school-brand-emblem-core,
+  .auth-card-school-mark,
+  .school-brand-copy,
+  .brand-panel-school .brand-copy.school-brand-copy {
+    animation: none !important;
+  }
+}
 
 .auth-panel {
   position: relative;

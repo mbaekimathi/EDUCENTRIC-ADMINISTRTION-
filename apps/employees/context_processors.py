@@ -14,14 +14,37 @@ from .workspace import (
     workspace_view_employee,
 )
 
+_SCHOOL_PROFILE_CACHE_KEY = "school_profile_branding_v2"
+_SCHOOL_PROFILE_CACHE_TTL = 60 * 60  # 1 hour
+
 
 def school_branding(request):
     """Expose the singleton school profile on public auth pages and workspaces."""
+    cached = cache.get(_SCHOOL_PROFILE_CACHE_KEY)
+    if cached is False:
+        return {"school_profile": None}
+    if cached is not None:
+        return {"school_profile": cached}
+
     try:
         profile = SchoolProfile.objects.filter(pk=1).first()
     except Exception:
         profile = None
-    return {"school_profile": profile}
+
+    if profile is not None:
+        try:
+            from .logo_optimize import optimize_school_logo
+
+            # One-time shrink for oversized logos already on disk (no re-upload needed).
+            if optimize_school_logo(profile):
+                profile.save(update_fields=["school_logo"])
+        except Exception:
+            pass
+        cache.set(_SCHOOL_PROFILE_CACHE_KEY, profile, _SCHOOL_PROFILE_CACHE_TTL)
+        return {"school_profile": profile}
+
+    cache.set(_SCHOOL_PROFILE_CACHE_KEY, False, 300)
+    return {"school_profile": None}
 
 
 def workspace(request):

@@ -146,7 +146,7 @@ class SchoolProfileForm(UppercaseFieldsMixin, forms.ModelForm):
             "knec_centre_number": "KNEC centre number",
         }
         help_texts = {
-            "school_logo": "Shown on the sign-in page, assessment reports, and mark sheets.",
+            "school_logo": "Shown on the sign-in page, assessment reports, and mark sheets. Large uploads are resized and compressed automatically.",
         }
         widgets = {
             "official_name": forms.TextInput(
@@ -215,7 +215,7 @@ class SchoolProfileBrandingForm(UppercaseFieldsMixin, forms.ModelForm):
             "primary_color": "Primary colour",
         }
         help_texts = {
-            "school_logo": "Appears on the sign-in page, assessment reports, and mark sheets.",
+            "school_logo": "Appears on the sign-in page, assessment reports, and mark sheets. Large uploads are resized and compressed automatically.",
             "primary_color": "Used as the accent colour on the public sign-in experience.",
         }
         widgets = {

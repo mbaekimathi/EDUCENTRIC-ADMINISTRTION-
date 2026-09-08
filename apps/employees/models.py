@@ -143,19 +143,25 @@ class SchoolProfile(models.Model):
 
     @property
     def has_logo_file(self):
-        name = getattr(self.school_logo, "name", "") or ""
-        if not name:
-            return False
-        try:
-            return self.school_logo.storage.exists(name)
-        except Exception:
-            return False
+        # Avoid storage.exists() on every render — that blocks page load on slow disks.
+        return bool((getattr(self.school_logo, "name", None) or "").strip())
 
     def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
         super().save(*args, **kwargs)
+        logo_touched = update_fields is None or "school_logo" in update_fields
+        if logo_touched:
+            try:
+                from .logo_optimize import optimize_school_logo
+
+                if optimize_school_logo(self):
+                    super().save(update_fields=["school_logo"])
+            except Exception:
+                pass
         try:
             from django.core.cache import cache
 
+            cache.delete("school_profile_branding_v2")
             cache.delete("school_profile_branding_v1")
         except Exception:
             pass
