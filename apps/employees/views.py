@@ -4816,7 +4816,7 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
         rows = []
         for student in students:
             cells = []
-            scored = []
+            percents = []
             for subject in subjects:
                 current_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
                 entry = mark_lookup.get((student.id, subject.id))
@@ -4824,8 +4824,7 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                 out_of = _exam_mark_entry_out_of(entry, current_out_of)
                 percent = _marks_as_percent(raw, out_of)
                 band = _grade_band_for_percent(percent, grade_bands)
-                if percent is not None:
-                    scored.append(percent)
+                percents.append(percent)
                 cells.append(
                     {
                         "raw": raw,
@@ -4835,7 +4834,8 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                         "meaning": band.meaning if band else "",
                     }
                 )
-            mean = round(sum(scored) / len(scored)) if scored else None
+            attempted = _exam_student_attempted_percents(percents)
+            mean = _exam_mean_from_percents(percents)
             mean_band = _grade_band_for_percent(mean, grade_bands)
             rows.append(
                 {
@@ -4843,6 +4843,7 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                     "class_label": (student.class_group or "").strip() or "—",
                     "admission": student.admission_number or "—",
                     "cells": cells,
+                    "is_absent": not attempted,
                     "mean_percent": mean,
                     "overall_grade": mean_band.code if mean_band else "",
                     "overall_meaning": mean_band.meaning if mean_band else "",
@@ -4857,6 +4858,26 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                 (row["admission"] or "").casefold(),
             )
         )
+        percent_rows = [[cell.get("percent") for cell in row["cells"]] for row in rows]
+        cohort_means = _exam_cohort_subject_percent_means(percent_rows)
+        subject_means = []
+        for subject, cohort in zip(subjects, cohort_means):
+            percent_mean = cohort["percent_mean"]
+            mean_band = _grade_band_for_percent(percent_mean, grade_bands)
+            subject_means.append(
+                {
+                    "subject": subject,
+                    "percent_mean": percent_mean,
+                    "grade": mean_band.code if mean_band else "",
+                    "meaning": mean_band.meaning if mean_band else "",
+                    "count": cohort["count"],
+                }
+            )
+        valid_means = [
+            item["percent_mean"] for item in subject_means if item["percent_mean"] is not None
+        ]
+        class_mean = round(sum(valid_means) / len(valid_means)) if valid_means else None
+        class_mean_band = _grade_band_for_percent(class_mean, grade_bands)
         sheets.append(
             {
                 "exam_title": _exam_record_title(exam_item),
@@ -4864,6 +4885,10 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                 "academic_term": exam_item.academic_term,
                 "subjects": subjects,
                 "rows": rows,
+                "subject_means": subject_means,
+                "class_mean": class_mean,
+                "class_mean_grade": class_mean_band.code if class_mean_band else "",
+                "class_mean_meaning": class_mean_band.meaning if class_mean_band else "",
                 "student_count": len(rows),
                 "subject_count": len(subjects),
             }
@@ -4914,10 +4939,10 @@ def _build_individual_multi_exam_report_cards(
     for student in students:
         rows = []
         subject_means = []
-        exam_score_totals = [[] for _ in exams]
+        exam_percent_rows = [[] for _ in exams]
         for subject in subjects:
             cells = []
-            scored = []
+            subject_percents = []
             for exam_index, exam_item in enumerate(exams):
                 current_out_of = out_of_by_exam[exam_index].get(subject.id, subject.total_marks)
                 entry = marks_by_exam[exam_index].get((student.id, subject.id))
@@ -4925,9 +4950,8 @@ def _build_individual_multi_exam_report_cards(
                 out_of = _exam_mark_entry_out_of(entry, current_out_of)
                 percent = _marks_as_percent(raw, out_of)
                 band = _grade_band_for_percent(percent, grade_bands)
-                if percent is not None:
-                    scored.append(percent)
-                    exam_score_totals[exam_index].append(percent)
+                subject_percents.append(percent)
+                exam_percent_rows[exam_index].append(percent)
                 cells.append(
                     {
                         "raw": raw,
@@ -4938,7 +4962,7 @@ def _build_individual_multi_exam_report_cards(
                         "meaning": band.meaning if band else "",
                     }
                 )
-            mean = round(sum(scored) / len(scored)) if scored else None
+            mean = _exam_mean_from_percents(subject_percents)
             if mean is not None:
                 subject_means.append(mean)
             mean_band = _grade_band_for_percent(mean, grade_bands)
@@ -4955,8 +4979,8 @@ def _build_individual_multi_exam_report_cards(
             )
 
         exam_means = []
-        for scores in exam_score_totals:
-            mean_value = round(sum(scores) / len(scores)) if scores else None
+        for percents in exam_percent_rows:
+            mean_value = _exam_mean_from_percents(percents)
             mean_band = _grade_band_for_percent(mean_value, grade_bands)
             exam_means.append(
                 {
@@ -4967,16 +4991,14 @@ def _build_individual_multi_exam_report_cards(
 
         trend_means = []
         for exam_index, _exam_item in enumerate(trend_source):
-            scores = []
+            percents = []
             for subject in subjects:
                 current_out_of = trend_out_of[exam_index].get(subject.id, subject.total_marks)
                 entry = trend_marks[exam_index].get((student.id, subject.id))
                 raw = _exam_mark_entry_raw(entry)
                 out_of = _exam_mark_entry_out_of(entry, current_out_of)
-                percent = _marks_as_percent(raw, out_of)
-                if percent is not None:
-                    scores.append(percent)
-            mean_value = round(sum(scores) / len(scores)) if scores else None
+                percents.append(_marks_as_percent(raw, out_of))
+            mean_value = _exam_mean_from_percents(percents)
             mean_band = _grade_band_for_percent(mean_value, grade_bands)
             trend_means.append(
                 {
@@ -4986,6 +5008,10 @@ def _build_individual_multi_exam_report_cards(
             )
         trend = _build_individual_trend_chart(trend_columns, trend_means, rows)
 
+        # Overall mean: average of subject means among subjects the student sat.
+        # A subject with no marks across assessments is omitted (not forced to 0)
+        # unless the student sat that subject in at least one assessment — then
+        # missing assessments already counted as 0 in the subject mean.
         overall_mean = (
             round(sum(subject_means) / len(subject_means)) if subject_means else None
         )
@@ -4998,6 +5024,7 @@ def _build_individual_multi_exam_report_cards(
                 "exam_means": exam_means,
                 "rows": rows,
                 "trend": trend,
+                "is_absent": overall_mean is None,
                 "subjects_sat": len(subject_means),
                 "mean_percent": overall_mean,
                 "total_points": None,
@@ -5020,14 +5047,13 @@ def _build_exam_report_cards(students, grade_bands):
     cards = []
     for student in students:
         rows = []
-        scored = []
+        percents = []
         points_total = 0
         points_count = 0
         for cell in student.mark_cells:
             percent = cell.get("percent")
+            percents.append(percent)
             band = _grade_band_for_percent(percent, grade_bands)
-            if percent is not None:
-                scored.append(percent)
             if band is not None:
                 points_total += band.points
                 points_count += 1
@@ -5043,13 +5069,15 @@ def _build_exam_report_cards(students, grade_bands):
                     "points": band.points if band else None,
                 }
             )
-        mean = round(sum(scored) / len(scored)) if scored else None
+        attempted = _exam_student_attempted_percents(percents)
+        mean = _exam_mean_from_percents(percents)
         overall_band = _grade_band_for_percent(mean, grade_bands)
         cards.append(
             {
                 "student": student,
                 "rows": rows,
-                "subjects_sat": len(scored),
+                "is_absent": not attempted,
+                "subjects_sat": sum(1 for percent in percents if _exam_percent_is_recorded(percent)),
                 "mean_percent": mean,
                 "total_points": points_total if points_count else None,
                 "overall_grade": overall_band.code if overall_band else "",
@@ -8346,6 +8374,57 @@ def _marks_as_percent(score, out_of):
     return round((value * 100) / out_of)
 
 
+def _exam_percent_is_recorded(percent):
+    return percent not in (None, "")
+
+
+def _exam_student_attempted_percents(percents):
+    """True when the student has at least one recorded subject percent."""
+    return any(_exam_percent_is_recorded(percent) for percent in percents)
+
+
+def _exam_mean_from_percents(percents):
+    """
+    Mean policy for one student (or one assessment row):
+    - no recorded marks -> None (absent; excluded from cohort means)
+    - at least one mark -> mean across every slot, treating missing as 0
+    """
+    values = list(percents)
+    if not values or not _exam_student_attempted_percents(values):
+        return None
+    total = sum(0 if not _exam_percent_is_recorded(percent) else int(percent) for percent in values)
+    return round(total / len(values))
+
+
+def _exam_cohort_subject_percent_means(student_percent_rows):
+    """
+    Per-subject means for students who sat the assessment.
+    Absent students (no marks at all) are excluded.
+    Present students contribute 0 for subjects they did not sit.
+    """
+    present_rows = [
+        row for row in student_percent_rows if _exam_student_attempted_percents(row)
+    ]
+    if not present_rows:
+        return []
+    subject_count = len(present_rows[0])
+    means = []
+    for subject_index in range(subject_count):
+        values = [
+            0
+            if not _exam_percent_is_recorded(row[subject_index])
+            else int(row[subject_index])
+            for row in present_rows
+        ]
+        means.append(
+            {
+                "percent_mean": round(sum(values) / len(values)) if values else None,
+                "count": len(values),
+            }
+        )
+    return means
+
+
 def _exam_mark_entry_raw(entry):
     if entry is None:
         return None
@@ -8438,23 +8517,47 @@ def _percent_to_raw_marks(percent, out_of):
 
 
 def _exam_record_subject_means(students, subjects):
+    present_students = [
+        student
+        for student in students
+        if _exam_student_attempted_percents(
+            cell.get("percent") for cell in getattr(student, "mark_cells", [])
+        )
+        or any(
+            cell.get("raw") not in (None, "")
+            for cell in getattr(student, "mark_cells", [])
+        )
+    ]
     means = []
     for subject_index, subject in enumerate(subjects):
-        raw_values = []
+        percent_values = []
         out_of = None
-        for student in students:
+        for student in present_students:
+            if subject_index >= len(student.mark_cells):
+                percent_values.append(0)
+                continue
             cell = student.mark_cells[subject_index]
-            out_of = cell["out_of"]
-            raw = cell.get("raw")
-            if raw in (None, ""):
+            out_of = cell.get("out_of")
+            percent = cell.get("percent")
+            if percent in (None, ""):
+                percent = _marks_as_percent(cell.get("raw"), out_of)
+            if percent in (None, ""):
+                # Present for the assessment but missing this subject → count as 0.
+                percent_values.append(0)
                 continue
             try:
-                raw_values.append(int(raw))
+                percent_values.append(int(percent))
             except (TypeError, ValueError):
-                continue
-        if raw_values:
-            raw_mean = round(sum(raw_values) / len(raw_values))
-            percent_mean = _marks_as_percent(raw_mean, out_of)
+                percent_values.append(0)
+        if percent_values:
+            percent_mean = round(sum(percent_values) / len(percent_values))
+            try:
+                out_of_value = int(out_of) if out_of not in (None, "") else None
+            except (TypeError, ValueError):
+                out_of_value = None
+            raw_mean = (
+                round((percent_mean * out_of_value) / 100) if out_of_value else None
+            )
         else:
             raw_mean = None
             percent_mean = None
@@ -8464,26 +8567,35 @@ def _exam_record_subject_means(students, subjects):
                 "raw_mean": raw_mean,
                 "percent_mean": percent_mean,
                 "out_of": out_of,
-                "count": len(raw_values),
+                "count": len(percent_values),
             }
         )
     return means
 
 
 def _exam_record_display_column_means(students, display_columns):
+    present_students = [
+        student
+        for student in students
+        if _exam_student_attempted_percents(
+            cell.get("percent") for cell in getattr(student, "mark_cells", [])
+        )
+    ]
     means = []
     for col_index, column in enumerate(display_columns):
         values = []
-        for student in students:
+        for student in present_students:
             if col_index >= len(student.mark_cells):
+                values.append(0)
                 continue
             percent = student.mark_cells[col_index].get("percent")
             if percent in (None, ""):
+                values.append(0)
                 continue
             try:
                 values.append(int(percent))
             except (TypeError, ValueError):
-                continue
+                values.append(0)
         percent_mean = round(sum(values) / len(values)) if values else None
         means.append(
             {

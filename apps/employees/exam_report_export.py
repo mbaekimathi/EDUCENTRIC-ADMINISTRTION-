@@ -86,15 +86,41 @@ def _write_matrix_sheet(worksheet, report, sheet, mode):
         ]
         values.extend(_format_mark_cell(cell, mode) for cell in row.get("cells") or [])
         if mode == "graded":
-            mean = row.get("mean_percent")
-            grade = (row.get("overall_grade") or "").strip()
-            if mean is None:
-                values.append("")
-            elif grade:
-                values.append(f"{mean} ({grade})")
+            if row.get("is_absent"):
+                values.append("Absent")
             else:
-                values.append(str(mean))
+                mean = row.get("mean_percent")
+                grade = (row.get("overall_grade") or "").strip()
+                if mean is None:
+                    values.append("")
+                elif grade:
+                    values.append(f"{mean} ({grade})")
+                else:
+                    values.append(str(mean))
         worksheet.append(values)
+
+    subject_means = sheet.get("subject_means") or []
+    if subject_means:
+        mean_values = ["Class mean", "", ""]
+        for mean in subject_means:
+            percent = mean.get("percent_mean")
+            if percent is None:
+                mean_values.append("")
+            elif mode == "graded":
+                grade = (mean.get("grade") or "").strip()
+                mean_values.append(f"{percent} ({grade})" if grade else str(percent))
+            else:
+                mean_values.append(str(percent))
+        if mode == "graded":
+            class_mean = sheet.get("class_mean")
+            class_grade = (sheet.get("class_mean_grade") or "").strip()
+            if class_mean is None:
+                mean_values.append("")
+            elif class_grade:
+                mean_values.append(f"{class_mean} ({class_grade})")
+            else:
+                mean_values.append(str(class_mean))
+        worksheet.append(mean_values)
     _autosize_columns(worksheet)
 
 

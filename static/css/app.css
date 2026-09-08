@@ -15423,6 +15423,23 @@ body.is-reordering-academic-levels [data-normal-only] {
   border-bottom: 0;
 }
 
+.exam-matrix-list-table tr.exam-matrix-mean-row th,
+.exam-matrix-list-table tr.exam-matrix-mean-row td {
+  border-top: 1.5px solid #c5d2e8;
+  background: #eef3fb;
+  font-weight: 700;
+}
+
+.exam-matrix-list-table tr.exam-matrix-mean-row th.is-left {
+  text-align: left;
+  color: #10233f;
+  font-size: 0.72rem;
+}
+
+.exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
+  background: #e4ecff;
+}
+
 .exam-matrix-avg-col {
   background: #f3f7ff;
   box-shadow: inset 1px 0 0 #d7e2f4;
@@ -15457,6 +15474,13 @@ body.is-reordering-academic-levels [data-normal-only] {
 
 .exam-matrix-empty {
   color: #a8b4c7;
+}
+
+.exam-matrix-absent {
+  color: #9a3412;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
 }
 
 /* Exam report page — layout and responsive polish */
@@ -15757,6 +15781,28 @@ body.is-reordering-academic-levels [data-normal-only] {
 
 .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-avg-col {
   background: #e8f0ff;
+}
+
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.is-left:nth-child(1),
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.is-left:nth-child(2) {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #eef3fb;
+  box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
+}
+
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.is-left:nth-child(2) {
+  left: var(--exam-matrix-class-offset, 6.5rem);
+  z-index: 2;
+}
+
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: #e4ecff;
+  box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
 }
 
 .exam-report-page .exam-matrix-list-meta span {
@@ -16706,7 +16752,14 @@ body.is-reordering-academic-levels [data-normal-only] {
     margin: 12mm;
   }
 
-  html, body.workspace-body {
+  /* Allow multi-page print: workspace shell is viewport-locked on screen. */
+  html,
+  html:has(.workspace-body),
+  body,
+  body.workspace-body {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
     background: #fff !important;
     color: #000 !important;
   }
@@ -16724,12 +16777,19 @@ body.is-reordering-academic-levels [data-normal-only] {
   .workspace-main,
   .workspace-content,
   .exam-tool-page,
+  .exam-report-page,
   .exam-report-cards,
   .exam-report-matrices,
+  .exam-matrix-list,
+  .exam-matrix-list-wrap,
   .elr-report-sheet {
     display: block !important;
+    position: static !important;
     width: 100% !important;
     max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -16764,6 +16824,13 @@ body.is-reordering-academic-levels [data-normal-only] {
     border-radius: 0;
     box-shadow: none;
     background: #fff;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .exam-matrix-sheet + .exam-matrix-sheet {
+    break-before: page;
+    page-break-before: always;
   }
 
   .src-summary {
@@ -17247,7 +17314,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .exam-matrix-list-wrap {
-    overflow: visible;
+    overflow: visible !important;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -17255,6 +17322,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 
   .exam-matrix-list-table {
     width: 100% !important;
+    min-width: 0 !important;
     table-layout: fixed !important;
     font-size: 9pt;
   }
@@ -17265,6 +17333,33 @@ body.is-reordering-academic-levels [data-normal-only] {
 
   .exam-matrix-list-table tbody {
     display: table-row-group;
+  }
+
+  /* Sticky columns clip multi-page print in Chromium — force static flow. */
+  .exam-report-page .exam-matrix-list-table th.is-left:nth-child(1),
+  .exam-report-page .exam-matrix-list-table td.is-left:nth-child(1),
+  .exam-report-page .exam-matrix-list-table th.is-left:nth-child(2),
+  .exam-report-page .exam-matrix-list-table td.is-left:nth-child(2),
+  .exam-report-page .exam-matrix-avg-col,
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.is-left:nth-child(1),
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.is-left:nth-child(2),
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+
+  .exam-matrix-list-table tr.exam-matrix-mean-row th,
+  .exam-matrix-list-table tr.exam-matrix-mean-row td {
+    background: #eef3fb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
+    background: #e4ecff !important;
   }
 
   .exam-matrix-list-table th,

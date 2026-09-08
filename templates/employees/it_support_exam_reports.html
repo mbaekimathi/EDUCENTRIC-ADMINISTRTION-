@@ -304,7 +304,9 @@
               </td>
               {% endfor %}
               <td class="exam-matrix-mark exam-matrix-avg-col">
-                {% if row.mean_percent != None %}
+                {% if row.is_absent %}
+                  <span class="exam-matrix-absent">Absent</span>
+                {% elif row.mean_percent != None %}
                   <strong>{{ row.mean_percent }}</strong>
                   {% if row.overall_grade %}<em>{{ row.overall_grade }}</em>{% endif %}
                 {% else %}
@@ -319,6 +321,30 @@
               </td>
             </tr>
             {% endfor %}
+            {% if sheet.subject_means %}
+            <tr class="exam-matrix-mean-row">
+              <th class="is-left" scope="row">Class mean</th>
+              <td class="is-left"></td>
+              {% for mean in sheet.subject_means %}
+              <td class="exam-matrix-mark">
+                {% if mean.percent_mean != None %}
+                  <strong>{{ mean.percent_mean }}</strong>
+                  {% if mean.grade %}<em>{{ mean.grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="exam-matrix-mark exam-matrix-avg-col">
+                {% if sheet.class_mean != None %}
+                  <strong>{{ sheet.class_mean }}</strong>
+                  {% if sheet.class_mean_grade %}<em>{{ sheet.class_mean_grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -426,7 +452,15 @@
           </div>
           <div class="src-summary-item">
             <span>Mean score</span>
-            <strong>{% if card.mean_percent != None %}{{ card.mean_percent }}%{% else %}—{% endif %}</strong>
+            <strong>
+              {% if card.is_absent %}
+                Absent
+              {% elif card.mean_percent != None %}
+                {{ card.mean_percent }}%
+              {% else %}
+                —
+              {% endif %}
+            </strong>
           </div>
           <div class="src-summary-item">
             <span>Subjects assessed</span>
@@ -1005,38 +1039,269 @@
   const buttons = document.querySelectorAll("[data-print-report-card]");
   if (!buttons.length) return;
 
-  let pageStyle = null;
-
-  const preparePrint = () => {
-    const hasMatrix = Boolean(document.querySelector(".exam-report-matrices"));
-    if (!hasMatrix || pageStyle) return;
-    pageStyle = document.createElement("style");
-    pageStyle.textContent = "@page { size: A4 portrait; margin: 12mm; }";
-    document.head.appendChild(pageStyle);
-  };
-
-  const clearPrint = () => {
-    if (pageStyle) {
-      pageStyle.remove();
-      pageStyle = null;
+  const matrixPrintCss = `
+    @page { size: A4 portrait; margin: 10mm; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      background: #fff;
+      color: #10233f;
+      font: 400 11pt/1.35 "DM Sans", "Segoe UI", sans-serif;
     }
-  };
+    * { box-sizing: border-box; }
+    .no-print, .exam-matrix-scroll-hint { display: none !important; }
+    .exam-report-matrices { display: block; }
+    .exam-matrix-list {
+      display: block;
+      width: 100%;
+      margin: 0 0 8mm;
+      padding: 0;
+      border: 0;
+      background: #fff;
+      box-shadow: none;
+      break-inside: auto;
+      page-break-inside: auto;
+    }
+    .exam-matrix-sheet + .exam-matrix-sheet {
+      break-before: page;
+      page-break-before: always;
+    }
+    .exam-matrix-list-head {
+      margin: 0 0 4mm;
+      padding: 0 0 3mm;
+      border-bottom: 1.5pt solid #1b4fd6;
+    }
+    .exam-matrix-list-brand {
+      display: flex;
+      gap: 3mm;
+      align-items: flex-start;
+    }
+    .exam-matrix-list-logo,
+    .exam-matrix-list-logo-mark {
+      width: 12mm;
+      height: 12mm;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+    .exam-matrix-list-logo-mark {
+      display: grid;
+      place-items: center;
+      border-radius: 2mm;
+      background: #1b4fd6;
+      color: #fff;
+      font-weight: 800;
+    }
+    .exam-matrix-list-kicker {
+      margin: 0;
+      color: #1b4fd6;
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .exam-matrix-list-head h2 {
+      margin: 1mm 0 0;
+      font: 800 13pt/1.2 "Plus Jakarta Sans", "DM Sans", sans-serif;
+    }
+    .exam-matrix-list-motto,
+    .exam-matrix-list-contact {
+      margin: 1mm 0 0;
+      color: #4d5f7a;
+      font-size: 8pt;
+    }
+    .exam-matrix-list-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5mm 3mm;
+      margin: 2.5mm 0 0;
+      padding-top: 2mm;
+      border-top: 0.5pt solid #d5deec;
+      color: #334155;
+      font-size: 8.5pt;
+      font-weight: 650;
+    }
+    .exam-matrix-list-wrap {
+      overflow: visible !important;
+      width: 100%;
+    }
+    .exam-matrix-list-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 8.5pt;
+    }
+    .exam-matrix-list-table thead { display: table-header-group; }
+    .exam-matrix-list-table tbody { display: table-row-group; }
+    .exam-matrix-list-table tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .exam-matrix-list-table th,
+    .exam-matrix-list-table td {
+      padding: 1.1mm 0.8mm;
+      border-bottom: 0.5pt solid #c8d2e4;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 8pt;
+      line-height: 1.2;
+    }
+    .exam-matrix-list-table th.is-left,
+    .exam-matrix-list-table td.is-left { text-align: left; }
+    .exam-matrix-list-table thead th {
+      background: #eef3fb;
+      color: #334155;
+      font-size: 7pt;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .exam-matrix-list-table th.is-left:nth-child(1),
+    .exam-matrix-list-table td.is-left:nth-child(1) {
+      width: 24%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 700;
+    }
+    .exam-matrix-list-table th.is-left:nth-child(2),
+    .exam-matrix-list-table td.is-left:nth-child(2) {
+      width: 6%;
+      white-space: nowrap;
+      color: #4d5f7a;
+    }
+    .exam-matrix-list-table th:last-child,
+    .exam-matrix-list-table td:last-child { width: 6%; }
+    .exam-matrix-list-table tbody tr:nth-child(even) td {
+      background: #f8fafc;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .exam-matrix-avg-col {
+      background: #f3f7ff !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .exam-matrix-list-table tr.exam-matrix-mean-row th,
+    .exam-matrix-list-table tr.exam-matrix-mean-row td {
+      background: #eef3fb !important;
+      font-weight: 700;
+      border-top: 1pt solid #c5d2e8;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
+      background: #e4ecff !important;
+    }
+    .exam-matrix-mark strong,
+    .exam-matrix-mark em { display: block; line-height: 1.15; }
+    .exam-matrix-mark strong { font-size: 8pt; color: #10233f; }
+    .exam-matrix-mark em {
+      margin-top: 0.2mm;
+      color: #1b4fd6;
+      font-size: 6.5pt;
+      font-style: normal;
+      font-weight: 750;
+    }
+    .exam-matrix-empty { color: #a8b4c7; }
+    .exam-matrix-absent {
+      color: #9a3412;
+      font-size: 7pt;
+      font-weight: 750;
+    }
+  `;
 
-  window.addEventListener("beforeprint", preparePrint);
-  window.addEventListener("afterprint", clearPrint);
+  const printMatrixSheets = () => {
+    const source = document.querySelector(".exam-report-matrices");
+    if (!source) return false;
+
+    const clone = source.cloneNode(true);
+    clone.querySelectorAll(".no-print, .exam-matrix-scroll-hint").forEach((node) => {
+      node.remove();
+    });
+    clone.querySelectorAll("img").forEach((img) => {
+      if (img.getAttribute("src")) {
+        img.setAttribute("src", img.src);
+      }
+    });
+
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    // Keep the frame sized so the browser can paginate the full table height.
+    frame.style.cssText =
+      "position:fixed;left:0;top:0;width:210mm;height:100vh;border:0;opacity:0;pointer-events:none;z-index:-1;";
+    document.body.appendChild(frame);
+
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+      <title>Mark sheet</title>
+      <style>${matrixPrintCss}</style>
+    </head><body></body></html>`);
+    doc.close();
+    doc.body.appendChild(doc.importNode(clone, true));
+
+    let printed = false;
+    const cleanup = () => {
+      frame.remove();
+    };
+
+    const triggerPrint = () => {
+      if (printed) return;
+      printed = true;
+      try {
+        // Expand the iframe to the full document height so Chromium paginates every row.
+        const fullHeight = Math.max(
+          doc.documentElement.scrollHeight,
+          doc.body.scrollHeight,
+          source.scrollHeight || 0
+        );
+        frame.style.height = `${Math.max(fullHeight, 400)}px`;
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } finally {
+        window.setTimeout(cleanup, 1500);
+      }
+    };
+
+    const images = Array.from(doc.images || []);
+    if (!images.length) {
+      window.setTimeout(triggerPrint, 50);
+      return true;
+    }
+    let remaining = images.length;
+    const markDone = () => {
+      remaining -= 1;
+      if (remaining <= 0) triggerPrint();
+    };
+    images.forEach((img) => {
+      if (img.complete) {
+        markDone();
+        return;
+      }
+      img.addEventListener("load", markDone, { once: true });
+      img.addEventListener("error", markDone, { once: true });
+    });
+    window.setTimeout(triggerPrint, 1500);
+    return true;
+  };
 
   const printReport = () => {
+    if (printMatrixSheets()) return;
+
     const previous = document.title;
     document.title = "\u00a0";
-    preparePrint();
     const restore = () => {
       document.title = previous;
-      clearPrint();
       window.removeEventListener("afterprint", restore);
     };
     window.addEventListener("afterprint", restore);
     window.print();
-    setTimeout(restore, 1000);
+    window.setTimeout(restore, 1000);
   };
 
   buttons.forEach((button) => {

@@ -17,7 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,5 +26,16 @@ urlpatterns = [
     path('', include('apps.admissions.urls')),
 ]
 
-if settings.DEBUG or getattr(settings, "SERVE_MEDIA", False):
+# django.conf.urls.static.static() is a no-op when DEBUG=False, so logos
+# uploaded on hosted (DEBUG=False) never get a /media/ route. Serve explicitly
+# when SERVE_MEDIA is enabled (cPanel / shared hosting).
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif getattr(settings, "SERVE_MEDIA", False):
+    urlpatterns += [
+        re_path(
+            r"^media/(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]
