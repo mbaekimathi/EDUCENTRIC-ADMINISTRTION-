@@ -6,11 +6,11 @@
       <span>Your subjects</span>
     </span>
   </a>
-  <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_analytics' exam.id %}">
+  <a class="teacher-dash-action" href="{% url 'employees:teacher_exam_analytics_all' exam.id %}">
     <span class="teacher-dash-action-icon" aria-hidden="true">EA</span>
     <span class="teacher-dash-action-copy">
-      <strong>Assessment analytics</strong>
-      <span>Assessment analytics</span>
+      <strong>All classes analytics</strong>
+      <span>All classes analytics</span>
     </span>
   </a>
   {% for item in exam_subject_allocations %}

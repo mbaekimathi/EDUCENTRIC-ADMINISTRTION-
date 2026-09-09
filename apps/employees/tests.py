@@ -5606,10 +5606,10 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(response, "Subjects to teach")
         self.assertContains(response, "Mathematics")
         self.assertContains(response, "MATH")
-        self.assertContains(response, "Assessment analytics")
+        self.assertContains(response, "All classes analytics")
         self.assertContains(
             response,
-            reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id}),
+            reverse("employees:teacher_exam_analytics_all", kwargs={"exam_id": self.exam.id}),
         )
         self.assertContains(response, "Grade 1 East")
         self.assertContains(
@@ -5732,11 +5732,78 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(response, "BEN WEST")
         self.assertContains(response, "42")
         self.assertContains(response, "31")
+        self.assertContains(response, "Highest marks")
+        self.assertContains(response, "A–Z (first name)")
+        self.assertContains(response, 'aria-label="Sort students by"')
         self.assertNotContains(response, "Grade 2 West")
         self.assertContains(
             response,
             reverse("employees:teacher_exam_analytics", kwargs={"exam_id": self.exam.id}),
         )
+
+    def test_teacher_exam_analytics_sorts_students_by_highest_marks_by_default(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        parent = ParentGuardian.objects.create(
+            full_name="PAT SORT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700001020",
+            email="pat.sort@example.com",
+        )
+        high = Student.objects.create(
+            first_name="ZED",
+            last_name="HIGH",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1020",
+            class_group="G1E",
+            assessment_number="A1020",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        low = Student.objects.create(
+            first_name="ANN",
+            last_name="LOW",
+            date_of_birth="2018-02-02",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1021",
+            class_group="G1E",
+            assessment_number="A1021",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=high,
+            learning_area=self.subject,
+            marks=90,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=low,
+            learning_area=self.subject,
+            marks=40,
+        )
+
+        default_response = self.client.get(
+            reverse("employees:teacher_exam_analytics_all", kwargs={"exam_id": self.exam.id})
+        )
+        default_body = default_response.content.decode()
+        self.assertEqual(default_response.status_code, 200)
+        self.assertLess(default_body.index("ZED HIGH"), default_body.index("ANN LOW"))
+
+        name_response = self.client.get(
+            reverse("employees:teacher_exam_analytics_all", kwargs={"exam_id": self.exam.id})
+            + "?sort=name"
+        )
+        name_body = name_response.content.decode()
+        self.assertEqual(name_response.status_code, 200)
+        self.assertLess(name_body.index("ANN LOW"), name_body.index("ZED HIGH"))
+
     def test_teacher_exam_analytics_shows_selected_class_results(self):
         from apps.admissions.models import ParentGuardian, Student
 
@@ -5804,7 +5871,7 @@ class TeacherExamRecordsTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Assessment analytics")
+        self.assertContains(response, "All classes analytics")
         self.assertContains(response, "Grade 1 East")
         self.assertContains(response, "ANN EAST")
         self.assertContains(response, "42")

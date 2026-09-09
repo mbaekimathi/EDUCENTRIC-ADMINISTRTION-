@@ -1023,12 +1023,66 @@ STUDENT_SORT_NAME = "name"
 STUDENT_SORT_ADMISSION = "admission"
 STUDENT_SORT_CHOICES = {STUDENT_SORT_NAME, STUDENT_SORT_ADMISSION}
 
+ANALYTICS_SORT_MARKS = "marks"
+ANALYTICS_SORT_NAME = "name"
+ANALYTICS_SORT_CHOICES = {ANALYTICS_SORT_MARKS, ANALYTICS_SORT_NAME}
+
 
 def _resolve_student_sort(request):
     raw = (request.GET.get("sort") or request.POST.get("sort") or "").strip().lower()
     if raw in {"admission", "adm", "admission_number", "admission-no", "admission_no"}:
         return STUDENT_SORT_ADMISSION
     return STUDENT_SORT_NAME
+
+
+def _resolve_analytics_sort(request):
+    raw = (request.GET.get("sort") or "").strip().lower()
+    if raw in {"name", "az", "a-z", "a_z", "alpha", "alphabetical"}:
+        return ANALYTICS_SORT_NAME
+    return ANALYTICS_SORT_MARKS
+
+
+def _student_exam_mean_percent(student):
+    percents = [cell.get("percent") for cell in getattr(student, "mark_cells", [])]
+    return _exam_mean_from_percents(percents)
+
+
+def _sorted_analytics_students(students, sort_mode):
+    mode = sort_mode if sort_mode in ANALYTICS_SORT_CHOICES else ANALYTICS_SORT_MARKS
+    if mode == ANALYTICS_SORT_NAME:
+        return sorted(students, key=_student_name_sort_key)
+
+    def marks_key(student):
+        mean = _student_exam_mean_percent(student)
+        return (
+            mean is None,
+            -(mean if mean is not None else 0),
+            *_student_name_sort_key(student),
+        )
+
+    return sorted(students, key=marks_key)
+
+
+def _analytics_sort_template_context(request):
+    sort_mode = _resolve_analytics_sort(request)
+    params = request.GET.copy()
+    path = request.path
+
+    def build(mode):
+        query = params.copy()
+        if mode == ANALYTICS_SORT_NAME:
+            query["sort"] = ANALYTICS_SORT_NAME
+        else:
+            query.pop("sort", None)
+        encoded = query.urlencode()
+        return f"{path}?{encoded}" if encoded else path
+
+    return {
+        "analytics_sort": sort_mode,
+        "analytics_sort_is_name": sort_mode == ANALYTICS_SORT_NAME,
+        "analytics_sort_marks_url": build(ANALYTICS_SORT_MARKS),
+        "analytics_sort_name_url": build(ANALYTICS_SORT_NAME),
+    }
 
 
 def _student_sort_order_by(sort_mode, *, include_class_group=False):
@@ -3007,7 +3061,9 @@ def _exam_active_classes(generation):
     )
 
 
-def _teacher_exam_analytics_class_result(generation, academic_class, *, is_allocated=True):
+def _teacher_exam_analytics_class_result(
+    generation, academic_class, *, is_allocated=True, sort_mode=ANALYTICS_SORT_MARKS
+):
     level = academic_class.academic_level
     students = list(_students_in_academic_level(level, academic_class))
     subjects = _exam_record_subjects(level, academic_class)
@@ -3020,6 +3076,7 @@ def _teacher_exam_analytics_class_result(generation, academic_class, *, is_alloc
         _exam_record_mark_lookup(generation, students, subjects),
         out_of_by_subject,
     )
+    students = _sorted_analytics_students(students, sort_mode)
     return {
         "academic_class": academic_class,
         "students": students,
@@ -3052,11 +3109,14 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
         for academic_class in _exam_active_classes(generation)
         if academic_class.id not in allocated_ids
     ]
+    sort_mode = _resolve_analytics_sort(request)
     selected_class = None
     class_results = []
     if view_all:
         class_results = [
-            _teacher_exam_analytics_class_result(generation, academic_class, is_allocated=True)
+            _teacher_exam_analytics_class_result(
+                generation, academic_class, is_allocated=True, sort_mode=sort_mode
+            )
             for academic_class in exam_classes
         ]
     elif class_id is not None:
@@ -3068,7 +3128,10 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
             return redirect("employees:teacher_exam_analytics", exam_id=generation.id)
         class_results = [
             _teacher_exam_analytics_class_result(
-                generation, selected_class, is_allocated=is_allocated
+                generation,
+                selected_class,
+                is_allocated=is_allocated,
+                sort_mode=sort_mode,
             )
         ]
     return render(
@@ -3089,6 +3152,7 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
             "selected_class": selected_class,
             "view_all_classes": view_all,
             "class_results": class_results,
+            **(_analytics_sort_template_context(request) if class_results else {}),
         },
     )
 
@@ -4831,12 +4895,26 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                         "out_of": out_of,
                         "percent": percent,
                         "grade": band.code if band else "",
+                        "points": band.points if band else None,
                         "meaning": band.meaning if band else "",
                     }
                 )
             attempted = _exam_student_attempted_percents(percents)
             mean = _exam_mean_from_percents(percents)
             mean_band = _grade_band_for_percent(mean, grade_bands)
+            if attempted and percents:
+                filled_scores = [
+                    0 if not _exam_percent_is_recorded(percent) else int(percent)
+                    for percent in percents
+                ]
+                total_marks = sum(filled_scores)
+                total_gp = 0
+                for score in filled_scores:
+                    score_band = _grade_band_for_percent(score, grade_bands)
+                    total_gp += score_band.points if score_band is not None else 0
+            else:
+                total_marks = None
+                total_gp = None
             rows.append(
                 {
                     "student": student,
@@ -4844,6 +4922,8 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                     "admission": student.admission_number or "—",
                     "cells": cells,
                     "is_absent": not attempted,
+                    "total_marks": total_marks,
+                    "total_gp": total_gp,
                     "mean_percent": mean,
                     "overall_grade": mean_band.code if mean_band else "",
                     "overall_meaning": mean_band.meaning if mean_band else "",
@@ -4878,6 +4958,19 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
         ]
         class_mean = round(sum(valid_means) / len(valid_means)) if valid_means else None
         class_mean_band = _grade_band_for_percent(class_mean, grade_bands)
+        present_rows = [row for row in rows if not row.get("is_absent")]
+        present_totals = [
+            row["total_marks"] for row in present_rows if row.get("total_marks") is not None
+        ]
+        present_gps = [
+            row["total_gp"] for row in present_rows if row.get("total_gp") is not None
+        ]
+        class_total_marks = (
+            round(sum(present_totals) / len(present_totals)) if present_totals else None
+        )
+        class_total_gp = (
+            round(sum(present_gps) / len(present_gps)) if present_gps else None
+        )
         sheets.append(
             {
                 "exam_title": _exam_record_title(exam_item),
@@ -4889,6 +4982,8 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                 "class_mean": class_mean,
                 "class_mean_grade": class_mean_band.code if class_mean_band else "",
                 "class_mean_meaning": class_mean_band.meaning if class_mean_band else "",
+                "class_total_marks": class_total_marks,
+                "class_total_gp": class_total_gp,
                 "student_count": len(rows),
                 "subject_count": len(subjects),
             }

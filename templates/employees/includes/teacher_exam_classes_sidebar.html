@@ -10,13 +10,13 @@
 </a>
 <a
   class="workspace-nav-link {% if active_teacher_exam_nav == 'analytics' %}is-active{% endif %}"
-  href="{% url 'employees:teacher_exam_analytics' exam.id %}"
+  href="{% url 'employees:teacher_exam_analytics_all' exam.id %}"
   {% if active_teacher_exam_nav == 'analytics' %}aria-current="page"{% endif %}
 >
   <span class="workspace-nav-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
-  Assessment analytics
+  All classes analytics
 </a>
 
 <p class="workspace-nav-label">Subjects to teach</p>

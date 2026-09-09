@@ -234,17 +234,19 @@
     <section class="exam-matrix-list exam-matrix-sheet" aria-label="{{ sheet.exam_title }}">
       <header class="exam-matrix-list-head" aria-label="Mark sheet letterhead">
         <div class="exam-matrix-list-brand">
-          {% if report.school_profile and report.school_profile.school_logo %}
-          <img class="exam-matrix-list-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
-          {% else %}
-          <span class="exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
-            {% if report.school_profile %}
-              {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+          <div class="exam-matrix-list-logo-wrap">
+            {% if report.school_profile and report.school_profile.school_logo %}
+            <img class="exam-matrix-list-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
             {% else %}
-              E
+            <span class="exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
+              {% if report.school_profile %}
+                {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+              {% else %}
+                E
+              {% endif %}
+            </span>
             {% endif %}
-          </span>
-          {% endif %}
+          </div>
           <div class="exam-matrix-list-titles">
             <p class="exam-matrix-list-kicker">Academic level mark sheet</p>
             <h2 class="is-uppercase">
@@ -267,6 +269,7 @@
               {% endif %}
             {% endif %}
           </div>
+          <div class="exam-matrix-list-brand-spacer" aria-hidden="true"></div>
         </div>
         <p class="exam-matrix-list-meta">
           <span>{{ sheet.exam_title }}{% if sheet.academic_term %} · {{ sheet.academic_term.name }}{% endif %}</span>
@@ -285,7 +288,10 @@
               {% for subject in sheet.subjects %}
               <th title="{{ subject.name }}">{{ subject.code }}</th>
               {% endfor %}
-              <th class="exam-matrix-avg-col">Avg</th>
+              <th class="exam-matrix-summary-col" title="Total marks">Total</th>
+              <th class="exam-matrix-summary-col" title="Average">Avg</th>
+              <th class="exam-matrix-summary-col" title="Grade points">GP</th>
+              <th class="exam-matrix-summary-col exam-matrix-grade-col" title="Overall grade">Grade</th>
             </tr>
           </thead>
           <tbody>
@@ -303,20 +309,44 @@
                 {% endif %}
               </td>
               {% endfor %}
-              <td class="exam-matrix-mark exam-matrix-avg-col">
-                {% if row.is_absent %}
-                  <span class="exam-matrix-absent">Absent</span>
-                {% elif row.mean_percent != None %}
-                  <strong>{{ row.mean_percent }}</strong>
-                  {% if row.overall_grade %}<em>{{ row.overall_grade }}</em>{% endif %}
+              {% if row.is_absent %}
+              <td class="exam-matrix-mark exam-matrix-summary-col" colspan="4">
+                <span class="exam-matrix-absent">Absent</span>
+              </td>
+              {% else %}
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if row.total_marks != None %}
+                  <strong>{{ row.total_marks }}</strong>
                 {% else %}
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
               </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if row.mean_percent != None %}
+                  <strong>{{ row.mean_percent }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if row.total_gp != None %}
+                  <strong>{{ row.total_gp }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col">
+                {% if row.overall_grade %}
+                  <strong>{{ row.overall_grade }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              {% endif %}
             </tr>
             {% empty %}
             <tr>
-              <td class="is-left" colspan="{{ sheet.subjects|length|add:3 }}">
+              <td class="is-left" colspan="{{ sheet.subjects|length|add:6 }}">
                 No students found for this academic level.
               </td>
             </tr>
@@ -335,10 +365,30 @@
                 {% endif %}
               </td>
               {% endfor %}
-              <td class="exam-matrix-mark exam-matrix-avg-col">
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if sheet.class_total_marks != None %}
+                  <strong>{{ sheet.class_total_marks }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col">
                 {% if sheet.class_mean != None %}
                   <strong>{{ sheet.class_mean }}</strong>
-                  {% if sheet.class_mean_grade %}<em>{{ sheet.class_mean_grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if sheet.class_total_gp != None %}
+                  <strong>{{ sheet.class_total_gp }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col">
+                {% if sheet.class_mean_grade %}
+                  <strong>{{ sheet.class_mean_grade }}</strong>
                 {% else %}
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
@@ -1075,16 +1125,22 @@
       border-bottom: 1.5pt solid #1b4fd6;
     }
     .exam-matrix-list-brand {
-      display: flex;
+      display: grid;
+      grid-template-columns: 22mm minmax(0, 1fr) 22mm;
       gap: 3mm;
-      align-items: flex-start;
+      align-items: center;
+    }
+    .exam-matrix-list-logo-wrap,
+    .exam-matrix-list-brand-spacer {
+      width: 22mm;
     }
     .exam-matrix-list-logo,
     .exam-matrix-list-logo-mark {
-      width: 12mm;
-      height: 12mm;
+      width: 22mm;
+      height: 22mm;
       object-fit: contain;
       flex: 0 0 auto;
+      background: #fff;
     }
     .exam-matrix-list-logo-mark {
       display: grid;
@@ -1094,6 +1150,11 @@
       color: #fff;
       font-weight: 800;
     }
+    .exam-matrix-list-titles {
+      text-align: center;
+      justify-self: center;
+      width: 100%;
+    }
     .exam-matrix-list-kicker {
       margin: 0;
       color: #1b4fd6;
@@ -1101,16 +1162,19 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+      text-align: center;
     }
     .exam-matrix-list-head h2 {
       margin: 1mm 0 0;
       font: 800 13pt/1.2 "Plus Jakarta Sans", "DM Sans", sans-serif;
+      text-align: center;
     }
     .exam-matrix-list-motto,
     .exam-matrix-list-contact {
       margin: 1mm 0 0;
       color: #4d5f7a;
       font-size: 8pt;
+      text-align: center;
     }
     .exam-matrix-list-meta {
       display: flex;
@@ -1130,8 +1194,10 @@
     .exam-matrix-list-table {
       width: 100%;
       border-collapse: collapse;
+      border-spacing: 0;
       table-layout: fixed;
       font-size: 8.5pt;
+      border: 1.1pt solid #1e293b;
     }
     .exam-matrix-list-table thead { display: table-header-group; }
     .exam-matrix-list-table tbody { display: table-row-group; }
@@ -1141,8 +1207,8 @@
     }
     .exam-matrix-list-table th,
     .exam-matrix-list-table td {
-      padding: 1.1mm 0.8mm;
-      border-bottom: 0.5pt solid #c8d2e4;
+      padding: 1.1mm 0.7mm;
+      border: 0.6pt solid #64748b;
       text-align: center;
       vertical-align: middle;
       font-size: 8pt;
@@ -1151,18 +1217,20 @@
     .exam-matrix-list-table th.is-left,
     .exam-matrix-list-table td.is-left { text-align: left; }
     .exam-matrix-list-table thead th {
-      background: #eef3fb;
-      color: #334155;
+      background: #e8eef8;
+      color: #1e293b;
       font-size: 7pt;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
+      border: 0.7pt solid #475569;
+      border-bottom: 1pt solid #1e293b;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .exam-matrix-list-table th.is-left:nth-child(1),
     .exam-matrix-list-table td.is-left:nth-child(1) {
-      width: 24%;
+      width: 22%;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1172,30 +1240,43 @@
     .exam-matrix-list-table td.is-left:nth-child(2) {
       width: 6%;
       white-space: nowrap;
-      color: #4d5f7a;
+      color: #334155;
     }
     .exam-matrix-list-table th:last-child,
-    .exam-matrix-list-table td:last-child { width: 6%; }
+    .exam-matrix-list-table td:last-child { width: 5.5%; }
+    .exam-matrix-summary-col,
+    .exam-matrix-grade-col,
+    .exam-matrix-avg-col {
+      background: #eef3fb !important;
+      border-left: 0.9pt solid #334155 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      font-weight: 700;
+    }
+    .exam-matrix-list-table thead th.exam-matrix-summary-col,
+    .exam-matrix-list-table thead th.exam-matrix-grade-col,
+    .exam-matrix-list-table thead th.exam-matrix-avg-col {
+      border-left: 0.9pt solid #1e293b !important;
+    }
     .exam-matrix-list-table tbody tr:nth-child(even) td {
       background: #f8fafc;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .exam-matrix-avg-col {
-      background: #f3f7ff !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
     .exam-matrix-list-table tr.exam-matrix-mean-row th,
     .exam-matrix-list-table tr.exam-matrix-mean-row td {
-      background: #eef3fb !important;
+      background: #e2eaf7 !important;
       font-weight: 700;
-      border-top: 1pt solid #c5d2e8;
+      border-top: 1.1pt solid #1e293b !important;
+      border: 0.7pt solid #475569;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-summary-col,
+    .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col,
     .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
-      background: #e4ecff !important;
+      background: #dbe7f8 !important;
+      border-left: 0.9pt solid #1e293b !important;
     }
     .exam-matrix-mark strong,
     .exam-matrix-mark em { display: block; line-height: 1.15; }

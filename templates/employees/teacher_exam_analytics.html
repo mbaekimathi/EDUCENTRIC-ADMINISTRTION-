@@ -11,19 +11,41 @@
 {% include "employees/includes/nav/teacher_exam_classes.html" %}
 {% if selected_class or view_all_classes %}
 <div class="settings-category-list exam-analytics-page">
-  {% if view_all_classes %}
-  <div class="teacher-page-bar" aria-label="All classes analytics">
+  <div class="teacher-page-bar" aria-label="Assessment analytics filters">
     <div class="teacher-page-bar-stats">
+      {% if view_all_classes %}
       <div class="teacher-page-bar-stat">
         <strong>{{ class_results|length }}</strong>
         <span>Class{{ class_results|length|pluralize }}</span>
       </div>
+      {% elif selected_class %}
+      <div class="teacher-page-bar-stat">
+        <strong>{{ selected_class.display_label }}</strong>
+        <span>Selected class</span>
+      </div>
+      {% endif %}
     </div>
     <div class="teacher-page-bar-actions">
+      <label class="student-sort-toggle">
+        <span class="student-sort-label">Sort by</span>
+        <select
+          class="student-sort-select"
+          aria-label="Sort students by"
+          onchange="window.location.href=this.value"
+        >
+          <option
+            value="{{ analytics_sort_marks_url }}"
+            {% if not analytics_sort_is_name %}selected{% endif %}
+          >Highest marks</option>
+          <option
+            value="{{ analytics_sort_name_url }}"
+            {% if analytics_sort_is_name %}selected{% endif %}
+          >A–Z (first name)</option>
+        </select>
+      </label>
       <a class="ghost-button" href="{% url 'employees:teacher_exam_analytics' exam.id %}">Change class</a>
     </div>
   </div>
-  {% endif %}
 
   {% for entry in class_results %}
   <section class="exam-record-sheet" aria-label="{{ entry.academic_class.display_label }} results">
@@ -39,9 +61,6 @@
       <div class="exam-record-bar-tools">
         {% if entry.is_allocated %}
         <a class="exam-back-link" href="{% url 'employees:teacher_exam_record_class' exam.id entry.academic_class.id %}">Open class sheet</a>
-        {% endif %}
-        {% if selected_class %}
-        <a class="exam-back-link" href="{% url 'employees:teacher_exam_analytics' exam.id %}">Change class</a>
         {% endif %}
       </div>
     </header>

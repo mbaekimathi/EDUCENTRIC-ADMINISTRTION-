@@ -75,7 +75,9 @@ def _write_matrix_sheet(worksheet, report, sheet, mode):
         for subject in sheet.get("subjects") or []
     )
     if mode == "graded":
-        header.append("Average")
+        header.extend(["Total", "Average", "GP", "Grade"])
+    else:
+        header.extend(["Total", "Average"])
     worksheet.append(header)
     for row in sheet.get("rows") or []:
         student = row.get("student")
@@ -85,18 +87,18 @@ def _write_matrix_sheet(worksheet, report, sheet, mode):
             row.get("admission") or "",
         ]
         values.extend(_format_mark_cell(cell, mode) for cell in row.get("cells") or [])
-        if mode == "graded":
-            if row.get("is_absent"):
-                values.append("Absent")
-            else:
-                mean = row.get("mean_percent")
+        if row.get("is_absent"):
+            values.extend(["Absent", "", "", ""] if mode == "graded" else ["Absent", ""])
+        else:
+            total = row.get("total_marks")
+            mean = row.get("mean_percent")
+            values.append("" if total is None else str(total))
+            values.append("" if mean is None else str(mean))
+            if mode == "graded":
+                gp = row.get("total_gp")
                 grade = (row.get("overall_grade") or "").strip()
-                if mean is None:
-                    values.append("")
-                elif grade:
-                    values.append(f"{mean} ({grade})")
-                else:
-                    values.append(str(mean))
+                values.append("" if gp is None else str(gp))
+                values.append(grade)
         worksheet.append(values)
 
     subject_means = sheet.get("subject_means") or []
@@ -111,15 +113,15 @@ def _write_matrix_sheet(worksheet, report, sheet, mode):
                 mean_values.append(f"{percent} ({grade})" if grade else str(percent))
             else:
                 mean_values.append(str(percent))
+        class_total = sheet.get("class_total_marks")
+        class_mean = sheet.get("class_mean")
+        mean_values.append("" if class_total is None else str(class_total))
+        mean_values.append("" if class_mean is None else str(class_mean))
         if mode == "graded":
-            class_mean = sheet.get("class_mean")
+            class_gp = sheet.get("class_total_gp")
             class_grade = (sheet.get("class_mean_grade") or "").strip()
-            if class_mean is None:
-                mean_values.append("")
-            elif class_grade:
-                mean_values.append(f"{class_mean} ({class_grade})")
-            else:
-                mean_values.append(str(class_mean))
+            mean_values.append("" if class_gp is None else str(class_gp))
+            mean_values.append(class_grade)
         worksheet.append(mean_values)
     _autosize_columns(worksheet)
 
