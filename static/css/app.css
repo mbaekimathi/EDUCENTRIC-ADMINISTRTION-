@@ -15458,7 +15458,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  table-layout: fixed;
+  table-layout: auto;
   font-size: 0.78rem;
   border: 1px solid #94a3b8;
 }
@@ -15488,33 +15488,55 @@ body.is-reordering-academic-levels [data-normal-only] {
   border-bottom: 1.5px solid #334155;
 }
 
-.exam-matrix-list-table th.is-left:nth-child(1),
-.exam-matrix-list-table td.is-left:nth-child(1) {
-  width: 24%;
-  max-width: 24%;
+.exam-matrix-list-table th.exam-matrix-pos-col,
+.exam-matrix-list-table td.exam-matrix-pos-col {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  font-weight: 800;
+  color: #10233f;
+  white-space: nowrap;
+}
+
+.exam-matrix-list-table th.exam-matrix-learner,
+.exam-matrix-list-table td.exam-matrix-learner {
+  width: 12rem;
+  min-width: 10rem;
+  max-width: 14rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: normal;
 }
 
-.exam-matrix-list-table th.is-left:nth-child(2),
-.exam-matrix-list-table td.is-left:nth-child(2) {
-  width: 6%;
+.exam-matrix-list-table.has-class-col th.exam-matrix-class,
+.exam-matrix-list-table.has-class-col td.exam-matrix-class {
+  width: 4.75rem;
+  min-width: 4.25rem;
+  max-width: 5.5rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.exam-matrix-list-table th:not(.is-left),
-.exam-matrix-list-table td:not(.is-left) {
-  width: 4.5%;
+.exam-matrix-list-table th:not(.is-left):not(.exam-matrix-pos-col):not(.exam-matrix-summary-col):not(.exam-matrix-grade-col),
+.exam-matrix-list-table td:not(.is-left):not(.exam-matrix-pos-col):not(.exam-matrix-summary-col):not(.exam-matrix-grade-col) {
+  min-width: 3.6rem;
+  width: 4rem;
   padding-left: 0.15rem;
   padding-right: 0.15rem;
   font-size: 0.72rem;
 }
 
-.exam-matrix-list-table th:last-child,
-.exam-matrix-list-table td:last-child {
-  width: 5%;
+.exam-matrix-list-table th.exam-matrix-summary-col,
+.exam-matrix-list-table td.exam-matrix-summary-col,
+.exam-matrix-list-table th.exam-matrix-grade-col,
+.exam-matrix-list-table td.exam-matrix-grade-col {
+  min-width: 3.4rem;
+  width: 3.6rem;
+  white-space: nowrap;
 }
 
 .exam-matrix-learner {
@@ -15578,10 +15600,15 @@ body.is-reordering-academic-levels [data-normal-only] {
   background: #e4ecff;
 }
 
+.exam-matrix-mark {
+  white-space: nowrap;
+}
+
 .exam-matrix-mark strong,
 .exam-matrix-mark em {
-  display: block;
+  display: inline;
   line-height: 1.2;
+  vertical-align: baseline;
 }
 
 .exam-matrix-mark strong {
@@ -15590,7 +15617,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 }
 
 .exam-matrix-mark em {
-  margin-top: 0.06rem;
+  margin-left: 0.22em;
   color: #1b4fd6;
   font-size: 0.62rem;
   font-style: normal;
@@ -15887,7 +15914,11 @@ body.is-reordering-academic-levels [data-normal-only] {
 }
 
 .exam-report-page .exam-matrix-list-table {
-  min-width: 36rem;
+  --exam-matrix-pos-w: 2.75rem;
+  --exam-matrix-learner-w: 12rem;
+  --exam-matrix-class-w: 4.75rem;
+  min-width: 100%;
+  width: max-content;
   border: 1px solid #64748b;
 }
 
@@ -15896,37 +15927,49 @@ body.is-reordering-academic-levels [data-normal-only] {
   border: 1px solid #94a3b8;
 }
 
-.exam-report-page .exam-matrix-list-table th.is-left:nth-child(1),
-.exam-report-page .exam-matrix-list-table td.is-left:nth-child(1) {
+.exam-report-page .exam-matrix-list-table th.exam-matrix-pos-col,
+.exam-report-page .exam-matrix-list-table td.exam-matrix-pos-col {
   position: sticky;
   left: 0;
+  z-index: 3;
+  background: #fff;
+  box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
+}
+
+.exam-report-page .exam-matrix-list-table th.exam-matrix-learner,
+.exam-report-page .exam-matrix-list-table td.exam-matrix-learner {
+  position: sticky;
+  left: var(--exam-matrix-pos-w);
   z-index: 3;
   background: #fff;
   box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.28);
 }
 
-.exam-report-page .exam-matrix-list-table th.is-left:nth-child(2),
-.exam-report-page .exam-matrix-list-table td.is-left:nth-child(2) {
+.exam-report-page .exam-matrix-list-table.has-class-col th.exam-matrix-class,
+.exam-report-page .exam-matrix-list-table.has-class-col td.exam-matrix-class {
   position: sticky;
-  left: var(--exam-matrix-class-offset, 6.5rem);
+  left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
   z-index: 2;
   background: #fff;
   box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
 }
 
-.exam-report-page .exam-matrix-list-table thead th.is-left:nth-child(1),
-.exam-report-page .exam-matrix-list-table thead th.is-left:nth-child(2) {
+.exam-report-page .exam-matrix-list-table thead th.exam-matrix-pos-col,
+.exam-report-page .exam-matrix-list-table thead th.exam-matrix-learner,
+.exam-report-page .exam-matrix-list-table.has-class-col thead th.exam-matrix-class {
   z-index: 4;
   background: linear-gradient(180deg, #f4f7fc 0%, #e9f0fb 100%);
 }
 
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.is-left:nth-child(1),
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.is-left:nth-child(2) {
+.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-pos-col,
+.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-learner,
+.exam-report-page .exam-matrix-list-table.has-class-col tbody tr:nth-child(even) td.exam-matrix-class {
   background: #f8fafc;
 }
 
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.is-left:nth-child(1),
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.is-left:nth-child(2) {
+.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-pos-col,
+.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-learner,
+.exam-report-page .exam-matrix-list-table.has-class-col tbody tr:hover td.exam-matrix-class {
   background: #eef4ff;
 }
 
@@ -15960,17 +16003,25 @@ body.is-reordering-academic-levels [data-normal-only] {
   background: #e8f0ff;
 }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.is-left:nth-child(1),
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.is-left:nth-child(2) {
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col,
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner,
+.exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
   position: sticky;
-  left: 0;
   z-index: 3;
   background: #eef3fb;
   box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
 }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.is-left:nth-child(2) {
-  left: var(--exam-matrix-class-offset, 6.5rem);
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col {
+  left: 0;
+}
+
+.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner {
+  left: var(--exam-matrix-pos-w);
+}
+
+.exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
+  left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
   z-index: 2;
 }
 
@@ -16656,12 +16707,18 @@ body.is-reordering-academic-levels [data-normal-only] {
   font-weight: 700;
 }
 
+.src-mark,
+.src-exam-cell {
+  white-space: nowrap;
+}
+
 .src-mark strong,
 .src-mark em,
 .src-exam-cell strong,
 .src-exam-cell em {
-  display: block;
+  display: inline;
   line-height: 1.2;
+  vertical-align: baseline;
 }
 
 .src-mark strong,
@@ -16672,7 +16729,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 
 .src-mark em,
 .src-exam-cell em {
-  margin-top: 0.06rem;
+  margin-left: 0.22em;
   color: #1b4fd6;
   font-size: 0.64rem;
   font-style: normal;
@@ -17655,8 +17712,9 @@ body.is-reordering-academic-levels [data-normal-only] {
 
   .exam-matrix-mark strong,
   .exam-matrix-mark em {
-    display: block;
+    display: inline;
     line-height: 1.15;
+    vertical-align: baseline;
   }
 
   .exam-matrix-mark strong {
@@ -17664,7 +17722,8 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .exam-matrix-mark em {
-    margin-top: 0.04rem;
+    margin-left: 0.18em;
+    margin-top: 0;
     color: #1b4fd6;
     font-size: 7pt;
   }

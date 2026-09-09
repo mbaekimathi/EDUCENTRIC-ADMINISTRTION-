@@ -4744,6 +4744,7 @@ def _exam_report_selection(request):
         "kind_label": kind_label,
         "scope_label": scope_label,
         "report_kind": report_kind,
+        "level_scope": level_scope,
         "level": level,
         "selected_class": selected_class,
         "selected_student": selected_student,
@@ -4754,6 +4755,8 @@ def _exam_report_selection(request):
         "report_cards": report_cards,
         "matrix_sheets": matrix_sheets,
         "is_matrix": report_kind == "academic_level",
+        # Whole grade only: Class column helps distinguish streams. Per-class hides it.
+        "show_class_column": report_kind == "academic_level" and level_scope == "all_level",
         "grade_bands": grade_bands,
         "school_profile": school_profile,
         "class_teacher_name": class_teacher_name,
@@ -4938,6 +4941,20 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                 (row["admission"] or "").casefold(),
             )
         )
+        # Competition ranking: ties share a position; next rank skips by tie count (1,2,2,4).
+        present_index = 0
+        last_mean = object()
+        last_position = None
+        for row in rows:
+            if row.get("is_absent") or row.get("mean_percent") is None:
+                row["position"] = None
+                continue
+            present_index += 1
+            mean = row["mean_percent"]
+            if mean != last_mean:
+                last_position = present_index
+                last_mean = mean
+            row["position"] = last_position
         percent_rows = [[cell.get("percent") for cell in row["cells"]] for row in rows]
         cohort_means = _exam_cohort_subject_percent_means(percent_rows)
         subject_means = []

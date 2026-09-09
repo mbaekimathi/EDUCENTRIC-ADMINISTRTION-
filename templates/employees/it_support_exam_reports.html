@@ -280,25 +280,36 @@
       </header>
       <div class="exam-matrix-list-wrap" tabindex="0">
         <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
-        <table class="exam-matrix-list-table">
+        <table class="exam-matrix-list-table{% if report.show_class_column %} has-class-col{% endif %}">
           <thead>
             <tr>
-              <th class="is-left">Learner</th>
-              <th class="is-left">Class</th>
+              <th class="exam-matrix-pos-col" title="Position">#</th>
+              <th class="is-left exam-matrix-learner">Learner</th>
+              {% if report.show_class_column %}
+              <th class="is-left exam-matrix-class">Class</th>
+              {% endif %}
               {% for subject in sheet.subjects %}
               <th title="{{ subject.name }}">{{ subject.code }}</th>
               {% endfor %}
               <th class="exam-matrix-summary-col" title="Total marks">Total</th>
               <th class="exam-matrix-summary-col" title="Average">Avg</th>
-              <th class="exam-matrix-summary-col" title="Grade points">GP</th>
               <th class="exam-matrix-summary-col exam-matrix-grade-col" title="Overall grade">Grade</th>
             </tr>
           </thead>
           <tbody>
             {% for row in sheet.rows %}
             <tr>
+              <td class="exam-matrix-pos-col">
+                {% if row.position != None %}
+                  <strong>{{ row.position }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
               <td class="is-left exam-matrix-learner">{{ row.student.display_name }}</td>
+              {% if report.show_class_column %}
               <td class="is-left exam-matrix-class">{{ row.class_label }}</td>
+              {% endif %}
               {% for cell in row.cells %}
               <td class="exam-matrix-mark">
                 {% if cell.percent != None %}
@@ -310,7 +321,7 @@
               </td>
               {% endfor %}
               {% if row.is_absent %}
-              <td class="exam-matrix-mark exam-matrix-summary-col" colspan="4">
+              <td class="exam-matrix-mark exam-matrix-summary-col" colspan="3">
                 <span class="exam-matrix-absent">Absent</span>
               </td>
               {% else %}
@@ -328,13 +339,6 @@
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
               </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col">
-                {% if row.total_gp != None %}
-                  <strong>{{ row.total_gp }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">—</span>
-                {% endif %}
-              </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col">
                 {% if row.overall_grade %}
                   <strong>{{ row.overall_grade }}</strong>
@@ -346,15 +350,18 @@
             </tr>
             {% empty %}
             <tr>
-              <td class="is-left" colspan="{{ sheet.subjects|length|add:6 }}">
+              <td class="is-left" colspan="{% if report.show_class_column %}{{ sheet.subjects|length|add:6 }}{% else %}{{ sheet.subjects|length|add:5 }}{% endif %}">
                 No students found for this academic level.
               </td>
             </tr>
             {% endfor %}
             {% if sheet.subject_means %}
             <tr class="exam-matrix-mean-row">
-              <th class="is-left" scope="row">Class mean</th>
-              <td class="is-left"></td>
+              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">—</span></td>
+              <th class="is-left exam-matrix-learner" scope="row">Class mean</th>
+              {% if report.show_class_column %}
+              <td class="is-left exam-matrix-class"></td>
+              {% endif %}
               {% for mean in sheet.subject_means %}
               <td class="exam-matrix-mark">
                 {% if mean.percent_mean != None %}
@@ -375,13 +382,6 @@
               <td class="exam-matrix-mark exam-matrix-summary-col">
                 {% if sheet.class_mean != None %}
                   <strong>{{ sheet.class_mean }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">—</span>
-                {% endif %}
-              </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col">
-                {% if sheet.class_total_gp != None %}
-                  <strong>{{ sheet.class_total_gp }}</strong>
                 {% else %}
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
@@ -1228,22 +1228,33 @@
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .exam-matrix-list-table th.is-left:nth-child(1),
-    .exam-matrix-list-table td.is-left:nth-child(1) {
+    .exam-matrix-list-table th.is-left.exam-matrix-learner,
+    .exam-matrix-list-table td.is-left.exam-matrix-learner,
+    .exam-matrix-list-table th.is-left:nth-child(2),
+    .exam-matrix-list-table td.is-left:nth-child(2) {
       width: 22%;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-weight: 700;
     }
-    .exam-matrix-list-table th.is-left:nth-child(2),
-    .exam-matrix-list-table td.is-left:nth-child(2) {
+    .exam-matrix-list-table.has-class-col th.is-left.exam-matrix-class,
+    .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class,
+    .exam-matrix-list-table.has-class-col th.is-left:nth-child(3),
+    .exam-matrix-list-table.has-class-col td.is-left:nth-child(3) {
       width: 6%;
       white-space: nowrap;
       color: #334155;
+      font-weight: 650;
     }
     .exam-matrix-list-table th:last-child,
     .exam-matrix-list-table td:last-child { width: 5.5%; }
+    .exam-matrix-list-table th.exam-matrix-pos-col,
+    .exam-matrix-list-table td.exam-matrix-pos-col {
+      width: 4%;
+      font-weight: 800;
+      color: #10233f;
+    }
     .exam-matrix-summary-col,
     .exam-matrix-grade-col,
     .exam-matrix-avg-col {
@@ -1278,11 +1289,18 @@
       background: #dbe7f8 !important;
       border-left: 0.9pt solid #1e293b !important;
     }
+    .exam-matrix-mark {
+      white-space: nowrap;
+    }
     .exam-matrix-mark strong,
-    .exam-matrix-mark em { display: block; line-height: 1.15; }
+    .exam-matrix-mark em {
+      display: inline;
+      line-height: 1.15;
+      vertical-align: baseline;
+    }
     .exam-matrix-mark strong { font-size: 8pt; color: #10233f; }
     .exam-matrix-mark em {
-      margin-top: 0.2mm;
+      margin-left: 0.18em;
       color: #1b4fd6;
       font-size: 6.5pt;
       font-style: normal;

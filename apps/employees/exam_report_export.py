@@ -69,41 +69,49 @@ def _write_meta_rows(worksheet, report, sheet_title):
 
 def _write_matrix_sheet(worksheet, report, sheet, mode):
     _write_meta_rows(worksheet, report, sheet.get("exam_title") or "Exam marks")
-    header = ["Learner", "Class", "Admission no."]
+    show_class = bool(report.get("show_class_column"))
+    header = ["Pos", "Learner"]
+    if show_class:
+        header.append("Class")
+    header.append("Admission no.")
     header.extend(
         (subject.code or subject.name)
         for subject in sheet.get("subjects") or []
     )
     if mode == "graded":
-        header.extend(["Total", "Average", "GP", "Grade"])
+        header.extend(["Total", "Average", "Grade"])
     else:
         header.extend(["Total", "Average"])
     worksheet.append(header)
     for row in sheet.get("rows") or []:
         student = row.get("student")
+        position = row.get("position")
         values = [
+            "" if position is None else str(position),
             student.display_name if student is not None else "",
-            row.get("class_label") or "",
-            row.get("admission") or "",
         ]
+        if show_class:
+            values.append(row.get("class_label") or "")
+        values.append(row.get("admission") or "")
         values.extend(_format_mark_cell(cell, mode) for cell in row.get("cells") or [])
         if row.get("is_absent"):
-            values.extend(["Absent", "", "", ""] if mode == "graded" else ["Absent", ""])
+            values.extend(["Absent", "", ""] if mode == "graded" else ["Absent", ""])
         else:
             total = row.get("total_marks")
             mean = row.get("mean_percent")
             values.append("" if total is None else str(total))
             values.append("" if mean is None else str(mean))
             if mode == "graded":
-                gp = row.get("total_gp")
                 grade = (row.get("overall_grade") or "").strip()
-                values.append("" if gp is None else str(gp))
                 values.append(grade)
         worksheet.append(values)
 
     subject_means = sheet.get("subject_means") or []
     if subject_means:
-        mean_values = ["Class mean", "", ""]
+        mean_values = ["", "Class mean"]
+        if show_class:
+            mean_values.append("")
+        mean_values.append("")
         for mean in subject_means:
             percent = mean.get("percent_mean")
             if percent is None:
@@ -118,9 +126,7 @@ def _write_matrix_sheet(worksheet, report, sheet, mode):
         mean_values.append("" if class_total is None else str(class_total))
         mean_values.append("" if class_mean is None else str(class_mean))
         if mode == "graded":
-            class_gp = sheet.get("class_total_gp")
             class_grade = (sheet.get("class_mean_grade") or "").strip()
-            mean_values.append("" if class_gp is None else str(class_gp))
             mean_values.append(class_grade)
         worksheet.append(mean_values)
     _autosize_columns(worksheet)
