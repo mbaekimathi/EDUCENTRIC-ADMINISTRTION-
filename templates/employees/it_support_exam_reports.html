@@ -204,20 +204,40 @@
     </div>
     <div class="exam-report-toolbar-actions">
       <div class="exam-report-export-group" aria-label="Export options">
-        <a
-          class="ghost-button exam-report-export-btn"
-          href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_mode=raw"
-        >
-          <span class="exam-export-label exam-export-label-full">Export Excel (raw marks)</span>
-          <span class="exam-export-label exam-export-label-short" aria-hidden="true">Raw Excel</span>
-        </a>
-        <a
-          class="ghost-button exam-report-export-btn"
-          href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_mode=graded"
-        >
-          <span class="exam-export-label exam-export-label-full">Export Excel (graded)</span>
-          <span class="exam-export-label exam-export-label-short" aria-hidden="true">Graded Excel</span>
-        </a>
+        <details class="exam-report-export-menu">
+          <summary class="ghost-button exam-report-export-btn">
+            <span class="exam-export-label exam-export-label-full">Export Excel</span>
+            <span class="exam-export-label exam-export-label-short" aria-hidden="true">Excel</span>
+            <span class="exam-report-export-caret" aria-hidden="true"></span>
+          </summary>
+          <div class="exam-report-export-menu-panel" role="menu">
+            <a
+              role="menuitem"
+              href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_format=excel&amp;export_mode=raw"
+            >Raw marks</a>
+            <a
+              role="menuitem"
+              href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_format=excel&amp;export_mode=graded"
+            >With grades</a>
+          </div>
+        </details>
+        <details class="exam-report-export-menu">
+          <summary class="ghost-button exam-report-export-btn">
+            <span class="exam-export-label exam-export-label-full">Download PDF</span>
+            <span class="exam-export-label exam-export-label-short" aria-hidden="true">PDF</span>
+            <span class="exam-report-export-caret" aria-hidden="true"></span>
+          </summary>
+          <div class="exam-report-export-menu-panel" role="menu">
+            <a
+              role="menuitem"
+              href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_format=pdf&amp;export_mode=raw"
+            >Raw marks</a>
+            <a
+              role="menuitem"
+              href="{% url exam_report_export_url %}?{{ request.GET.urlencode }}&amp;export_format=pdf&amp;export_mode=graded"
+            >With grades</a>
+          </div>
+        </details>
       </div>
       <button type="button" class="primary-button exam-report-print-btn" data-print-report-card>
         {% if report.is_matrix %}Print report{% else %}Print report card{{ report.student_count|pluralize }}{% endif %}
@@ -289,11 +309,11 @@
               <th class="is-left exam-matrix-class">Class</th>
               {% endif %}
               {% for subject in sheet.subjects %}
-              <th title="{{ subject.name }}">{{ subject.code }}</th>
+              <th title="{% if subject.component_codes %}{{ subject.name }} ({{ subject.component_codes }}){% else %}{{ subject.name }}{% endif %}">{{ subject.code }}</th>
               {% endfor %}
               <th class="exam-matrix-summary-col" title="Total marks">Total</th>
               <th class="exam-matrix-summary-col" title="Average">Avg</th>
-              <th class="exam-matrix-summary-col exam-matrix-grade-col" title="Overall grade">Grade</th>
+              <th class="exam-matrix-summary-col exam-matrix-grade-col export-grade-col" title="Overall grade">Grade</th>
             </tr>
           </thead>
           <tbody>
@@ -308,13 +328,12 @@
               </td>
               <td class="is-left exam-matrix-learner">{{ row.student.display_name }}</td>
               {% if report.show_class_column %}
-              <td class="is-left exam-matrix-class">{{ row.class_label }}</td>
+              <td class="is-left exam-matrix-class is-tone-{{ row.class_tone|default:'a' }}">{{ row.class_label }}</td>
               {% endif %}
               {% for cell in row.cells %}
               <td class="exam-matrix-mark">
                 {% if cell.percent != None %}
-                  <strong>{{ cell.percent }}</strong>
-                  {% if cell.grade %}<em>{{ cell.grade }}</em>{% endif %}
+                  <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
                 {% else %}
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
@@ -339,7 +358,7 @@
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
               </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col">
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
                 {% if row.overall_grade %}
                   <strong>{{ row.overall_grade }}</strong>
                 {% else %}
@@ -365,8 +384,7 @@
               {% for mean in sheet.subject_means %}
               <td class="exam-matrix-mark">
                 {% if mean.percent_mean != None %}
-                  <strong>{{ mean.percent_mean }}</strong>
-                  {% if mean.grade %}<em>{{ mean.grade }}</em>{% endif %}
+                  <strong>{{ mean.percent_mean }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
                 {% else %}
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
@@ -386,7 +404,7 @@
                   <span class="exam-matrix-empty">—</span>
                 {% endif %}
               </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col">
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
                 {% if sheet.class_mean_grade %}
                   <strong>{{ sheet.class_mean_grade }}</strong>
                 {% else %}
@@ -496,7 +514,7 @@
         </header>
 
         <section class="src-summary" aria-label="Performance summary">
-          <div class="src-summary-item{% if card.overall_grade %} src-summary-grade{% endif %}">
+          <div class="src-summary-item{% if card.overall_grade %} src-summary-grade{% endif %} export-grade-block">
             <span>Overall grade</span>
             <strong>{% if card.overall_grade %}{{ card.overall_grade }}{% else %}—{% endif %}</strong>
           </div>
@@ -548,12 +566,11 @@
               <tbody>
                 {% for row in card.rows %}
                 <tr>
-                  <td class="is-left src-subject" title="{{ row.subject.name }}">{% if row.subject.code %}{{ row.subject.code }}{% else %}{{ row.subject.name }}{% endif %}</td>
+                  <td class="is-left src-subject" title="{% if row.subject.component_codes %}{{ row.subject.name }} ({{ row.subject.component_codes }}){% else %}{{ row.subject.name }}{% endif %}">{% if row.subject.code %}{{ row.subject.code }}{% else %}{{ row.subject.name }}{% endif %}</td>
                   {% for cell in row.cells %}
                   <td class="src-mark">
                     {% if cell.percent != None %}
-                      <strong>{{ cell.percent }}</strong>
-                      {% if cell.grade %}<em>{{ cell.grade }}</em>{% endif %}
+                      <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
                     {% else %}
                       <span class="src-empty">—</span>
                     {% endif %}
@@ -561,8 +578,7 @@
                   {% endfor %}
                   <td class="src-mark src-avg-col">
                     {% if row.mean_percent != None %}
-                      <strong>{{ row.mean_percent }}</strong>
-                      {% if row.grade %}<em>{{ row.grade }}</em>{% endif %}
+                      <strong>{{ row.mean_percent }}</strong>{% if row.grade %}<em class="export-grade">{{ row.grade }}</em>{% endif %}
                     {% else %}
                       <span class="src-empty">—</span>
                     {% endif %}
@@ -582,8 +598,7 @@
                   {% for mean in card.exam_means %}
                   <th class="src-mark">
                     {% if mean.percent != None %}
-                      <strong>{{ mean.percent }}</strong>
-                      {% if mean.grade %}<em>{{ mean.grade }}</em>{% endif %}
+                      <strong>{{ mean.percent }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
                     {% else %}
                       —
                     {% endif %}
@@ -591,8 +606,7 @@
                   {% endfor %}
                   <th class="src-mark src-avg-col">
                     {% if card.mean_percent != None %}
-                      <strong>{{ card.mean_percent }}</strong>
-                      {% if card.overall_grade %}<em>{{ card.overall_grade }}</em>{% endif %}
+                      <strong>{{ card.mean_percent }}</strong>{% if card.overall_grade %}<em class="export-grade">{{ card.overall_grade }}</em>{% endif %}
                     {% else %}
                       —
                     {% endif %}
@@ -625,7 +639,7 @@
               <tbody>
                 {% for row in card.rows %}
                 <tr>
-                  <td class="is-left src-subject" title="{{ row.subject.name }}">{% if row.subject.code %}{{ row.subject.code }}{% else %}{{ row.subject.name }}{% endif %}</td>
+                  <td class="is-left src-subject" title="{% if row.subject.component_codes %}{{ row.subject.name }} ({{ row.subject.component_codes }}){% else %}{{ row.subject.name }}{% endif %}">{% if row.subject.code %}{{ row.subject.code }}{% else %}{{ row.subject.name }}{% endif %}</td>
                   <td>
                     {% if row.raw != None and row.out_of %}
                       {{ row.raw }}/{{ row.out_of }}
@@ -635,8 +649,7 @@
                   </td>
                   <td class="src-mark src-avg-col">
                     {% if row.percent != None %}
-                      <strong>{{ row.percent }}</strong>
-                      {% if row.grade %}<em>{{ row.grade }}</em>{% endif %}
+                      <strong>{{ row.percent }}</strong>{% if row.grade %}<em class="export-grade">{{ row.grade }}</em>{% endif %}
                     {% else %}
                       <span class="src-empty">—</span>
                     {% endif %}
@@ -655,8 +668,7 @@
                   <th class="is-left">Assessment mean</th>
                   <th>—</th>
                   <th class="src-mark src-avg-col">
-                    <strong>{{ card.mean_percent }}</strong>
-                    {% if card.overall_grade %}<em>{{ card.overall_grade }}</em>{% endif %}
+                    <strong>{{ card.mean_percent }}</strong>{% if card.overall_grade %}<em class="export-grade">{{ card.overall_grade }}</em>{% endif %}
                   </th>
                   <th class="is-left">
                     {% if card.overall_meaning %}
@@ -703,7 +715,7 @@
               <polyline class="src-trend-line" points="{{ card.trend.line }}" fill="none"></polyline>
               {% for point in card.trend.points %}
               <circle class="src-trend-dot" cx="{{ point.x }}" cy="{{ point.y }}" r="4.2"></circle>
-              <text class="src-trend-value" x="{{ point.x }}" y="{{ point.y }}" dy="-8" text-anchor="middle">{{ point.percent }}{% if point.grade %} · {{ point.grade }}{% endif %}</text>
+              <text class="src-trend-value" x="{{ point.x }}" y="{{ point.y }}" dy="-8" text-anchor="middle">{{ point.percent }}{% if point.grade %}<tspan class="export-grade"> · {{ point.grade }}</tspan>{% endif %}</text>
               <text class="src-trend-label" x="{{ point.x }}" y="{{ card.trend.baseline_y }}" dy="16" text-anchor="middle">{{ point.label }}</text>
               {% endfor %}
               {% else %}
@@ -716,7 +728,7 @@
                 height="{{ point.height }}"
                 rx="3"
               ></rect>
-              <text class="src-trend-value" x="{{ point.label_x }}" y="{{ point.y }}" dy="-6" text-anchor="middle">{{ point.percent }}{% if point.grade %} · {{ point.grade }}{% endif %}</text>
+              <text class="src-trend-value" x="{{ point.label_x }}" y="{{ point.y }}" dy="-6" text-anchor="middle">{{ point.percent }}{% if point.grade %}<tspan class="export-grade"> · {{ point.grade }}</tspan>{% endif %}</text>
               <text class="src-trend-label" x="{{ point.label_x }}" y="{{ card.trend.baseline_y }}" dy="14" text-anchor="middle">{{ point.label }}</text>
               {% endfor %}
               {% endif %}
@@ -1086,8 +1098,38 @@
 </script>
 <script>
 (function () {
-  const buttons = document.querySelectorAll("[data-print-report-card]");
-  if (!buttons.length) return;
+  const menus = document.querySelectorAll(".exam-report-export-menu");
+  if (!menus.length) return;
+
+  menus.forEach((menu) => {
+    menu.addEventListener("toggle", () => {
+      if (!menu.open) return;
+      menus.forEach((other) => {
+        if (other !== menu) other.open = false;
+      });
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    menus.forEach((menu) => {
+      if (!menu.open) return;
+      if (!menu.contains(event.target)) menu.open = false;
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    menus.forEach((menu) => {
+      menu.open = false;
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  const printButtons = document.querySelectorAll("[data-print-report-card]");
+  const exportPrintButtons = document.querySelectorAll("[data-export-print]");
+  if (!printButtons.length && !exportPrintButtons.length) return;
 
   const matrixPrintCss = `
     @page { size: A4 portrait; margin: 10mm; }
@@ -1126,18 +1168,18 @@
     }
     .exam-matrix-list-brand {
       display: grid;
-      grid-template-columns: 22mm minmax(0, 1fr) 22mm;
-      gap: 3mm;
+      grid-template-columns: 32mm minmax(0, 1fr) 32mm;
+      gap: 3.5mm;
       align-items: center;
     }
     .exam-matrix-list-logo-wrap,
     .exam-matrix-list-brand-spacer {
-      width: 22mm;
+      width: 32mm;
     }
     .exam-matrix-list-logo,
     .exam-matrix-list-logo-mark {
-      width: 22mm;
-      height: 22mm;
+      width: 32mm;
+      height: 32mm;
       object-fit: contain;
       flex: 0 0 auto;
       background: #fff;
@@ -1149,6 +1191,7 @@
       background: #1b4fd6;
       color: #fff;
       font-weight: 800;
+      font-size: 14pt;
     }
     .exam-matrix-list-titles {
       text-align: center;
@@ -1244,8 +1287,13 @@
     .exam-matrix-list-table.has-class-col td.is-left:nth-child(3) {
       width: 6%;
       white-space: nowrap;
-      color: #334155;
       font-weight: 650;
+    }
+    .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class.is-tone-a {
+      color: #1b4fd6;
+    }
+    .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class.is-tone-b {
+      color: #0f172a;
     }
     .exam-matrix-list-table th:last-child,
     .exam-matrix-list-table td:last-child { width: 5.5%; }
@@ -1312,9 +1360,31 @@
       font-size: 7pt;
       font-weight: 750;
     }
+    html[data-export-mode="raw"] .export-grade,
+    html[data-export-mode="raw"] .export-grade-col {
+      display: none !important;
+    }
   `;
 
-  const printMatrixSheets = () => {
+  const setExportMode = (mode) => {
+    const value = mode === "raw" ? "raw" : "graded";
+    document.documentElement.setAttribute("data-export-mode", value);
+    return value;
+  };
+
+  const clearExportMode = () => {
+    document.documentElement.removeAttribute("data-export-mode");
+  };
+
+  const applyRawModeToClone = (clone, mode) => {
+    if (mode !== "raw") return;
+    clone.querySelectorAll(".export-grade, .export-grade-col").forEach((node) => node.remove());
+    clone.querySelectorAll('td[colspan="3"]').forEach((cell) => {
+      cell.colSpan = 2;
+    });
+  };
+
+  const printMatrixSheets = (mode) => {
     const source = document.querySelector(".exam-report-matrices");
     if (!source) return false;
 
@@ -1322,6 +1392,7 @@
     clone.querySelectorAll(".no-print, .exam-matrix-scroll-hint").forEach((node) => {
       node.remove();
     });
+    applyRawModeToClone(clone, mode);
     clone.querySelectorAll("img").forEach((img) => {
       if (img.getAttribute("src")) {
         img.setAttribute("src", img.src);
@@ -1337,7 +1408,7 @@
 
     const doc = frame.contentDocument || frame.contentWindow.document;
     doc.open();
-    doc.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+    doc.write(`<!DOCTYPE html><html lang="en" data-export-mode="${mode}"><head><meta charset="utf-8">
       <title>Mark sheet</title>
       <style>${matrixPrintCss}</style>
     </head><body></body></html>`);
@@ -1347,6 +1418,7 @@
     let printed = false;
     const cleanup = () => {
       frame.remove();
+      clearExportMode();
     };
 
     const triggerPrint = () => {
@@ -1389,13 +1461,15 @@
     return true;
   };
 
-  const printReport = () => {
-    if (printMatrixSheets()) return;
+  const printReport = (mode = "graded") => {
+    setExportMode(mode);
+    if (printMatrixSheets(mode)) return;
 
     const previous = document.title;
     document.title = "\u00a0";
     const restore = () => {
       document.title = previous;
+      clearExportMode();
       window.removeEventListener("afterprint", restore);
     };
     window.addEventListener("afterprint", restore);
@@ -1403,8 +1477,17 @@
     window.setTimeout(restore, 1000);
   };
 
-  buttons.forEach((button) => {
-    button.addEventListener("click", printReport);
+  printButtons.forEach((button) => {
+    button.addEventListener("click", () => printReport("graded"));
+  });
+
+  exportPrintButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const mode = button.getAttribute("data-export-print") === "raw" ? "raw" : "graded";
+      const menu = button.closest("details");
+      if (menu) menu.open = false;
+      printReport(mode);
+    });
   });
 })();
 </script>

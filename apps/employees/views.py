@@ -21,7 +21,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.admissions.forms import AdmissionSettingsForm, StudentWorkspaceForm
-from apps.employees.exam_report_export import build_exam_report_excel
+from apps.employees.exam_report_export import build_exam_report_excel, build_exam_report_pdf
 from apps.admissions.models import AdmissionSettings, Student
 from apps.curriculum.forms import (
     AcademicLevelForm,
@@ -4584,6 +4584,17 @@ def _exam_report_selection(request):
             "learning_areas",
             "exam_subject_settings",
             "exam_subject_settings__learning_area",
+            Prefetch(
+                "combined_exam_subjects",
+                queryset=CombinedExamSubject.objects.prefetch_related(
+                    Prefetch(
+                        "components",
+                        queryset=CombinedExamSubjectComponent.objects.select_related(
+                            "subject_setting__learning_area"
+                        ),
+                    )
+                ),
+            ),
         )
         .filter(pk=int(level_id))
         .first()
@@ -4670,7 +4681,8 @@ def _exam_report_selection(request):
     if not usable_exams:
         return selection, {"error": "No assessment results were found for the selected scope."}
 
-    subjects = _exam_record_subjects(level, selected_class)
+    mark_subjects = _exam_record_subjects(level, selected_class)
+    subjects = _exam_report_display_subjects(level)
     school_profile = SchoolProfile.objects.filter(pk=1).first()
     class_teacher_name = ""
     if selected_class is not None and selected_class.class_teacher_id:
@@ -4718,6 +4730,7 @@ def _exam_report_selection(request):
             selected_class,
             grade_bands,
             trend_exams=trend_exams or usable_exams,
+            mark_subjects=mark_subjects,
         )
         if not report_cards and students:
             return selection, {"error": "No assessment results were found for the selected scope."}
@@ -4736,6 +4749,7 @@ def _exam_report_selection(request):
             subjects,
             level,
             grade_bands,
+            mark_subjects=mark_subjects,
         )
 
     return selection, {
@@ -4873,35 +4887,26 @@ def _build_individual_trend_chart(exam_columns, exam_means, subject_rows=None):
     }
 
 
-def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
+def _build_level_matrix_sheets(
+    students, exams, subjects, level, grade_bands, mark_subjects=None
+):
     """Return academic-level mark sheets: students as rows, subjects as columns."""
     sheets = []
-    marks_by_exam = _exam_record_marks_lookup_multi(exams, students, subjects)
+    lookup_subjects = mark_subjects if mark_subjects is not None else subjects
+    marks_by_exam = _exam_record_marks_lookup_multi(exams, students, lookup_subjects)
     for exam_item in exams:
-        out_of_by_subject = _exam_record_out_of(level, subjects)
+        out_of_by_subject = _exam_record_out_of(level, lookup_subjects)
         mark_lookup = marks_by_exam.get(exam_item.id, {})
         rows = []
         for student in students:
             cells = []
             percents = []
             for subject in subjects:
-                current_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
-                entry = mark_lookup.get((student.id, subject.id))
-                raw = _exam_mark_entry_raw(entry)
-                out_of = _exam_mark_entry_out_of(entry, current_out_of)
-                percent = _marks_as_percent(raw, out_of)
-                band = _grade_band_for_percent(percent, grade_bands)
-                percents.append(percent)
-                cells.append(
-                    {
-                        "raw": raw,
-                        "out_of": out_of,
-                        "percent": percent,
-                        "grade": band.code if band else "",
-                        "points": band.points if band else None,
-                        "meaning": band.meaning if band else "",
-                    }
+                cell = _exam_report_subject_cell(
+                    subject, student.id, mark_lookup, out_of_by_subject, grade_bands
                 )
+                percents.append(cell["percent"])
+                cells.append(cell)
             attempted = _exam_student_attempted_percents(percents)
             mean = _exam_mean_from_percents(percents)
             mean_band = _grade_band_for_percent(mean, grade_bands)
@@ -4955,6 +4960,17 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
                 last_position = present_index
                 last_mean = mean
             row["position"] = last_position
+        # Alternate Class column colors by teaching stream (blue / black).
+        class_labels = sorted(
+            {row["class_label"] for row in rows},
+            key=lambda label: (label == "—", label.casefold()),
+        )
+        class_tone_by_label = {
+            label: ("a" if index % 2 == 0 else "b")
+            for index, label in enumerate(class_labels)
+        }
+        for row in rows:
+            row["class_tone"] = class_tone_by_label.get(row["class_label"], "a")
         percent_rows = [[cell.get("percent") for cell in row["cells"]] for row in rows]
         cohort_means = _exam_cohort_subject_percent_means(percent_rows)
         subject_means = []
@@ -5009,13 +5025,23 @@ def _build_level_matrix_sheets(students, exams, subjects, level, grade_bands):
 
 
 def _build_individual_multi_exam_report_cards(
-    students, exams, subjects, level, selected_class, grade_bands, trend_exams=None
+    students,
+    exams,
+    subjects,
+    level,
+    selected_class,
+    grade_bands,
+    trend_exams=None,
+    mark_subjects=None,
 ):
     exam_columns = []
     out_of_by_exam = []
     trend_source = list(trend_exams or exams)
     all_exams = list(dict.fromkeys([*exams, *trend_source]))
-    marks_lookup_multi = _exam_record_marks_lookup_multi(all_exams, students, subjects)
+    lookup_subjects = mark_subjects if mark_subjects is not None else subjects
+    marks_lookup_multi = _exam_record_marks_lookup_multi(
+        all_exams, students, lookup_subjects
+    )
     marks_by_exam = [marks_lookup_multi.get(exam_item.id, {}) for exam_item in exams]
     for index, exam_item in enumerate(exams, start=1):
         term_label = (exam_item.academic_term.name if exam_item.academic_term_id else "").strip()
@@ -5028,7 +5054,7 @@ def _build_individual_multi_exam_report_cards(
                 "label": f"Assessment {index}",
             }
         )
-        out_of_by_subject = _exam_record_out_of(level, subjects)
+        out_of_by_subject = _exam_record_out_of(level, lookup_subjects)
         out_of_by_exam.append(out_of_by_subject)
 
     trend_columns = []
@@ -5044,7 +5070,7 @@ def _build_individual_multi_exam_report_cards(
                 "label": f"Assessment {index}",
             }
         )
-        trend_out_of.append(_exam_record_out_of(level, subjects))
+        trend_out_of.append(_exam_record_out_of(level, lookup_subjects))
         trend_marks.append(marks_lookup_multi.get(exam_item.id, {}))
 
     cards = []
@@ -5055,25 +5081,18 @@ def _build_individual_multi_exam_report_cards(
         for subject in subjects:
             cells = []
             subject_percents = []
-            for exam_index, exam_item in enumerate(exams):
-                current_out_of = out_of_by_exam[exam_index].get(subject.id, subject.total_marks)
-                entry = marks_by_exam[exam_index].get((student.id, subject.id))
-                raw = _exam_mark_entry_raw(entry)
-                out_of = _exam_mark_entry_out_of(entry, current_out_of)
-                percent = _marks_as_percent(raw, out_of)
-                band = _grade_band_for_percent(percent, grade_bands)
+            for exam_index, _exam_item in enumerate(exams):
+                cell = _exam_report_subject_cell(
+                    subject,
+                    student.id,
+                    marks_by_exam[exam_index],
+                    out_of_by_exam[exam_index],
+                    grade_bands,
+                )
+                percent = cell["percent"]
                 subject_percents.append(percent)
                 exam_percent_rows[exam_index].append(percent)
-                cells.append(
-                    {
-                        "raw": raw,
-                        "out_of": out_of,
-                        "percent": percent,
-                        "grade": band.code if band else "",
-                        "points": band.points if band else None,
-                        "meaning": band.meaning if band else "",
-                    }
-                )
+                cells.append(cell)
             mean = _exam_mean_from_percents(subject_percents)
             if mean is not None:
                 subject_means.append(mean)
@@ -5103,13 +5122,16 @@ def _build_individual_multi_exam_report_cards(
 
         trend_means = []
         for exam_index, _exam_item in enumerate(trend_source):
-            percents = []
-            for subject in subjects:
-                current_out_of = trend_out_of[exam_index].get(subject.id, subject.total_marks)
-                entry = trend_marks[exam_index].get((student.id, subject.id))
-                raw = _exam_mark_entry_raw(entry)
-                out_of = _exam_mark_entry_out_of(entry, current_out_of)
-                percents.append(_marks_as_percent(raw, out_of))
+            percents = [
+                _exam_report_subject_cell(
+                    subject,
+                    student.id,
+                    trend_marks[exam_index],
+                    trend_out_of[exam_index],
+                    grade_bands,
+                )["percent"]
+                for subject in subjects
+            ]
             mean_value = _exam_mean_from_percents(percents)
             mean_band = _grade_band_for_percent(mean_value, grade_bands)
             trend_means.append(
@@ -5249,11 +5271,16 @@ def _exam_report_export_response(request, role):
     export_mode = (request.GET.get("export_mode") or "raw").strip()
     if export_mode not in {"raw", "graded"}:
         export_mode = "raw"
-    workbook_bytes, filename = build_exam_report_excel(report, mode=export_mode)
-    response = HttpResponse(
-        workbook_bytes,
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+    export_format = (request.GET.get("export_format") or "excel").strip().casefold()
+    if export_format not in {"excel", "pdf"}:
+        export_format = "excel"
+    if export_format == "pdf":
+        payload, filename = build_exam_report_pdf(report, mode=export_mode)
+        content_type = "application/pdf"
+    else:
+        payload, filename = build_exam_report_excel(report, mode=export_mode)
+        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    response = HttpResponse(payload, content_type=content_type)
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
@@ -8395,6 +8422,79 @@ def _exam_record_display_columns(level):
     columns.extend(combined_entries)
     columns.sort(key=lambda column: column["sort_key"])
     return columns
+
+
+def _exam_report_display_subjects(level):
+    """Report columns: hide component subjects and show combined subjects instead."""
+    columns = []
+    for column in _exam_record_display_columns(level):
+        if column["kind"] == "combined":
+            combined = column["combined"]
+            columns.append(
+                SimpleNamespace(
+                    id=f"combined-{combined.id}",
+                    code=column["code"],
+                    name=column["name"],
+                    kind="combined",
+                    component_ids=list(column["component_ids"]),
+                    component_codes=column["component_codes"],
+                    total_marks=combined.out_of_marks,
+                    subject=None,
+                )
+            )
+            continue
+        area = column["subject"]
+        columns.append(
+            SimpleNamespace(
+                id=area.id,
+                code=column["code"],
+                name=column["name"],
+                kind="subject",
+                component_ids=[area.id],
+                component_codes="",
+                total_marks=area.total_marks,
+                subject=area,
+            )
+        )
+    return columns
+
+
+def _exam_report_subject_cell(subject, student_id, mark_lookup, out_of_by_subject, grade_bands):
+    """Build one report mark cell, combining component subjects when configured."""
+    if getattr(subject, "kind", "subject") == "combined":
+        percent = _combined_exam_percent(
+            mark_lookup,
+            student_id,
+            subject.component_ids,
+            out_of_by_subject,
+        )
+        band = _grade_band_for_percent(percent, grade_bands)
+        return {
+            "raw": None,
+            "out_of": None,
+            "percent": percent,
+            "grade": band.code if band else "",
+            "points": band.points if band else None,
+            "meaning": band.meaning if band else "",
+            "kind": "combined",
+        }
+
+    area = getattr(subject, "subject", subject)
+    current_out_of = out_of_by_subject.get(area.id, area.total_marks)
+    entry = mark_lookup.get((student_id, area.id))
+    raw = _exam_mark_entry_raw(entry)
+    out_of = _exam_mark_entry_out_of(entry, current_out_of)
+    percent = _marks_as_percent(raw, out_of)
+    band = _grade_band_for_percent(percent, grade_bands)
+    return {
+        "raw": raw,
+        "out_of": out_of,
+        "percent": percent,
+        "grade": band.code if band else "",
+        "points": band.points if band else None,
+        "meaning": band.meaning if band else "",
+        "kind": "subject",
+    }
 
 
 def _combined_exam_percent(marks_lookup, student_id, component_ids, out_of_by_subject):

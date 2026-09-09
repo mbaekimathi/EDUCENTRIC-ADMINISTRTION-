@@ -849,12 +849,16 @@ class ITSupportWorkspaceTests(TestCase):
             report_params,
         )
         self.assertEqual(report_page.status_code, 200)
-        self.assertContains(report_page, "Export Excel (raw marks)")
-        self.assertContains(report_page, "Export Excel (graded)")
+        self.assertContains(report_page, "Export Excel")
+        self.assertContains(report_page, "Download PDF")
+        self.assertContains(report_page, "Raw marks")
+        self.assertContains(report_page, "With grades")
+        self.assertContains(report_page, "export_format=excel")
+        self.assertContains(report_page, "export_format=pdf")
 
         response = self.client.get(
             reverse("employees:it_support_exam_report_export"),
-            {**report_params, "export_mode": "raw"},
+            {**report_params, "export_mode": "raw", "export_format": "excel"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -878,7 +882,171 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertNotIn("84/100", flat)
         self.assertNotIn("A", [str(item) for item in flat if str(item) == "A"])
 
-    def test_student_management_lists_all_students(self):
+        pdf_response = self.client.get(
+            reverse("employees:it_support_exam_report_export"),
+            {**report_params, "export_mode": "graded", "export_format": "pdf"},
+        )
+        self.assertEqual(pdf_response.status_code, 200)
+        self.assertEqual(pdf_response["Content-Type"], "application/pdf")
+        self.assertIn("attachment", pdf_response["Content-Disposition"])
+        self.assertIn(".pdf", pdf_response["Content-Disposition"])
+        self.assertTrue(pdf_response.content.startswith(b"%PDF"))
+
+    def test_exam_report_shows_combined_subjects(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        level = AcademicLevel.objects.create(name="Grade 1", code="G1", order=1)
+        academic_class = AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 1 East",
+            code="G1E",
+            order=1,
+        )
+        math = LearningArea.objects.create(name="Mathematics", code="MATH")
+        art = LearningArea.objects.create(name="Art", code="ART")
+        math.academic_levels.add(level)
+        art.academic_levels.add(level)
+        math_setting = ExamSubjectSetting.objects.create(
+            academic_level=level,
+            learning_area=math,
+            out_of_marks=50,
+        )
+        art_setting = ExamSubjectSetting.objects.create(
+            academic_level=level,
+            learning_area=art,
+            out_of_marks=50,
+        )
+        combined = CombinedExamSubject.objects.create(
+            academic_level=level,
+            name="CREATIVE ARTS",
+            code="CA-COMB",
+        )
+        CombinedExamSubjectComponent.objects.bulk_create(
+            [
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=math_setting,
+                    position=1,
+                ),
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=art_setting,
+                    position=2,
+                ),
+            ]
+        )
+        year = AcademicYear.objects.create(
+            name="2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 1",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 1),
+            opening_date=date(2026, 1, 5),
+            midterm_date=date(2026, 2, 15),
+            closing_date=date(2026, 4, 1),
+            order=1,
+        )
+        exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 3, 10),
+            end_date=date(2026, 3, 12),
+        )
+        exam.academic_levels.add(level)
+        parent = ParentGuardian.objects.create(
+            full_name="PAT PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700009998",
+            email="pat.combined@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="9002",
+            class_group="G1E",
+            assessment_number="A9002",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=exam,
+            student=student,
+            learning_area=math,
+            marks=40,
+            out_of_marks=50,
+        )
+        ExamMark.objects.create(
+            generation=exam,
+            student=student,
+            learning_area=art,
+            marks=30,
+            out_of_marks=50,
+        )
+        GradeBand.objects.create(
+            academic_level=level,
+            code="B",
+            meaning="Good",
+            start_percent=60,
+            end_percent=79,
+            points=8,
+            mark_level="Meeting",
+        )
+
+        report_params = {
+            "generate": "1",
+            "year_id": str(year.id),
+            "exam_id": str(exam.id),
+            "report_kind": "academic_level",
+            "level_id": str(level.id),
+            "level_scope": "individual_class",
+            "class_id": str(academic_class.id),
+        }
+        response = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            report_params,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CA-COMB")
+        self.assertContains(response, ">70<")
+        self.assertNotContains(response, ">80<")
+        self.assertNotContains(response, ">60<")
+        content = response.content.decode()
+        self.assertNotIn(">MATH</th>", content)
+        self.assertNotIn(">ART</th>", content)
+
+        individual = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            {
+                "generate": "1",
+                "year_id": str(year.id),
+                "exam_id": str(exam.id),
+                "report_kind": "individual",
+                "level_id": str(level.id),
+                "class_id": str(academic_class.id),
+                "student_id": str(student.id),
+            },
+        )
+        self.assertEqual(individual.status_code, 200)
+        self.assertContains(individual, "CA-COMB")
+        self.assertContains(individual, ">70<")
+        individual_content = individual.content.decode()
+        self.assertNotIn(">MATH<", individual_content)
+        self.assertNotIn(">ART<", individual_content)
         from apps.admissions.models import ParentGuardian, Student
 
         parent = ParentGuardian.objects.create(
