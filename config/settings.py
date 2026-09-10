@@ -9,6 +9,8 @@ from pathlib import Path
 import environ
 from django.core.exceptions import ImproperlyConfigured
 
+from config.db import build_mysql_database
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, True),
@@ -82,29 +84,21 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 # Prefer MySQL when DB_NAME is set (see .env.example). Empty DB_PASSWORD is valid for local root.
+# On cPanel, "localhost" often needs a Unix socket (PyMySQL otherwise uses TCP → Errno 111).
 _db_name = env("DB_NAME", default="").strip()
 if _db_name:
     # cPanel/Passenger recycles workers; persistent DB sockets often become
     # "MySQL server has gone away". Default CONN_MAX_AGE=0 (set DB_CONN_MAX_AGE to override).
     DATABASES = {
-        "default": {
-            # Uses config.mysql_backend so XAMPP MariaDB 10.4 can run locally.
-            "ENGINE": "config.mysql_backend",
-            "NAME": _db_name,
-            "USER": env("DB_USER", default="root"),
-            "PASSWORD": env("DB_PASSWORD", default=""),
-            "HOST": env("DB_HOST", default="127.0.0.1"),
-            "PORT": env("DB_PORT", default="3306"),
-            "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=0),
-            "CONN_HEALTH_CHECKS": True,
-            "OPTIONS": {
-                "charset": "utf8mb4",
-                "connect_timeout": 10,
-                "read_timeout": 60,
-                "write_timeout": 60,
-                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
+        "default": build_mysql_database(
+            name=_db_name,
+            user=env("DB_USER", default="root"),
+            password=env("DB_PASSWORD", default=""),
+            host=env("DB_HOST", default="127.0.0.1"),
+            port=env("DB_PORT", default="3306"),
+            conn_max_age=env.int("DB_CONN_MAX_AGE", default=0),
+            socket=env("DB_SOCKET", default=""),
+        )
     }
 else:
     DATABASES = {

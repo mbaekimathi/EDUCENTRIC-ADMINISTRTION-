@@ -135,11 +135,19 @@ def apply_pending_migrations() -> None:
         call_command("migrate", interactive=False, verbosity=1)
         _write_stamp()
         _MIGRATIONS_APPLIED = True
-    except Exception:
+    except Exception as exc:
         # Passenger often SIGTERMs long startups; MySQL may drop the pipe.
         # Keep the app online — run migrate via SSH/phpMyAdmin if needed.
+        hint = ""
+        msg = str(exc).lower()
+        if "2003" in msg or "connection refused" in msg or "can't connect" in msg:
+            hint = (
+                " Hint: set DB_HOST to the MySQL host from cPanel, or set "
+                "DB_SOCKET=/var/lib/mysql/mysql.sock (or /tmp/mysql.sock)."
+            )
         logger.exception(
-            "AUTO_MIGRATE failed; app will continue without blocking startup"
+            "AUTO_MIGRATE failed; app will continue without blocking startup.%s",
+            hint,
         )
     finally:
         try:
