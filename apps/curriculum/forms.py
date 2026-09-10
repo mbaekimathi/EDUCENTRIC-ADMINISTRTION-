@@ -2,8 +2,8 @@ from datetime import datetime
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
-from django.db.models import Max
+from django.db import IntegrityError, transaction
+from django.db.models import F, Max
 
 from pathlib import Path
 
@@ -771,15 +771,32 @@ class AcademicClassForm(forms.ModelForm):
         return instance
 
 
+def _learning_area_category_label(levels):
+    levels = list(levels)
+    if not levels:
+        return "UNASSIGNED"
+    primary = min(levels, key=lambda level: (level.order, level.name.lower()))
+    label = (primary.category or "").strip()
+    return label.upper() if label else "UNCATEGORIZED"
+
+
 class LearningAreaForm(forms.ModelForm):
     class Meta:
         model = LearningArea
-        fields = ("academic_levels", "name", "code", "description", "status")
+        fields = (
+            "academic_levels",
+            "name",
+            "code",
+            "description",
+            "display_order",
+            "status",
+        )
         labels = {
             "academic_levels": "Academic levels",
             "name": "Learning area name",
             "code": "Code",
             "description": "Description",
+            "display_order": "Order number",
             "status": "Status",
         }
         widgets = {
@@ -796,6 +813,14 @@ class LearningAreaForm(forms.ModelForm):
                     "class": "uppercase-input",
                     "placeholder": "OPTIONAL NOTES",
                     "autocapitalize": "characters",
+                }
+            ),
+            "display_order": forms.NumberInput(
+                attrs={
+                    "class": "uppercase-input",
+                    "min": "0",
+                    "step": "1",
+                    "placeholder": "AUTO",
                 }
             ),
             "status": forms.Select(attrs={"class": "uppercase-input"}),
@@ -818,6 +843,21 @@ class LearningAreaForm(forms.ModelForm):
                 "Select one or more academic levels this learning area belongs to."
             )
 
+        self.fields["display_order"].required = False
+        if self.instance.pk:
+            self.fields["display_order"].required = True
+            self.fields["display_order"].help_text = (
+                "If this number is already used in the same category, other subjects shift up."
+            )
+        else:
+            self.fields["display_order"].help_text = (
+                "Leave blank to auto-assign the next order. If the number is already used "
+                "in the same category, other subjects shift up."
+            )
+            if not self.is_bound:
+                self.initial["display_order"] = None
+                self.fields["display_order"].initial = None
+
     def clean_name(self):
         return self.cleaned_data["name"].strip().upper()
 
@@ -827,17 +867,76 @@ class LearningAreaForm(forms.ModelForm):
     def clean_description(self):
         return self.cleaned_data.get("description", "").strip().upper()
 
+    def clean_display_order(self):
+        order = self.cleaned_data.get("display_order")
+        if order is None:
+            if self.instance.pk:
+                return self.instance.display_order
+            return None
+        if order < 0:
+            raise ValidationError("Order number cannot be negative.")
+        return order
+
+    @staticmethod
+    def _peer_ids_for_category(category, exclude_pk=None):
+        qs = LearningArea.objects.prefetch_related("academic_levels")
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        return [
+            area.id
+            for area in qs
+            if _learning_area_category_label(area.academic_levels.all()) == category
+        ]
+
+    @classmethod
+    def _make_room_for_order(cls, category, order, exclude_pk=None):
+        peer_ids = cls._peer_ids_for_category(category, exclude_pk=exclude_pk)
+        if not peer_ids:
+            return
+        occupied = LearningArea.objects.filter(
+            pk__in=peer_ids, display_order=order
+        ).exists()
+        if not occupied:
+            return
+        LearningArea.objects.filter(
+            pk__in=peer_ids, display_order__gte=order
+        ).update(display_order=F("display_order") + 1)
+
     def save(self, commit=True):
+        is_new = self.instance.pk is None
+        old_order = None
+        if not is_new:
+            old_order = (
+                LearningArea.objects.filter(pk=self.instance.pk)
+                .values_list("display_order", flat=True)
+                .first()
+            )
+
         instance = super().save(commit=False)
-        if instance.pk is None:
-            next_order = (
-                LearningArea.objects.aggregate(max_order=Max("display_order")).get("max_order")
+        levels = list(self.cleaned_data.get("academic_levels") or [])
+        category = _learning_area_category_label(levels)
+        requested = self.cleaned_data.get("display_order")
+
+        if requested is None:
+            peer_ids = self._peer_ids_for_category(category, exclude_pk=instance.pk)
+            max_order = (
+                LearningArea.objects.filter(pk__in=peer_ids)
+                .aggregate(max_order=Max("display_order"))
+                .get("max_order")
                 or 0
-            ) + 1
-            instance.display_order = next_order
+            )
+            instance.display_order = max_order + 1
+        else:
+            instance.display_order = requested
+
         if commit:
-            instance.save()
-            self.save_m2m()
+            with transaction.atomic():
+                if requested is not None and (is_new or requested != old_order):
+                    self._make_room_for_order(
+                        category, requested, exclude_pk=instance.pk
+                    )
+                instance.save()
+                self.save_m2m()
         return instance
 
 

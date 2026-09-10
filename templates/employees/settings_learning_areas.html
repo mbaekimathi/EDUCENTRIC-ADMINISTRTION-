@@ -48,7 +48,7 @@
             <th>Academic levels</th>
             <th>Learning area</th>
             <th>Code</th>
-            <th>Display order</th>
+            <th>Order number</th>
             <th>Status</th>
             <th><span class="sr-only">Actions</span></th>
           </tr>
@@ -70,7 +70,7 @@
               </div>
             </td>
             <td data-label="Code"><code class="is-uppercase">{{ area.code }}</code></td>
-            <td data-label="Display order">{{ area.display_order }}</td>
+            <td data-label="Order number">{{ area.display_order }}</td>
             <td data-label="Status">
               <span class="status-pill is-uppercase {% if area.status == 'ACTIVE' %}is-active{% else %}is-inactive{% endif %}">
                 {{ area.get_status_display }}
@@ -85,6 +85,7 @@
                   data-name="{{ area.name }}"
                   data-code="{{ area.code }}"
                   data-description="{{ area.description }}"
+                  data-display-order="{{ area.display_order }}"
                   data-status="{{ area.status }}"
                   data-level-ids="{% for level in area.academic_levels.all %}{{ level.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
                   data-update-url="{% url 'employees:update_learning_area' area.id %}"
@@ -156,6 +157,12 @@
         {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
       </div>
       <div class="field">
+        <label for="{{ form.display_order.id_for_label }}">Order number</label>
+        {{ form.display_order }}
+        {% if form.display_order.help_text %}<small class="field-hint">{{ form.display_order.help_text }}</small>{% endif %}
+        {% for error in form.display_order.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field">
         <label for="{{ form.status.id_for_label }}">Status <span class="required">*</span></label>
         {{ form.status }}
         {% for error in form.status.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
@@ -204,6 +211,11 @@
         <textarea id="edit-area-description" name="description" rows="3"></textarea>
       </div>
       <div class="field">
+        <label for="edit-area-display-order">Order number <span class="required">*</span></label>
+        <input id="edit-area-display-order" class="uppercase-input" type="number" name="display_order" min="0" step="1" required>
+        <small class="field-hint">If this number is already used in the same category, other subjects shift up.</small>
+      </div>
+      <div class="field">
         <label for="edit-area-status">Status <span class="required">*</span></label>
         <select id="edit-area-status" class="uppercase-input" name="status" required>
           <option value="ACTIVE">ACTIVE</option>
@@ -250,6 +262,7 @@
     name: document.querySelector("#edit-area-name"),
     code: document.querySelector("#edit-area-code"),
     description: document.querySelector("#edit-area-description"),
+    displayOrder: document.querySelector("#edit-area-display-order"),
     status: document.querySelector("#edit-area-status"),
   };
 
@@ -263,9 +276,11 @@
   document.querySelectorAll("[data-edit-area]").forEach((button) => {
     button.addEventListener("click", () => {
       editForm.action = button.dataset.updateUrl;
-      Object.entries(editFields).forEach(([key, field]) => {
-        field.value = button.dataset[key] || "";
-      });
+      editFields.name.value = button.dataset.name || "";
+      editFields.code.value = button.dataset.code || "";
+      editFields.description.value = button.dataset.description || "";
+      editFields.displayOrder.value = button.dataset.displayOrder || "";
+      editFields.status.value = button.dataset.status || "ACTIVE";
       const selected = new Set((button.dataset.levelIds || "").split(",").filter(Boolean));
       editLevelChecks.forEach((input) => {
         input.checked = selected.has(input.value);

@@ -1081,6 +1081,125 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "Suspend")
         self.assertContains(response, "Delete")
 
+    def test_exam_report_ranks_by_total_marks_not_average(self):
+        """Students with the same rounded average must still rank by total marks."""
+        from apps.admissions.models import ParentGuardian, Student
+
+        level = AcademicLevel.objects.create(name="Grade 2", code="G2", order=2)
+        academic_class = AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 2 East",
+            code="G2E",
+            order=1,
+        )
+        math = LearningArea.objects.create(name="Mathematics", code="MATH2")
+        eng = LearningArea.objects.create(name="English", code="ENG2")
+        kisw = LearningArea.objects.create(name="Kiswahili", code="KIS2")
+        for area in (math, eng, kisw):
+            area.academic_levels.add(level)
+            ExamSubjectSetting.objects.create(
+                academic_level=level,
+                learning_area=area,
+                out_of_marks=100,
+            )
+        year = AcademicYear.objects.create(
+            name="2026 Rank",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 1",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 1),
+            opening_date=date(2026, 1, 5),
+            midterm_date=date(2026, 2, 15),
+            closing_date=date(2026, 4, 1),
+            order=1,
+        )
+        exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 3, 10),
+            end_date=date(2026, 3, 12),
+        )
+        exam.academic_levels.add(level)
+        GradeBand.objects.create(
+            academic_level=level,
+            code="B",
+            meaning="Good",
+            start_percent=60,
+            end_percent=100,
+            points=8,
+            mark_level="Meeting",
+        )
+
+        def make_student(first, last, admission, marks):
+            parent = ParentGuardian.objects.create(
+                full_name=f"{last} PARENT",
+                relationship_to_student="MOTHER",
+                phone_number=f"+2547{admission}",
+                email=f"{admission}@example.com",
+            )
+            student = Student.objects.create(
+                first_name=first,
+                last_name=last,
+                date_of_birth="2017-01-01",
+                gender=Student.Gender.FEMALE,
+                academic_level=Student.AcademicLevel.GRADE_2,
+                admission_number=admission,
+                class_group="G2E",
+                assessment_number=f"A{admission}",
+                sponsorship_category=Student.SponsorshipCategory.SELF,
+                parent_guardian=parent,
+                is_active=True,
+            )
+            for area, score in zip((math, eng, kisw), marks):
+                ExamMark.objects.create(
+                    generation=exam,
+                    student=student,
+                    learning_area=area,
+                    marks=score,
+                    out_of_marks=100,
+                )
+            return student
+
+        # Totals 211 / 210 / 209 all round to mean 70 — ranking must follow totals.
+        higher = make_student("ANN", "HIGHER", "9101", (70, 70, 71))
+        middle = make_student("BEN", "MIDDLE", "9102", (70, 70, 70))
+        lower = make_student("CAT", "LOWER", "9103", (100, 100, 9))
+
+        response = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            {
+                "generate": "1",
+                "year_id": str(year.id),
+                "exam_id": str(exam.id),
+                "report_kind": "academic_level",
+                "level_id": str(level.id),
+                "level_scope": "individual_class",
+                "class_id": str(academic_class.id),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        report = response.context["report"]
+        rows = report["matrix_sheets"][0]["rows"]
+        by_name = {row["student"].id: row for row in rows}
+        self.assertEqual(by_name[higher.id]["total_marks"], 211)
+        self.assertEqual(by_name[middle.id]["total_marks"], 210)
+        self.assertEqual(by_name[lower.id]["total_marks"], 209)
+        self.assertEqual(by_name[higher.id]["mean_percent"], 70)
+        self.assertEqual(by_name[middle.id]["mean_percent"], 70)
+        self.assertEqual(by_name[lower.id]["mean_percent"], 70)
+        self.assertEqual(by_name[higher.id]["position"], 1)
+        self.assertEqual(by_name[middle.id]["position"], 2)
+        self.assertEqual(by_name[lower.id]["position"], 3)
+        self.assertEqual([row["student"].id for row in rows[:3]], [higher.id, middle.id, lower.id])
+
     def test_curriculum_section_pages_load_without_curriculum_sidebar(self):
         response = self.client.get(
             reverse(

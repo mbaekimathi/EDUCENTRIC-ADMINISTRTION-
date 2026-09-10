@@ -4937,9 +4937,12 @@ def _build_level_matrix_sheets(
                     "overall_meaning": mean_band.meaning if mean_band else "",
                 }
             )
+        # Rank by total marks (sum of subject percents), not average — averages
+        # round and can tie students who have different totals.
         rows.sort(
             key=lambda row: (
-                row["mean_percent"] is None,
+                row["total_marks"] is None,
+                -(row["total_marks"] if row["total_marks"] is not None else 0),
                 -(row["mean_percent"] if row["mean_percent"] is not None else 0),
                 (row["student"].last_name or "").casefold(),
                 (row["student"].first_name or "").casefold(),
@@ -4948,17 +4951,17 @@ def _build_level_matrix_sheets(
         )
         # Competition ranking: ties share a position; next rank skips by tie count (1,2,2,4).
         present_index = 0
-        last_mean = object()
+        last_total = object()
         last_position = None
         for row in rows:
-            if row.get("is_absent") or row.get("mean_percent") is None:
+            if row.get("is_absent") or row.get("total_marks") is None:
                 row["position"] = None
                 continue
             present_index += 1
-            mean = row["mean_percent"]
-            if mean != last_mean:
+            total = row["total_marks"]
+            if total != last_total:
                 last_position = present_index
-                last_mean = mean
+                last_total = total
             row["position"] = last_position
         # Alternate Class column colors by teaching stream (blue / black).
         class_labels = sorted(
@@ -8385,6 +8388,9 @@ def _exam_record_display_columns(level):
     combined_entries = []
     for combined in _level_combined_exam_subjects(level):
         components = list(combined.components.all())
+        if not components:
+            # Empty combo must not hide nothing and must not add a blank column.
+            continue
         component_areas = [component.subject_setting.learning_area for component in components]
         component_ids = [area.id for area in component_areas]
         combined_area_ids.update(component_ids)
@@ -8572,8 +8578,21 @@ def _attach_exam_record_display_cells(students, display_columns, marks_lookup, o
 
 
 def _exam_record_out_of(level, subjects):
+    """Out-of map keyed by learning-area id.
+
+    Always include every level subject so combined-component lookups resolve even
+    when ``subjects`` is a display list that hides those components.
+    """
     built = {item["area"].id: item["out_of_marks"] for item in _build_exam_subjects(level)}
-    return {subject.id: built.get(subject.id, subject.total_marks) for subject in subjects}
+    result = dict(built)
+    for subject in subjects or []:
+        if getattr(subject, "kind", None) == "combined":
+            continue
+        subject_id = getattr(subject, "id", None)
+        if subject_id is None or isinstance(subject_id, str):
+            continue
+        result[subject_id] = built.get(subject_id, getattr(subject, "total_marks", None))
+    return result
 
 
 def _marks_as_percent(score, out_of):
