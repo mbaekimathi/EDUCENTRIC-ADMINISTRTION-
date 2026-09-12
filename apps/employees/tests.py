@@ -728,6 +728,7 @@ class ITSupportWorkspaceTests(TestCase):
                     self.assertContains(response, "All assessments")
                     self.assertContains(response, "Academic level report")
                     self.assertContains(response, "Individual report")
+                    self.assertContains(response, "Subject analytics")
                     self.assertContains(response, "Select academic year")
                     self.assertContains(response, "Whole grade")
                     self.assertContains(response, "Per class")
@@ -890,6 +891,132 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertEqual(pdf_response["Content-Type"], "application/pdf")
         self.assertIn("attachment", pdf_response["Content-Disposition"])
         self.assertIn(".pdf", pdf_response["Content-Disposition"])
+        self.assertTrue(pdf_response.content.startswith(b"%PDF"))
+
+    def test_exam_report_subject_analytics_for_class(self):
+        from datetime import date
+
+        from apps.admissions.models import ParentGuardian, Student
+
+        level = AcademicLevel.objects.create(name="Grade 3", code="G3", order=3)
+        academic_class = AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 3 East",
+            code="G3E",
+            order=1,
+        )
+        subject = LearningArea.objects.create(name="Science", code="SCI")
+        subject.academic_levels.add(level)
+        year = AcademicYear.objects.create(
+            name="2026 Analytics",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 1",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 1),
+            opening_date=date(2026, 1, 5),
+            midterm_date=date(2026, 2, 15),
+            closing_date=date(2026, 4, 1),
+            order=1,
+        )
+        exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 3, 10),
+            end_date=date(2026, 3, 12),
+        )
+        exam.academic_levels.add(level)
+        parent = ParentGuardian.objects.create(
+            full_name="PAT PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700001111",
+            email="pat.analytics@example.com",
+        )
+        student = Student.objects.create(
+            first_name="BEN",
+            last_name="EAST",
+            date_of_birth="2017-01-01",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_3,
+            admission_number="9101",
+            class_group="G3E",
+            assessment_number="A9101",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=exam,
+            student=student,
+            learning_area=subject,
+            marks=40,
+            out_of_marks=50,
+        )
+        GradeBand.objects.create(
+            academic_level=level,
+            code="B",
+            meaning="Very good",
+            start_percent=70,
+            end_percent=89,
+            points=10,
+            mark_level="Meeting",
+        )
+
+        report_params = {
+            "generate": "1",
+            "year_id": str(year.id),
+            "exam_id": str(exam.id),
+            "report_kind": "subject_analytics",
+            "level_id": str(level.id),
+            "level_scope": "individual_class",
+            "class_id": str(academic_class.id),
+        }
+        report_page = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            report_params,
+        )
+        self.assertEqual(report_page.status_code, 200)
+        self.assertContains(report_page, "Subject analytics")
+        self.assertContains(report_page, "SCI")
+        self.assertContains(report_page, "Grade 3 East")
+        self.assertContains(report_page, "Total")
+        self.assertContains(report_page, "80")
+
+        excel_response = self.client.get(
+            reverse("employees:it_support_exam_report_export"),
+            {**report_params, "export_mode": "graded", "export_format": "excel"},
+        )
+        self.assertEqual(excel_response.status_code, 200)
+        self.assertIn(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            excel_response["Content-Type"],
+        )
+
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        workbook = load_workbook(BytesIO(excel_response.content))
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+        flat = [cell for row in rows for cell in row if cell not in (None, "")]
+        self.assertIn("SCI", flat)
+        self.assertIn("Grade 3 East", flat)
+        self.assertIn(80, flat)
+
+        pdf_response = self.client.get(
+            reverse("employees:it_support_exam_report_export"),
+            {**report_params, "export_mode": "graded", "export_format": "pdf"},
+        )
+        self.assertEqual(pdf_response.status_code, 200)
+        self.assertEqual(pdf_response["Content-Type"], "application/pdf")
         self.assertTrue(pdf_response.content.startswith(b"%PDF"))
 
     def test_exam_report_shows_combined_subjects(self):

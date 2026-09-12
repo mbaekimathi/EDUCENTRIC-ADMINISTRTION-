@@ -15642,6 +15642,49 @@ body.is-reordering-academic-levels [data-normal-only] {
   letter-spacing: 0.01em;
 }
 
+
+.exam-analytics-code {
+  display: block;
+  margin-top: 0.08rem;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+}
+
+.exam-analytics-table th.exam-analytics-sat,
+.exam-analytics-table td.exam-analytics-sat {
+  min-width: 4.1rem;
+  width: 4.4rem;
+  white-space: nowrap;
+  font-weight: 650;
+}
+
+.exam-analytics-sheet-title {
+  margin: 0.85rem 0 0.45rem;
+  color: #1b4fd6;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.exam-analytics-sheet-title:first-of-type {
+  margin-top: 0.15rem;
+}
+
+.exam-analytics-table td.is-filled {
+  font-weight: 700;
+}
+
+.exam-analytics-table .exam-matrix-learner.is-tone-a {
+  color: #1b4fd6;
+}
+
+.exam-analytics-table .exam-matrix-learner.is-tone-b {
+  color: #0f172a;
+}
+
 /* Exam report page — layout and responsive polish */
 .exam-report-page {
   gap: 1rem;
@@ -17116,7 +17159,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm;
+    margin: 8mm;
   }
 
   /* Allow multi-page print: workspace shell is viewport-locked on screen. */
@@ -17641,53 +17684,53 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .exam-matrix-list-head {
-    margin-bottom: 0.45rem;
-    padding: 0 0 0.35rem;
+    margin-bottom: 0.28rem;
+    padding: 0 0 0.2rem;
     border: 0;
-    border-bottom: 1.5pt solid #1b4fd6 !important;
+    border-bottom: 1.1pt solid #1b4fd6 !important;
     border-radius: 0;
     background: transparent;
     box-shadow: none;
   }
 
   .exam-matrix-list-brand {
-    grid-template-columns: 6.5rem minmax(0, 1fr) 6.5rem;
-    gap: 0.65rem;
+    grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
+    gap: 0.4rem;
     align-items: center;
   }
 
   .exam-matrix-list-logo-wrap,
   .exam-matrix-list-brand-spacer {
-    width: 6.5rem;
+    width: 3.25rem;
   }
 
   .exam-matrix-list-logo,
   .exam-matrix-list-logo-mark {
-    width: 6.5rem;
-    height: 6.5rem;
+    width: 3.25rem;
+    height: 3.25rem;
     object-fit: contain;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .exam-report-page .exam-matrix-list-brand {
-    grid-template-columns: 7.5rem minmax(0, 1fr) 7.5rem;
-    gap: 0.75rem;
+    grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
+    gap: 0.4rem;
   }
 
   .exam-report-page .exam-matrix-list-logo-wrap,
   .exam-report-page .exam-matrix-list-brand-spacer {
-    width: 7.5rem;
+    width: 3.25rem;
   }
 
   .exam-report-page .exam-matrix-list-logo,
   .exam-report-page .exam-matrix-list-logo-mark {
-    width: 7.5rem;
-    height: 7.5rem;
+    width: 3.25rem;
+    height: 3.25rem;
   }
 
   .exam-report-page .exam-matrix-list-logo-mark {
-    font-size: 1.55rem;
+    font-size: 0.85rem;
   }
 
   .exam-matrix-list-titles {
@@ -17702,28 +17745,28 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .exam-matrix-list-kicker {
-    font-size: 7.5pt;
+    font-size: 6pt;
   }
 
   .exam-matrix-list-motto {
-    margin-top: 0.12rem;
-    font-size: 7.5pt;
+    margin-top: 0.06rem;
+    font-size: 6.5pt;
   }
 
   .exam-matrix-list-contact {
-    margin-top: 0.1rem;
-    font-size: 7pt;
+    margin-top: 0.04rem;
+    font-size: 6pt;
   }
 
   .exam-matrix-list-head h2 {
-    font-size: 12pt;
+    font-size: 10pt;
   }
 
   .exam-matrix-list-meta {
-    gap: 0.3rem;
-    margin-top: 0.35rem;
-    padding-top: 0.35rem;
-    border-top: 0.5pt solid #d5deec;
+    gap: 0.2rem;
+    margin-top: 0.2rem;
+    padding-top: 0.18rem;
+    border-top: 0.4pt solid #d5deec;
   }
 
   .exam-matrix-list-meta span {
@@ -17732,7 +17775,7 @@ body.is-reordering-academic-levels [data-normal-only] {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    font-size: 8.5pt;
+    font-size: 7pt;
   }
 
   .exam-matrix-list-meta span + span::before {

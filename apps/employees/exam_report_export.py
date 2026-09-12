@@ -217,6 +217,64 @@ def _write_individual_sheet(worksheet, report, cards, mode):
     _autosize_columns(worksheet)
 
 
+def _format_analytics_mark(cell, mode):
+    if not cell or cell.get("percent") is None:
+        return "-"
+    if mode == "graded" and cell.get("grade"):
+        return f"{cell.get('percent')} ({cell.get('grade')})"
+    return cell.get("percent")
+
+
+def _analytics_table_data(report, sheet, mode):
+    title = sheet.get("exam_title") or report.get("exam_title") or "Subject analytics"
+    header = ["#", "Class", "Sat"]
+    header.extend(
+        getattr(subject, "code", None) or getattr(subject, "name", "") or "Subject"
+        for subject in (sheet.get("subjects") or [])
+    )
+    header.extend(["Total", "Mean"])
+    if mode == "graded":
+        header.append("Grade")
+    rows = []
+    for row in sheet.get("rows") or []:
+        sat_label = f"{row.get('present_count') or 0}/{row.get('student_count') or 0}"
+        values = [row.get("rank") or "-", row.get("class_label") or "-", sat_label]
+        values.extend(_format_analytics_mark(cell, mode) for cell in (row.get("cells") or []))
+        values.append(row.get("total_score") if row.get("total_score") is not None else "-")
+        values.append(row.get("mean_score") if row.get("mean_score") is not None else "-")
+        if mode == "graded":
+            values.append(row.get("grade") or "-")
+        rows.append(values)
+    if sheet.get("subject_means"):
+        mean_row = [
+            "-",
+            sheet.get("mean_label") or "Grade mean",
+            f"{sheet.get('present_count') or 0}/{sheet.get('student_count') or 0}",
+        ]
+        mean_row.extend(
+            _format_analytics_mark(
+                {"percent": item.get("percent_mean"), "grade": item.get("grade")},
+                mode,
+            )
+            for item in sheet.get("subject_means") or []
+        )
+        mean_row.append(sheet.get("overall_total") if sheet.get("overall_total") is not None else "-")
+        mean_row.append(sheet.get("overall_mean") if sheet.get("overall_mean") is not None else "-")
+        if mode == "graded":
+            mean_row.append(sheet.get("overall_grade") or "-")
+        rows.append(mean_row)
+    return title, header, rows
+
+
+def _write_analytics_sheet(worksheet, report, sheet, mode):
+    title, header, rows = _analytics_table_data(report, sheet, mode)
+    _write_meta_rows(worksheet, report, title)
+    worksheet.append(header)
+    for values in rows:
+        worksheet.append(values)
+    _autosize_columns(worksheet)
+
+
 def build_exam_report_excel(report, *, mode="raw"):
     if mode not in {"raw", "graded"}:
         mode = "raw"
@@ -231,6 +289,18 @@ def build_exam_report_excel(report, *, mode="raw"):
         if not workbook.sheetnames:
             worksheet = workbook.create_sheet(title="Report")
             _write_matrix_sheet(worksheet, report, {}, mode)
+    elif report.get("is_analytics"):
+        workbook.remove(workbook.active)
+        for sheet in report.get("analytics_sheets") or []:
+            title = _safe_sheet_title(
+                sheet.get("section_title") or sheet.get("exam_title") or "Analytics",
+                used_titles,
+            )
+            worksheet = workbook.create_sheet(title=title)
+            _write_analytics_sheet(worksheet, report, sheet, mode)
+        if not workbook.sheetnames:
+            worksheet = workbook.create_sheet(title="Analytics")
+            _write_analytics_sheet(worksheet, report, {}, mode)
     else:
         worksheet = workbook.active
         worksheet.title = _safe_sheet_title("Individual report", used_titles)
@@ -422,8 +492,8 @@ class PrintStyleExamPDF(FPDF):
         self.font_family = "Helvetica"
         self._active_sheet = None
         self._active_card = None
-        self.set_auto_page_break(auto=False, margin=12)
-        self.set_margins(10, 10, 10)
+        self.set_auto_page_break(auto=False, margin=10)
+        self.set_margins(8, 7, 8)
         regular, bold = _resolve_pdf_fonts()
         if regular and bold:
             self.add_font("EduReport", "", regular)
@@ -478,60 +548,60 @@ class PrintStyleExamPDF(FPDF):
         self.set_text_color(*_PDF_WHITE)
         self.cell(size, size * 0.42, self.brand["initial"], align="C")
 
-    def draw_matrix_letterhead(self, sheet, *, compact=False):
+    def draw_matrix_letterhead(self, sheet, *, compact=False, kicker="ACADEMIC LEVEL MARK SHEET"):
         self._active_sheet = sheet
         top = self.get_y()
-        logo = 16 if compact else 20
+        logo = 10 if compact else 12
         # Balanced brand: logo left, mirror spacer right so title stays centered.
         self._draw_logo_or_mark(self.l_margin, top, logo)
-        center_w = self.epw - (logo * 2) - 10
-        cx = self.l_margin + logo + 5
+        center_w = self.epw - (logo * 2) - 8
+        cx = self.l_margin + logo + 4
 
-        self.set_xy(cx, top + (0.2 if compact else 0.6))
-        self.set_font(self.font_family, "B", 6.8 if compact else 7.4)
+        self.set_xy(cx, top + 0.1)
+        self.set_font(self.font_family, "B", 5.8 if compact else 6.2)
         self.set_text_color(*self.primary)
-        self.cell(center_w, 3.6, "ACADEMIC LEVEL MARK SHEET", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(center_w, 2.8, kicker, align="C", new_x="LMARGIN", new_y="NEXT")
         self.set_x(cx)
-        self.set_font(self.font_family, "B", 11 if compact else 13.5)
+        self.set_font(self.font_family, "B", 8.6 if compact else 10)
         self.set_text_color(*_PDF_NAVY)
         self.cell(
             center_w,
-            5.2 if compact else 6.2,
-            _fit(self, self.brand["name"].upper(), center_w, self.font_family, "B", 11 if compact else 13.5),
+            3.8 if compact else 4.4,
+            _fit(self, self.brand["name"].upper(), center_w, self.font_family, "B", 8.6 if compact else 10),
             align="C",
             new_x="LMARGIN",
             new_y="NEXT",
         )
         if self.brand["motto"] and not compact:
             self.set_x(cx)
-            self.set_font(self.font_family, "", 7.8)
+            self.set_font(self.font_family, "", 6.6)
             self.set_text_color(*_PDF_MUTED)
             self.cell(
                 center_w,
-                3.8,
-                _fit(self, f'"{self.brand["motto"]}"', center_w, self.font_family, "", 7.8),
+                2.8,
+                _fit(self, f'"{self.brand["motto"]}"', center_w, self.font_family, "", 6.6),
                 align="C",
                 new_x="LMARGIN",
                 new_y="NEXT",
             )
         if self.brand["contact"] and not compact:
             self.set_x(cx)
-            self.set_font(self.font_family, "", 6.8)
+            self.set_font(self.font_family, "", 5.8)
             self.set_text_color(*_PDF_MUTED)
             self.cell(
                 center_w,
-                3.4,
-                _fit(self, self.brand["contact"], center_w, self.font_family, "", 6.8),
+                2.5,
+                _fit(self, self.brand["contact"], center_w, self.font_family, "", 5.8),
                 align="C",
                 new_x="LMARGIN",
                 new_y="NEXT",
             )
 
-        self.set_y(max(self.get_y(), top + logo) + (1.2 if compact else 2.2))
+        self.set_y(max(self.get_y(), top + logo) + (0.6 if compact else 1.0))
         self.set_draw_color(*self.primary)
-        self.set_line_width(0.85)
+        self.set_line_width(0.65)
         self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-        self.ln(2)
+        self.ln(1.3)
 
         # Meta chip bar
         level = self.report.get("level")
@@ -542,41 +612,43 @@ class PrintStyleExamPDF(FPDF):
         elif level is not None:
             scope = f"{scope} · whole grade".strip(" ·")
         chips = [
-            sheet.get("exam_title") or self.report.get("exam_title") or "",
-            scope,
+            sheet.get("section_title") or sheet.get("exam_title") or self.report.get("exam_title") or "",
+            sheet.get("scope_label") or scope,
             f"{sheet.get('student_count') or len(sheet.get('rows') or [])} students",
             f"{sheet.get('subject_count') or len(sheet.get('subjects') or [])} subjects",
             "With grades" if self.mode == "graded" else "Raw marks",
         ]
+        if sheet.get("overall_mean") is not None:
+            chips.insert(-1, f"Mean {sheet.get('overall_mean')}")
         chips = [chip for chip in chips if chip]
-        bar_h = 7.2
+        bar_h = 5.2
         y = self.get_y()
         self.set_fill_color(*_PDF_SOFT)
         self.set_draw_color(*_PDF_LINE)
-        self.set_line_width(0.25)
+        self.set_line_width(0.2)
         self.rect(self.l_margin, y, self.epw, bar_h, "DF")
         self.set_fill_color(*self.primary)
-        self.rect(self.l_margin, y, 1.15, bar_h, "F")
+        self.rect(self.l_margin, y, 0.9, bar_h, "F")
 
-        self.set_font(self.font_family, "B", 6.5)
-        chip_x = self.l_margin + 3.2
-        chip_y = y + 1.35
+        self.set_font(self.font_family, "B", 5.8)
+        chip_x = self.l_margin + 2.6
+        chip_y = y + 0.9
         for index, chip in enumerate(chips):
             label = _pdf_text(chip)
-            width = self.get_string_width(label) + 4.2
+            width = self.get_string_width(label) + 3.4
             if chip_x + width > self.w - self.r_margin - 2:
                 break
             self.set_xy(chip_x, chip_y)
             self.set_fill_color(*_PDF_WHITE)
             self.set_draw_color(*_PDF_LINE)
             self.set_text_color(*_PDF_NAVY)
-            self.cell(width, 4.4, label, border=1, align="C", fill=True)
-            chip_x += width + 1.6
+            self.cell(width, 3.4, label, border=1, align="C", fill=True)
+            chip_x += width + 1.2
             if index < len(chips) - 1 and chip_x < self.w - self.r_margin - 4:
                 self.set_draw_color(*_PDF_BORDER)
                 self.set_line_width(0.2)
-                self.line(chip_x - 0.8, chip_y + 0.9, chip_x - 0.8, chip_y + 3.5)
-        self.set_y(y + bar_h + 2.4)
+                self.line(chip_x - 0.6, chip_y + 0.7, chip_x - 0.6, chip_y + 2.7)
+        self.set_y(y + bar_h + 1.5)
 
     def draw_card_letterhead(self, card, *, compact=False):
         self._active_card = card
@@ -951,8 +1023,8 @@ class PrintStyleExamPDF(FPDF):
                 display_header.append(heading)
 
         col_count = len(display_header)
-        font_size = 7.0 if col_count <= 12 else (6.2 if col_count <= 16 else 5.4)
-        row_h = 5.8 if font_size >= 6.8 else 5.1
+        font_size = 6.8 if col_count <= 12 else (6.0 if col_count <= 16 else 5.2)
+        row_h = 5.2 if font_size >= 6.6 else 4.6
         widths = _matrix_fixed_widths(display_header, self.epw)
         summary_keys = {"total", "avg", "average", "grade"}
 
@@ -1003,6 +1075,58 @@ class PrintStyleExamPDF(FPDF):
                 x += width
             self.set_y(y + row_h)
 
+    def draw_analytics_table(self, sheet):
+        _title, header, rows = _analytics_table_data(self.report, sheet, self.mode)
+        col_count = len(header)
+        font_size = 6.8 if col_count <= 12 else (6.0 if col_count <= 16 else 5.2)
+        row_h = 5.2 if font_size >= 6.6 else 4.6
+        weights = []
+        for i, heading in enumerate(header):
+            longest = max(len(str(heading)), 3)
+            for row in rows[:20]:
+                if i < len(row):
+                    longest = max(longest, len(str(row[i])))
+            prefer = 1.8 if i == 1 else (1.15 if i in {0, 2} else 1.0)
+            weights.append(longest * prefer)
+        total = sum(weights) or 1
+        widths = [self.epw * (weight / total) for weight in weights]
+
+        def paint_header():
+            self._paint_header_row(widths, header, row_h + 0.3, font_size)
+
+        paint_header()
+        left_cols = {1}
+        for index, row in enumerate(rows):
+            if self.get_y() + row_h > self.h - self.b_margin:
+                self.add_page()
+                self.draw_matrix_letterhead(sheet, compact=True, kicker="SUBJECT ANALYTICS")
+                paint_header()
+            values = list(row) + [""] * (len(header) - len(row))
+            values = values[: len(header)]
+            is_mean = str(values[1] or "").casefold() in {"grade mean", "category mean"}
+            fill = _PDF_MEAN if is_mean else (_PDF_ALT if index % 2 else _PDF_WHITE)
+            x = self.l_margin
+            y = self.get_y()
+            self.set_draw_color(*_PDF_LINE)
+            self.set_text_color(*_PDF_INK)
+            for col_i, (width, value) in enumerate(zip(widths, values)):
+                heading = str(header[col_i] or "").casefold()
+                is_summary = heading in {"total", "mean", "grade"}
+                self.set_fill_color(*(_PDF_SUMMARY if is_summary and not is_mean else fill))
+                style = "B" if col_i in {0, 1} or is_summary or is_mean else ""
+                self.set_font(self.font_family, style, font_size)
+                self.set_xy(x, y)
+                self.cell(
+                    width,
+                    row_h,
+                    _fit(self, value, width, self.font_family, style, font_size),
+                    border="B",
+                    align="L" if col_i in left_cols else "C",
+                    fill=True,
+                )
+                x += width
+            self.set_y(y + row_h)
+
 
 def build_exam_report_pdf(report, *, mode="raw"):
     if mode not in {"raw", "graded"}:
@@ -1017,6 +1141,14 @@ def build_exam_report_pdf(report, *, mode="raw"):
             pdf.add_page()
             pdf.draw_matrix_letterhead(sheet)
             pdf.draw_matrix_table(sheet)
+    elif report.get("is_analytics"):
+        sheets = report.get("analytics_sheets") or [{}]
+        max_subjects = max((len(sheet.get("subjects") or []) for sheet in sheets), default=0)
+        pdf = PrintStyleExamPDF(report, mode, landscape=max_subjects >= 4)
+        for sheet in sheets:
+            pdf.add_page()
+            pdf.draw_matrix_letterhead(sheet, kicker="SUBJECT ANALYTICS")
+            pdf.draw_analytics_table(sheet)
     else:
         cards = report.get("report_cards") or []
         pdf = PrintStyleExamPDF(report, mode, landscape=False)

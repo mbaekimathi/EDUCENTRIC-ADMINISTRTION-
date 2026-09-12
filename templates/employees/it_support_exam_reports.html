@@ -72,7 +72,7 @@
 
           <div class="field exam-report-step exam-report-step-span" data-step="kind" hidden>
             <span class="field-label" id="exam-report-kind-label">3. Report type</span>
-            <div class="exam-report-kind" role="radiogroup" aria-labelledby="exam-report-kind-label">
+            <div class="exam-report-kind exam-report-kind-3" role="radiogroup" aria-labelledby="exam-report-kind-label">
               <label class="exam-report-choice">
                 <input
                   type="radio"
@@ -95,6 +95,18 @@
                 <span>
                   <strong>Individual report</strong>
                   <small>Results for one student or all students in a class</small>
+                </span>
+              </label>
+              <label class="exam-report-choice">
+                <input
+                  type="radio"
+                  name="report_kind"
+                  value="subject_analytics"
+                  {% if selection.report_kind == "subject_analytics" %}checked{% endif %}
+                >
+                <span>
+                  <strong>Subject analytics</strong>
+                  <small>Classes in rows, subjects in columns · total and mean per class</small>
                 </span>
               </label>
             </div>
@@ -179,14 +191,14 @@
         <div class="exam-report-stat-chip">
           <strong>{{ report.student_count }}</strong>
           <span>
-            {% if report.is_matrix %}
+            {% if report.is_matrix or report.is_analytics %}
               Student{{ report.student_count|pluralize }}
             {% else %}
               Report card{{ report.student_count|pluralize }}
             {% endif %}
           </span>
         </div>
-        {% if report.is_matrix %}
+        {% if report.is_matrix or report.is_analytics %}
         <div class="exam-report-stat-chip">
           <strong>{{ report.subject_count }}</strong>
           <span>Subject{{ report.subject_count|pluralize }}</span>
@@ -240,7 +252,7 @@
         </details>
       </div>
       <button type="button" class="primary-button exam-report-print-btn" data-print-report-card>
-        {% if report.is_matrix %}Print report{% else %}Print report card{{ report.student_count|pluralize }}{% endif %}
+        {% if report.is_matrix or report.is_analytics %}Print report{% else %}Print report card{{ report.student_count|pluralize }}{% endif %}
       </button>
     </div>
   </div>
@@ -293,7 +305,7 @@
         </div>
         <p class="exam-matrix-list-meta">
           <span>{{ sheet.exam_title }}{% if sheet.academic_term %} · {{ sheet.academic_term.name }}{% endif %}</span>
-          <span>{% if report.level %}{{ report.level.name }}{% endif %}{% if report.selected_class %} · {{ report.selected_class.display_label }}{% else %} · whole grade{% endif %}</span>
+          <span>{% if sheet.scope_label %}{{ sheet.scope_label }}{% elif sheet.level_name %}{{ sheet.level_name }} · whole grade{% elif report.level %}{{ report.level.name }}{% if report.selected_class %} · {{ report.selected_class.display_label }}{% else %} · whole grade{% endif %}{% else %}All academic levels{% endif %}</span>
           <span>{{ sheet.student_count }} student{{ sheet.student_count|pluralize }}</span>
           <span>{{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
         </p>
@@ -418,6 +430,176 @@
       </div>
     </section>
     {% endfor %}
+  </div>
+  {% elif report.is_analytics and report.analytics_sheets %}
+  <div class="exam-report-matrices exam-report-analytics" aria-label="Subject analytics">
+    <section class="exam-matrix-list exam-matrix-sheet exam-analytics-sheet" aria-label="Subject analytics">
+      <header class="exam-matrix-list-head" aria-label="Subject analytics letterhead">
+        <div class="exam-matrix-list-brand">
+          <div class="exam-matrix-list-logo-wrap">
+            {% if report.school_profile and report.school_profile.school_logo %}
+            <img class="exam-matrix-list-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
+            {% else %}
+            <span class="exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
+              {% if report.school_profile %}
+                {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+              {% else %}
+                E
+              {% endif %}
+            </span>
+            {% endif %}
+          </div>
+          <div class="exam-matrix-list-titles">
+            <p class="exam-matrix-list-kicker">Subject analytics</p>
+            <h2 class="is-uppercase">
+              {% if report.school_profile %}
+                {{ report.school_profile.official_name|default:report.school_profile.display_name }}
+              {% else %}
+                Edu-Centric School
+              {% endif %}
+            </h2>
+            {% if report.school_profile and report.school_profile.motto %}
+            <p class="exam-matrix-list-motto">“{{ report.school_profile.motto }}”</p>
+            {% endif %}
+            {% if report.school_profile %}
+              {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
+              <p class="exam-matrix-list-contact">
+                {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
+                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} · {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} · {% endif %}{{ report.school_profile.general_email }}{% endif %}
+              </p>
+              {% endif %}
+            {% endif %}
+          </div>
+          <div class="exam-matrix-list-brand-spacer" aria-hidden="true"></div>
+        </div>
+        <p class="exam-matrix-list-meta">
+          <span>{{ report.exam_title }}</span>
+          <span>{{ report.scope_label }}</span>
+          <span>{{ report.student_count }} student{{ report.student_count|pluralize }}</span>
+          <span>{{ report.subject_count }} subject{{ report.subject_count|pluralize }}</span>
+        </p>
+      </header>
+      {% for sheet in report.analytics_sheets %}
+      {% if sheet.section_title or report.analytics_sheets|length > 1 %}
+      <p class="exam-analytics-sheet-title">
+        {% if sheet.section_title %}
+          {{ sheet.section_title }}
+        {% else %}
+          {{ sheet.exam_title }}{% if sheet.academic_term %} · {{ sheet.academic_term.name }}{% endif %}
+        {% endif %}
+      </p>
+      {% endif %}
+      <div class="exam-matrix-list-wrap" tabindex="0">
+        <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
+        <table class="exam-matrix-list-table exam-analytics-table">
+          <thead>
+            <tr>
+              <th class="exam-matrix-pos-col" title="Position">#</th>
+              <th class="is-left exam-matrix-learner">Class</th>
+              <th class="exam-analytics-sat" title="Candidates who sat the assessment">Sat</th>
+              {% for subject in sheet.subjects %}
+              <th title="{% if subject.component_codes %}{{ subject.name }} ({{ subject.component_codes }}){% else %}{{ subject.name }}{% endif %}">{{ subject.code }}</th>
+              {% endfor %}
+              <th class="exam-matrix-summary-col" title="Total score">Total</th>
+              <th class="exam-matrix-summary-col" title="Mean score">Mean</th>
+              <th class="exam-matrix-summary-col exam-matrix-grade-col export-grade-col" title="Overall grade">Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in sheet.rows %}
+            <tr>
+              <td class="exam-matrix-pos-col">
+                {% if row.rank != None %}
+                  <strong>{{ row.rank }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="is-left exam-matrix-learner is-tone-{{ row.class_tone|default:'a' }}">
+                {{ row.class_label }}
+              </td>
+              <td class="exam-analytics-sat">{{ row.present_count }}/{{ row.student_count }}</td>
+              {% for cell in row.cells %}
+              <td class="exam-matrix-mark">
+                {% if cell.percent != None %}
+                  <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if row.total_score != None %}
+                  <strong>{{ row.total_score }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if row.mean_score != None %}
+                  <strong>{{ row.mean_score }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
+                {% if row.grade %}
+                  <strong>{{ row.grade }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td class="is-left" colspan="{{ sheet.subjects|length|add:6 }}">
+                No class results were found for this assessment.
+              </td>
+            </tr>
+            {% endfor %}
+            {% if sheet.subject_means and sheet.rows %}
+            <tr class="exam-matrix-mean-row">
+              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">—</span></td>
+              <th class="is-left exam-matrix-learner" scope="row">{{ sheet.mean_label|default:"Grade mean" }}</th>
+              <td class="exam-analytics-sat">{{ sheet.present_count }}/{{ sheet.student_count }}</td>
+              {% for mean in sheet.subject_means %}
+              <td class="exam-matrix-mark">
+                {% if mean.percent_mean != None %}
+                  <strong>{{ mean.percent_mean }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if sheet.overall_total != None %}
+                  <strong>{{ sheet.overall_total }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col">
+                {% if sheet.overall_mean != None %}
+                  <strong>{{ sheet.overall_mean }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
+                {% if sheet.overall_grade %}
+                  <strong>{{ sheet.overall_grade }}</strong>
+                {% else %}
+                  <span class="exam-matrix-empty">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </section>
   </div>
   {% elif report.report_cards %}
   <div class="exam-report-cards" aria-label="Student report cards">
@@ -834,6 +1016,11 @@
     return checked ? checked.value : "";
   }
 
+  function kindUsesLevelScope(kind) {
+    const value = kind || selectedKind();
+    return value === "academic_level" || value === "subject_analytics";
+  }
+
   function setOptions(select, items, placeholder, selectedId) {
     select.innerHTML = "";
     const blank = document.createElement("option");
@@ -865,7 +1052,18 @@
 
   function currentLevels() {
     const exam = currentExam();
-    return exam ? exam.levels : [];
+    const levels = exam ? exam.levels.slice() : [];
+    if (kindUsesLevelScope() && levels.length) {
+      return [
+        { id: "all", name: "All academic levels", label: "All academic levels", classes: [] },
+        ...levels,
+      ];
+    }
+    return levels;
+  }
+
+  function isAllLevels() {
+    return levelSelect.value === "all";
   }
 
   function currentClasses() {
@@ -891,14 +1089,16 @@
     examSelect.required = Boolean(yearSelect.value);
     levelSelect.required = Boolean(examSelect.value) && Boolean(kind);
     classSelect.required =
-      kind === "individual" || (kind === "academic_level" && scope === "individual_class");
+      kind === "individual" ||
+      (kindUsesLevelScope(kind) && scope === "individual_class" && !isAllLevels());
     studentSelect.required = kind === "individual";
   }
 
   function canGenerate() {
     const kind = selectedKind();
     if (!yearSelect.value || !examSelect.value || !kind || !levelSelect.value) return false;
-    if (kind === "academic_level") {
+    if (kindUsesLevelScope(kind)) {
+      if (isAllLevels()) return true;
       const scope = selectedScope();
       if (!scope) return false;
       if (scope === "individual_class" && !classSelect.value) return false;
@@ -912,21 +1112,22 @@
     const hasExam = Boolean(examSelect.value);
     const kind = selectedKind();
     const scope = selectedScope();
+    const allLevels = isAllLevels();
     show(steps.exam, hasYear);
     show(steps.kind, hasExam);
     show(steps.level, hasExam && Boolean(kind));
-    show(steps.levelScope, kind === "academic_level" && Boolean(levelSelect.value));
+    show(steps.levelScope, kindUsesLevelScope(kind) && Boolean(levelSelect.value) && !allLevels);
     const needClass =
       kind === "individual" ||
-      (kind === "academic_level" && scope === "individual_class");
+      (kindUsesLevelScope(kind) && scope === "individual_class" && !allLevels);
     show(steps.class, needClass && Boolean(levelSelect.value));
     show(steps.student, kind === "individual" && Boolean(classSelect.value));
     if (classStepLabel) {
       classStepLabel.textContent =
-        kind === "academic_level" ? "6. Select class" : "5. Class";
+        kindUsesLevelScope(kind) ? "6. Select class" : "5. Class";
     }
     if (classHint) {
-      classHint.hidden = !(kind === "academic_level" && scope === "individual_class");
+      classHint.hidden = !(kindUsesLevelScope(kind) && scope === "individual_class");
     }
     syncRequired();
     generateBtn.disabled = !canGenerate();
@@ -1008,6 +1209,8 @@
       form.querySelectorAll('input[name="level_scope"]').forEach((scopeInput) => {
         scopeInput.checked = false;
       });
+      const keepLevel = levelSelect.value === "all" && !kindUsesLevelScope() ? "" : levelSelect.value;
+      fillLevels(keepLevel);
       fillClasses("");
       setOptions(studentSelect, [], "Select student", "");
       updateVisibility();
@@ -1015,6 +1218,12 @@
   });
 
   levelSelect.addEventListener("change", () => {
+    if (isAllLevels()) {
+      form.querySelectorAll('input[name="level_scope"]').forEach((scopeInput) => {
+        scopeInput.checked = scopeInput.value === "all_level";
+      });
+      classSelect.value = "";
+    }
     fillClasses("");
     setOptions(studentSelect, [], "Select student", "");
     updateVisibility();
@@ -1059,6 +1268,7 @@
       );
       if (kindInput) kindInput.checked = true;
     }
+    fillLevels(initial.levelId);
     if (initial.levelScope) {
       const scopeInput = form.querySelector(
         `input[name="level_scope"][value="${initial.levelScope}"]`
@@ -1132,7 +1342,6 @@
   if (!printButtons.length && !exportPrintButtons.length) return;
 
   const matrixPrintCss = `
-    @page { size: A4 portrait; margin: 10mm; }
     html, body {
       margin: 0;
       padding: 0;
@@ -1149,7 +1358,7 @@
     .exam-matrix-list {
       display: block;
       width: 100%;
-      margin: 0 0 8mm;
+      margin: 0 0 6mm;
       padding: 0;
       border: 0;
       background: #fff;
@@ -1162,24 +1371,24 @@
       page-break-before: always;
     }
     .exam-matrix-list-head {
-      margin: 0 0 4mm;
-      padding: 0 0 3mm;
-      border-bottom: 1.5pt solid #1b4fd6;
+      margin: 0 0 2mm;
+      padding: 0 0 1.4mm;
+      border-bottom: 1.1pt solid #1b4fd6;
     }
     .exam-matrix-list-brand {
       display: grid;
-      grid-template-columns: 32mm minmax(0, 1fr) 32mm;
-      gap: 3.5mm;
+      grid-template-columns: 14mm minmax(0, 1fr) 14mm;
+      gap: 2mm;
       align-items: center;
     }
     .exam-matrix-list-logo-wrap,
     .exam-matrix-list-brand-spacer {
-      width: 32mm;
+      width: 14mm;
     }
     .exam-matrix-list-logo,
     .exam-matrix-list-logo-mark {
-      width: 32mm;
-      height: 32mm;
+      width: 14mm;
+      height: 14mm;
       object-fit: contain;
       flex: 0 0 auto;
       background: #fff;
@@ -1187,11 +1396,11 @@
     .exam-matrix-list-logo-mark {
       display: grid;
       place-items: center;
-      border-radius: 2mm;
+      border-radius: 1.2mm;
       background: #1b4fd6;
       color: #fff;
       font-weight: 800;
-      font-size: 14pt;
+      font-size: 8pt;
     }
     .exam-matrix-list-titles {
       text-align: center;
@@ -1201,33 +1410,34 @@
     .exam-matrix-list-kicker {
       margin: 0;
       color: #1b4fd6;
-      font-size: 7.5pt;
+      font-size: 6pt;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       text-align: center;
     }
     .exam-matrix-list-head h2 {
-      margin: 1mm 0 0;
-      font: 800 13pt/1.2 "Plus Jakarta Sans", "DM Sans", sans-serif;
+      margin: 0.3mm 0 0;
+      font: 800 10pt/1.15 "Plus Jakarta Sans", "DM Sans", sans-serif;
       text-align: center;
     }
     .exam-matrix-list-motto,
     .exam-matrix-list-contact {
-      margin: 1mm 0 0;
+      margin: 0.35mm 0 0;
       color: #4d5f7a;
-      font-size: 8pt;
+      font-size: 6.5pt;
+      line-height: 1.2;
       text-align: center;
     }
     .exam-matrix-list-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 1.5mm 3mm;
-      margin: 2.5mm 0 0;
-      padding-top: 2mm;
-      border-top: 0.5pt solid #d5deec;
+      gap: 0.8mm 2mm;
+      margin: 1.1mm 0 0;
+      padding-top: 1mm;
+      border-top: 0.4pt solid #d5deec;
       color: #334155;
-      font-size: 8.5pt;
+      font-size: 7pt;
       font-weight: 650;
     }
     .exam-matrix-list-wrap {
@@ -1250,12 +1460,12 @@
     }
     .exam-matrix-list-table th,
     .exam-matrix-list-table td {
-      padding: 1.1mm 0.7mm;
-      border: 0.6pt solid #64748b;
+      padding: 0.75mm 0.5mm;
+      border: 0.55pt solid #64748b;
       text-align: center;
       vertical-align: middle;
-      font-size: 8pt;
-      line-height: 1.2;
+      font-size: 7.5pt;
+      line-height: 1.15;
     }
     .exam-matrix-list-table th.is-left,
     .exam-matrix-list-table td.is-left { text-align: left; }
@@ -1364,6 +1574,29 @@
     html[data-export-mode="raw"] .export-grade-col {
       display: none !important;
     }
+    .exam-analytics-code {
+      display: block;
+      color: #64748b;
+      font-size: 6.5pt;
+      font-weight: 650;
+    }
+    .exam-analytics-table th,
+    .exam-analytics-table td {
+      padding: 0.7mm 0.45mm;
+      font-size: 7pt;
+    }
+    .exam-analytics-sat {
+      white-space: nowrap;
+      font-weight: 650;
+    }
+    .exam-analytics-sheet-title {
+      margin: 3mm 0 1.4mm;
+      color: #1b4fd6;
+      font-size: 8pt;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
   `;
 
   const setExportMode = (mode) => {
@@ -1387,6 +1620,9 @@
   const printMatrixSheets = (mode) => {
     const source = document.querySelector(".exam-report-matrices");
     if (!source) return false;
+    const pageSize = source.classList.contains("exam-report-analytics")
+      ? "A4 landscape"
+      : "A4 portrait";
 
     const clone = source.cloneNode(true);
     clone.querySelectorAll(".no-print, .exam-matrix-scroll-hint").forEach((node) => {
@@ -1409,8 +1645,8 @@
     const doc = frame.contentDocument || frame.contentWindow.document;
     doc.open();
     doc.write(`<!DOCTYPE html><html lang="en" data-export-mode="${mode}"><head><meta charset="utf-8">
-      <title>Mark sheet</title>
-      <style>${matrixPrintCss}</style>
+      <title>${source.classList.contains("exam-report-analytics") ? "Subject analytics" : "Mark sheet"}</title>
+      <style>@page { size: ${pageSize}; margin: 8mm; }${matrixPrintCss}</style>
     </head><body></body></html>`);
     doc.close();
     doc.body.appendChild(doc.importNode(clone, true));
