@@ -15521,8 +15521,8 @@ body.is-reordering-academic-levels [data-normal-only] {
   text-overflow: ellipsis;
 }
 
-.exam-matrix-list-table th:not(.is-left):not(.exam-matrix-pos-col):not(.exam-matrix-summary-col):not(.exam-matrix-grade-col),
-.exam-matrix-list-table td:not(.is-left):not(.exam-matrix-pos-col):not(.exam-matrix-summary-col):not(.exam-matrix-grade-col) {
+.exam-matrix-list-table th:not(.is-left):not(.exam-matrix-pos-col):not(.exam-matrix-summary-col):not(.exam-matrix-grade-col):not(.exam-analytics-subject):not(.exam-analytics-pair-cell),
+.exam-matrix-list-table td:not(.is-left):not(.exam-matrix-pos-col):not(.exam-matrix-summary-col):not(.exam-matrix-grade-col):not(.exam-analytics-pair-cell) {
   min-width: 3.6rem;
   width: 4rem;
   padding-left: 0.15rem;
@@ -15652,12 +15652,103 @@ body.is-reordering-academic-levels [data-normal-only] {
   letter-spacing: 0.03em;
 }
 
-.exam-analytics-table th.exam-analytics-sat,
-.exam-analytics-table td.exam-analytics-sat {
-  min-width: 4.1rem;
-  width: 4.4rem;
+.exam-matrix-list-table.exam-analytics-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.exam-matrix-list-table.exam-analytics-table .exam-analytics-col-pos {
+  width: 2.2rem;
+}
+
+.exam-matrix-list-table.exam-analytics-table .exam-analytics-col-class {
+  width: 8.5rem;
+}
+
+.exam-matrix-list-table.exam-analytics-table .exam-analytics-col-sat {
+  width: 3.4rem;
+}
+
+.exam-matrix-list-table.exam-analytics-table .exam-analytics-col-mark {
+  width: auto;
+}
+
+.exam-matrix-list-table.exam-analytics-table th,
+.exam-matrix-list-table.exam-analytics-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.exam-matrix-list-table.exam-analytics-table th.is-left,
+.exam-matrix-list-table.exam-analytics-table td.is-left {
+  text-align: left;
+}
+
+.exam-matrix-list-table.exam-analytics-table th.exam-matrix-learner,
+.exam-matrix-list-table.exam-analytics-table td.exam-matrix-learner {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.exam-matrix-list-table.exam-analytics-table th.exam-matrix-pos-col,
+.exam-matrix-list-table.exam-analytics-table td.exam-matrix-pos-col {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.exam-matrix-list-table.exam-analytics-table th.exam-analytics-sat,
+.exam-matrix-list-table.exam-analytics-table td.exam-analytics-sat {
   white-space: nowrap;
   font-weight: 650;
+}
+
+.exam-matrix-list-table.exam-analytics-table th.exam-analytics-subject,
+.exam-matrix-list-table.exam-analytics-table td.exam-analytics-pair-cell,
+.exam-matrix-list-table.exam-analytics-table th.exam-matrix-summary-col,
+.exam-matrix-list-table.exam-analytics-table td.exam-matrix-summary-col,
+.exam-matrix-list-table.exam-analytics-table th.exam-matrix-grade-col,
+.exam-matrix-list-table.exam-analytics-table td.exam-matrix-grade-col,
+.exam-matrix-list-table.exam-analytics-table td.exam-analytics-mark {
+  padding: 0.28rem 0.12rem;
+}
+
+.exam-matrix-list-table.exam-analytics-table th.exam-analytics-subject,
+.exam-matrix-list-table.exam-analytics-table th.exam-matrix-summary-col,
+.exam-matrix-list-table.exam-analytics-table th.exam-matrix-grade-col {
+  font-size: 0.62rem;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
+}
+
+.exam-analytics-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  min-height: 2rem;
+  line-height: 1.1;
+}
+
+.exam-analytics-pair strong {
+  font-size: 0.78rem;
+}
+
+.exam-analytics-pair em {
+  display: block;
+  min-height: 0.75rem;
+  margin: 0;
+  color: #1b4fd6;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 750;
 }
 
 .exam-analytics-sheet-title {
@@ -16059,6 +16150,17 @@ body.is-reordering-academic-levels [data-normal-only] {
   min-width: 100%;
   width: max-content;
   border: 1px solid #64748b;
+}
+
+.exam-report-page .exam-report-analytics .exam-matrix-list-wrap {
+  overflow-x: auto;
+}
+
+.exam-report-page .exam-analytics-table {
+  --exam-matrix-pos-w: 2.2rem;
+  --exam-matrix-learner-w: 8.5rem;
+  width: 100%;
+  min-width: 100%;
 }
 
 .exam-report-page .exam-matrix-list-table th,
@@ -17162,6 +17264,15 @@ body.is-reordering-academic-levels [data-normal-only] {
     margin: 8mm;
   }
 
+  @page exam-analytics {
+    size: A4 landscape;
+    margin: 6mm;
+  }
+
+  .exam-report-analytics {
+    page: exam-analytics;
+  }
+
   /* Allow multi-page print: workspace shell is viewport-locked on screen. */
   html,
   html:has(.workspace-body),
@@ -17849,6 +17960,53 @@ body.is-reordering-academic-levels [data-normal-only] {
     border: 0.6pt solid #64748b !important;
     font-size: 9pt;
     line-height: 1.25;
+  }
+
+  .exam-analytics-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    margin: 0;
+  }
+
+  .exam-analytics-table th,
+  .exam-analytics-table td {
+    padding: 0.12rem 0.08rem !important;
+    font-size: 7.5pt;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .exam-analytics-table th.is-left.exam-matrix-learner,
+  .exam-analytics-table td.is-left.exam-matrix-learner {
+    width: auto !important;
+    max-width: none !important;
+    text-align: left;
+  }
+
+  .exam-analytics-table thead th {
+    letter-spacing: 0.01em;
+    white-space: normal;
+    overflow: visible;
+    word-break: break-word;
+  }
+
+  .exam-analytics-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 6.5mm;
+    line-height: 1.1;
+  }
+
+  .exam-analytics-pair em {
+    display: block;
+    min-height: 2.4mm;
+    margin: 0;
+    color: #1b4fd6;
+    font-size: 6.5pt;
+    font-style: normal;
+    font-weight: 750;
   }
 
   .exam-matrix-list-table thead th {

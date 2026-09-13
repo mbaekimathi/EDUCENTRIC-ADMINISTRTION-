@@ -217,6 +217,10 @@ def _write_individual_sheet(worksheet, report, cards, mode):
     _autosize_columns(worksheet)
 
 
+def _analytics_subject_code(subject):
+    return getattr(subject, "code", None) or getattr(subject, "name", "") or "Subject"
+
+
 def _format_analytics_mark(cell, mode):
     if not cell or cell.get("percent") is None:
         return "-"
@@ -228,10 +232,7 @@ def _format_analytics_mark(cell, mode):
 def _analytics_table_data(report, sheet, mode):
     title = sheet.get("exam_title") or report.get("exam_title") or "Subject analytics"
     header = ["#", "Class", "Sat"]
-    header.extend(
-        getattr(subject, "code", None) or getattr(subject, "name", "") or "Subject"
-        for subject in (sheet.get("subjects") or [])
-    )
+    header.extend(_analytics_subject_code(subject) for subject in (sheet.get("subjects") or []))
     header.extend(["Total", "Mean"])
     if mode == "graded":
         header.append("Grade")
@@ -1077,22 +1078,20 @@ class PrintStyleExamPDF(FPDF):
 
     def draw_analytics_table(self, sheet):
         _title, header, rows = _analytics_table_data(self.report, sheet, self.mode)
-        col_count = len(header)
-        font_size = 6.8 if col_count <= 12 else (6.0 if col_count <= 16 else 5.2)
-        row_h = 5.2 if font_size >= 6.6 else 4.6
-        weights = []
-        for i, heading in enumerate(header):
-            longest = max(len(str(heading)), 3)
-            for row in rows[:20]:
-                if i < len(row):
-                    longest = max(longest, len(str(row[i])))
-            prefer = 1.8 if i == 1 else (1.15 if i in {0, 2} else 1.0)
-            weights.append(longest * prefer)
-        total = sum(weights) or 1
-        widths = [self.epw * (weight / total) for weight in weights]
+        col_count = max(len(header), 1)
+        font_size = 7.0 if col_count <= 10 else (6.2 if col_count <= 14 else (5.5 if col_count <= 18 else 4.8))
+        row_h = 5.4 if font_size >= 6.2 else 4.8
+        pos_w = min(7.2, self.epw * 0.04)
+        class_w = min(28.0, self.epw * 0.14)
+        sat_w = min(10.5, self.epw * 0.05)
+        remaining = max(self.epw - pos_w - class_w - sat_w, 10)
+        mark_count = max(col_count - 3, 1)
+        mark_w = remaining / mark_count
+        widths = [pos_w, class_w, sat_w] + [mark_w] * mark_count
+        widths = widths[:col_count]
 
         def paint_header():
-            self._paint_header_row(widths, header, row_h + 0.3, font_size)
+            self._paint_header_row(widths, header, row_h + 0.15, font_size)
 
         paint_header()
         left_cols = {1}
@@ -1144,7 +1143,7 @@ def build_exam_report_pdf(report, *, mode="raw"):
     elif report.get("is_analytics"):
         sheets = report.get("analytics_sheets") or [{}]
         max_subjects = max((len(sheet.get("subjects") or []) for sheet in sheets), default=0)
-        pdf = PrintStyleExamPDF(report, mode, landscape=max_subjects >= 4)
+        pdf = PrintStyleExamPDF(report, mode, landscape=True)
         for sheet in sheets:
             pdf.add_page()
             pdf.draw_matrix_letterhead(sheet, kicker="SUBJECT ANALYTICS")

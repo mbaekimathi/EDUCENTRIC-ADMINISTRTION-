@@ -987,7 +987,10 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(report_page, "SCI")
         self.assertContains(report_page, "Grade 3 East")
         self.assertContains(report_page, "Total")
+        self.assertContains(report_page, "Mean")
+        self.assertContains(report_page, "Grade")
         self.assertContains(report_page, "80")
+        self.assertContains(report_page, ">B<")
 
         excel_response = self.client.get(
             reverse("employees:it_support_exam_report_export"),
@@ -1009,7 +1012,10 @@ class ITSupportWorkspaceTests(TestCase):
         flat = [cell for row in rows for cell in row if cell not in (None, "")]
         self.assertIn("SCI", flat)
         self.assertIn("Grade 3 East", flat)
-        self.assertIn(80, flat)
+        self.assertIn("Mean", flat)
+        self.assertIn("Grade", flat)
+        self.assertTrue(any("80" in str(cell) for cell in flat))
+        self.assertTrue(any("B" in str(cell) for cell in flat))
 
         pdf_response = self.client.get(
             reverse("employees:it_support_exam_report_export"),
