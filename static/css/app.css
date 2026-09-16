@@ -14534,6 +14534,10 @@ body.is-reordering-academic-levels [data-normal-only] {
   border-radius: 1.15rem;
   background: #fff;
   box-shadow: 0 1px 2px #15233f06, 0 12px 28px #15233f0a;
+  overflow: visible;
+}
+
+.exam-report-builder-details:not([open]) {
   overflow: clip;
 }
 
@@ -14586,6 +14590,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   border-radius: 0;
   box-shadow: none;
   background: transparent;
+  overflow: visible;
 }
 
 .exam-report-builder .exam-report-form,
@@ -14648,15 +14653,131 @@ body.is-reordering-academic-levels [data-normal-only] {
   font-size: 0.8rem;
 }
 
-.exam-report-level-note {
+.exam-report-multi-select {
+  position: relative;
+  z-index: 5;
+}
+
+.exam-report-multi-select.is-open {
+  z-index: 40;
+}
+
+.exam-report-multi-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.65rem;
   margin: 0;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid #d9e4f4;
-  border-radius: 0.9rem;
-  background: #f8fbff;
-  color: var(--ink-soft);
-  font-size: 0.88rem;
-  line-height: 1.45;
+  padding: 0.7rem 2.4rem 0.7rem 0.85rem;
+  border: 1px solid #cfdced;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75L6 6.25L10.5 1.75' stroke='%2366758f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      right 0.9rem center / 0.75rem no-repeat,
+    linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: inset 0 1px 0 #ffffffa8;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.exam-report-multi-select-trigger:hover {
+  border-color: var(--line-strong);
+}
+
+.exam-report-multi-select-trigger:focus {
+  border-color: var(--blue);
+  background-color: #fff;
+  box-shadow: 0 0 0 4px #1f5cf018;
+  outline: 0;
+}
+
+.exam-report-multi-select.is-open .exam-report-multi-select-trigger {
+  border-color: var(--blue);
+  background-color: #fff;
+  box-shadow: 0 0 0 4px #1f5cf018;
+}
+
+.exam-report-multi-select-trigger [data-level-multi-summary] {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exam-report-multi-select-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  max-height: min(16rem, 50vh);
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid #cfdced;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: 0 12px 28px #15233f14;
+}
+
+.exam-report-multi-select-empty {
+  margin: 0;
+  padding: 0.7rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.exam-report-multi-select-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.1rem 1fr;
+  gap: 0.65rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.exam-report-multi-select-option:hover {
+  background: #f3f7ff;
+}
+
+.exam-report-multi-select-option.is-selected {
+  background: #e8efff;
+  color: #123a9c;
+  font-weight: 700;
+}
+
+.exam-report-multi-select-check {
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid #b7c5dc;
+  border-radius: 0.25rem;
+  background: #fff;
+}
+
+.exam-report-multi-select-option.is-selected .exam-report-multi-select-check {
+  border-color: #1f5cf0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8' fill='none'%3E%3Cpath d='M1 4L3.8 6.8L9 1.5' stroke='%23fff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 0.65rem no-repeat,
+    #1f5cf0;
+}
+
+.exam-report-multi-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exam-report-actions {
@@ -17316,6 +17437,39 @@ body.is-reordering-academic-levels [data-normal-only] {
     background: #fff !important;
     box-shadow: none !important;
     overflow: visible !important;
+  }
+
+  .exam-report-page,
+  .exam-report-cards,
+  .exam-report-matrices,
+  .student-report-card,
+  .exam-matrix-list {
+    font-weight: 700 !important;
+  }
+
+  .exam-matrix-list-table th,
+  .exam-matrix-list-table td,
+  .exam-analytics-table th,
+  .exam-analytics-table td,
+  .src-table th,
+  .src-table td,
+  .src-dual-copy,
+  .src-dual-student,
+  .src-dual-facts,
+  .src-summary-item,
+  .src-comments,
+  .src-signoff {
+    font-weight: 700 !important;
+  }
+
+  .exam-matrix-list-table thead th,
+  .exam-analytics-table thead th,
+  .src-table thead th,
+  .src-dual-copy h1,
+  .src-dual-student-name,
+  .exam-matrix-mark strong,
+  .exam-analytics-pair strong {
+    font-weight: 800 !important;
   }
 
   .student-report-card {

@@ -730,6 +730,8 @@ class ITSupportWorkspaceTests(TestCase):
                     self.assertContains(response, "Individual report")
                     self.assertContains(response, "Subject analytics")
                     self.assertContains(response, "Select academic year")
+                    self.assertContains(response, "data-level-multi")
+                    self.assertContains(response, "Select academic levels")
                     self.assertContains(response, "Whole grade")
                     self.assertContains(response, "Per class")
                     self.assertContains(response, "Report scope")
@@ -1024,6 +1026,160 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertEqual(pdf_response.status_code, 200)
         self.assertEqual(pdf_response["Content-Type"], "application/pdf")
         self.assertTrue(pdf_response.content.startswith(b"%PDF"))
+
+    def test_exam_report_subject_analytics_multiple_levels(self):
+        from datetime import date
+
+        from apps.admissions.models import ParentGuardian, Student
+
+        level_a = AcademicLevel.objects.create(name="Grade 1", code="G1", order=1, category="LOWER_PRIMARY")
+        level_b = AcademicLevel.objects.create(name="Grade 2", code="G2", order=2, category="LOWER_PRIMARY")
+        class_a = AcademicClass.objects.create(
+            academic_level=level_a,
+            name="Grade 1 East",
+            code="G1E",
+            order=1,
+        )
+        class_b = AcademicClass.objects.create(
+            academic_level=level_b,
+            name="Grade 2 West",
+            code="G2W",
+            order=1,
+        )
+        subject = LearningArea.objects.create(name="Literacy", code="LIT")
+        subject.academic_levels.add(level_a, level_b)
+        year = AcademicYear.objects.create(
+            name="2026 Multi Level Analytics",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 1",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 1),
+            opening_date=date(2026, 1, 5),
+            midterm_date=date(2026, 2, 15),
+            closing_date=date(2026, 4, 1),
+            order=1,
+        )
+        exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 3, 10),
+            end_date=date(2026, 3, 12),
+        )
+        exam.academic_levels.add(level_a, level_b)
+        parent = ParentGuardian.objects.create(
+            full_name="MULTI PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700002222",
+            email="multi.analytics@example.com",
+        )
+        student_a = Student.objects.create(
+            first_name="ANN",
+            last_name="ONE",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="9201",
+            class_group="G1E",
+            assessment_number="A9201",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        student_b = Student.objects.create(
+            first_name="BOB",
+            last_name="TWO",
+            date_of_birth="2017-01-01",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_2,
+            admission_number="9202",
+            class_group="G2W",
+            assessment_number="A9202",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=exam,
+            student=student_a,
+            learning_area=subject,
+            marks=45,
+            out_of_marks=50,
+        )
+        ExamMark.objects.create(
+            generation=exam,
+            student=student_b,
+            learning_area=subject,
+            marks=40,
+            out_of_marks=50,
+        )
+        for level in (level_a, level_b):
+            GradeBand.objects.create(
+                academic_level=level,
+                code="EE",
+                meaning="Exceeding",
+                start_percent=80,
+                end_percent=100,
+                points=12,
+                mark_level="Exceeding",
+            )
+
+        report_page = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            [
+                ("generate", "1"),
+                ("year_id", str(year.id)),
+                ("exam_id", str(exam.id)),
+                ("report_kind", "subject_analytics"),
+                ("level_id", str(level_a.id)),
+                ("level_id", str(level_b.id)),
+                ("level_scope", "all_level"),
+            ],
+        )
+        self.assertEqual(report_page.status_code, 200)
+        self.assertContains(report_page, "Subject analytics")
+        self.assertContains(report_page, "LIT")
+        self.assertContains(report_page, "Grade 1")
+        self.assertContains(report_page, "Grade 2")
+        self.assertContains(report_page, class_a.display_label)
+        self.assertContains(report_page, class_b.display_label)
+        self.assertContains(report_page, "data-level-multi")
+        self.assertContains(report_page, "Select academic levels")
+        # Selection order is reversed in the query; generated rows still follow level order.
+        grade1_pos = report_page.content.find(class_a.display_label.encode())
+        grade2_pos = report_page.content.find(class_b.display_label.encode())
+        self.assertNotEqual(grade1_pos, -1)
+        self.assertNotEqual(grade2_pos, -1)
+        self.assertLess(grade1_pos, grade2_pos)
+
+        reverse_order_page = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            [
+                ("generate", "1"),
+                ("year_id", str(year.id)),
+                ("exam_id", str(exam.id)),
+                ("report_kind", "subject_analytics"),
+                ("level_id", str(level_b.id)),
+                ("level_id", str(level_a.id)),
+                ("level_scope", "all_level"),
+            ],
+        )
+        self.assertEqual(reverse_order_page.status_code, 200)
+        reverse_g1 = reverse_order_page.content.find(class_a.display_label.encode())
+        reverse_g2 = reverse_order_page.content.find(class_b.display_label.encode())
+        self.assertNotEqual(reverse_g1, -1)
+        self.assertNotEqual(reverse_g2, -1)
+        self.assertLess(reverse_g1, reverse_g2)
 
     def test_exam_report_shows_combined_subjects(self):
         from apps.admissions.models import ParentGuardian, Student

@@ -48,6 +48,7 @@
         data-students-url="{% url exam_report_students_url %}"
       >
         {{ exam_catalog_json|json_script:"exam-report-catalog" }}
+        {{ selection.level_ids|json_script:"exam-report-level-ids" }}
         <input type="hidden" name="generate" value="1">
 
         <div class="exam-report-steps">
@@ -106,17 +107,38 @@
                 >
                 <span>
                   <strong>Subject analytics</strong>
-                  <small>Classes in rows, subjects in columns · mean and grade per subject</small>
+                  <small>Select one or more levels · classes in rows, subjects in columns</small>
                 </span>
               </label>
             </div>
           </div>
 
           <div class="field exam-report-step" data-step="level" hidden>
-            <label for="exam-report-level">4. Academic level</label>
-            <select id="exam-report-level" name="level_id" class="uppercase-input">
+            <label for="exam-report-level">4. Academic level<span data-level-multi-suffix hidden>s</span></label>
+            <select id="exam-report-level" name="level_id" class="uppercase-input" data-level-select>
               <option value="">Select academic level</option>
             </select>
+            <div class="exam-report-multi-select" data-level-multi hidden>
+              <button
+                type="button"
+                id="exam-report-level-multi"
+                class="exam-report-multi-select-trigger uppercase-input"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                data-level-multi-trigger
+              >
+                <span data-level-multi-summary>Select academic levels</span>
+              </button>
+              <div
+                class="exam-report-multi-select-menu"
+                data-level-multi-menu
+                hidden
+                role="listbox"
+                aria-multiselectable="true"
+                aria-label="Academic levels"
+              ></div>
+              <div data-level-multi-values hidden></div>
+            </div>
           </div>
 
           <div class="field exam-report-step exam-report-step-span" data-step="level-scope" hidden>
@@ -968,10 +990,24 @@
   const years = catalog.years || [];
   const yearsById = Object.fromEntries(years.map((year) => [String(year.id), year]));
   const studentsUrl = form.getAttribute("data-students-url");
+  const levelIdsNode = document.getElementById("exam-report-level-ids");
+  let restoredLevelIds = [];
+  try {
+    restoredLevelIds = levelIdsNode ? JSON.parse(levelIdsNode.textContent) : [];
+  } catch (error) {
+    restoredLevelIds = [];
+  }
+  if (!Array.isArray(restoredLevelIds)) restoredLevelIds = [];
 
   const yearSelect = form.querySelector("#exam-report-year");
   const examSelect = form.querySelector("#exam-report-exam");
   const levelSelect = form.querySelector("#exam-report-level");
+  const levelMultiSuffix = form.querySelector("[data-level-multi-suffix]");
+  const levelMulti = form.querySelector("[data-level-multi]");
+  const levelMultiTrigger = form.querySelector("[data-level-multi-trigger]");
+  const levelMultiSummary = form.querySelector("[data-level-multi-summary]");
+  const levelMultiMenu = form.querySelector("[data-level-multi-menu]");
+  const levelMultiValues = form.querySelector("[data-level-multi-values]");
   const classSelect = form.querySelector("#exam-report-class");
   const studentSelect = form.querySelector("#exam-report-student");
   const generateBtn = form.querySelector("[data-generate-btn]");
@@ -993,12 +1029,25 @@
     examId: "{{ selection.exam_id|escapejs }}",
     reportKind: "{{ selection.report_kind|escapejs }}",
     levelId: "{{ selection.level_id|escapejs }}",
+    levelIds: restoredLevelIds,
     levelScope: "{{ selection.level_scope|escapejs }}",
     classId: "{{ selection.class_id|escapejs }}",
     studentId: "{{ selection.student_id|escapejs }}",
   };
+  if (!Array.isArray(initial.levelIds) || !initial.levelIds.length) {
+    if (initial.levelId === "all") {
+      initial.levelIds = ["all"];
+    } else if (initial.levelId && String(initial.levelId).includes(",")) {
+      initial.levelIds = String(initial.levelId).split(",").filter(Boolean);
+    } else if (initial.levelId) {
+      initial.levelIds = [String(initial.levelId)];
+    } else {
+      initial.levelIds = [];
+    }
+  }
 
   let studentRequest = 0;
+  let multiLevelIds = [];
 
   function selectedKind() {
     const checked = form.querySelector('input[name="report_kind"]:checked');
@@ -1015,12 +1064,18 @@
     return value === "academic_level" || value === "subject_analytics";
   }
 
+  function usesMultiLevels(kind) {
+    return (kind || selectedKind()) === "subject_analytics";
+  }
+
   function setOptions(select, items, placeholder, selectedId) {
     select.innerHTML = "";
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = placeholder;
-    select.appendChild(blank);
+    if (placeholder) {
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = placeholder;
+      select.appendChild(blank);
+    }
     items.forEach((item) => {
       const option = document.createElement("option");
       option.value = String(item.id);
@@ -1044,29 +1099,177 @@
     return currentExams().find((item) => String(item.id) === String(examSelect.value)) || null;
   }
 
-  function currentLevels() {
+  function examLevels() {
     const exam = currentExam();
     const levels = exam ? exam.levels.slice() : [];
+    levels.sort((left, right) => {
+      const orderDiff = (left.order || 0) - (right.order || 0);
+      if (orderDiff !== 0) return orderDiff;
+      return String(left.name || "").localeCompare(String(right.name || ""), undefined, {
+        sensitivity: "base",
+      });
+    });
+    return levels;
+  }
+
+  function currentLevels() {
+    const levels = examLevels();
     if (kindUsesLevelScope() && levels.length) {
       return [
-        { id: "all", name: "All academic levels", label: "All academic levels", classes: [] },
+        { id: "all", name: "All academic levels", label: "All academic levels", order: -1, classes: [] },
         ...levels,
       ];
     }
     return levels;
   }
 
+  function normalizeMultiSelection(selectedIds) {
+    const ids = (selectedIds || []).map(String).filter(Boolean);
+    if (ids.includes("all")) return ["all"];
+    return ids.filter((id) => id !== "all");
+  }
+
+  function selectedLevelIds() {
+    if (usesMultiLevels()) return multiLevelIds.slice();
+    return levelSelect.value ? [String(levelSelect.value)] : [];
+  }
+
   function isAllLevels() {
-    return levelSelect.value === "all";
+    return selectedLevelIds().includes("all");
+  }
+
+  function isMultiLevelSelection() {
+    if (!usesMultiLevels()) return isAllLevels();
+    if (isAllLevels()) return true;
+    return selectedLevelIds().filter((id) => id !== "all").length > 1;
   }
 
   function currentClasses() {
-    const level = currentLevels().find((item) => String(item.id) === String(levelSelect.value));
+    const ids = selectedLevelIds().filter((id) => id !== "all");
+    if (ids.length !== 1) return [];
+    const level = examLevels().find((item) => String(item.id) === String(ids[0]));
     return level ? level.classes : [];
   }
 
+  function closeMultiMenu() {
+    if (!levelMultiMenu || !levelMultiTrigger) return;
+    levelMultiMenu.hidden = true;
+    levelMultiTrigger.setAttribute("aria-expanded", "false");
+    if (levelMulti) levelMulti.classList.remove("is-open");
+  }
+
+  function openMultiMenu() {
+    if (!levelMultiMenu || !levelMultiTrigger) return;
+    levelMultiMenu.hidden = false;
+    levelMultiTrigger.setAttribute("aria-expanded", "true");
+    if (levelMulti) levelMulti.classList.add("is-open");
+  }
+
+  function syncMultiHiddenInputs() {
+    if (!levelMultiValues) return;
+    levelMultiValues.innerHTML = "";
+    multiLevelIds.forEach((id) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "level_id";
+      input.value = id;
+      levelMultiValues.appendChild(input);
+    });
+  }
+
+  function updateMultiSummary() {
+    if (!levelMultiSummary) return;
+    const levels = currentLevels();
+    if (!multiLevelIds.length) {
+      levelMultiSummary.textContent = "Select academic levels";
+      return;
+    }
+    if (multiLevelIds.includes("all")) {
+      levelMultiSummary.textContent = "All academic levels";
+      return;
+    }
+    const labels = multiLevelIds
+      .map((id) => levels.find((level) => String(level.id) === String(id)))
+      .filter(Boolean)
+      .map((level) => level.label || level.name);
+    if (!labels.length) {
+      levelMultiSummary.textContent = "Select academic levels";
+      return;
+    }
+    if (labels.length <= 2) {
+      levelMultiSummary.textContent = labels.join(", ");
+      return;
+    }
+    levelMultiSummary.textContent = `${labels.length} levels selected`;
+  }
+
+  function renderMultiMenu() {
+    if (!levelMultiMenu) return;
+    const levels = currentLevels();
+    const selected = new Set(multiLevelIds.map(String));
+    levelMultiMenu.innerHTML = "";
+    if (!levels.length) {
+      const empty = document.createElement("p");
+      empty.className = "exam-report-multi-select-empty";
+      empty.textContent = "No academic levels are attached to this assessment.";
+      levelMultiMenu.appendChild(empty);
+      return;
+    }
+    levels.forEach((level) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "exam-report-multi-select-option";
+      option.setAttribute("role", "option");
+      option.dataset.value = String(level.id);
+      const isSelected = selected.has(String(level.id));
+      option.setAttribute("aria-selected", isSelected ? "true" : "false");
+      if (isSelected) option.classList.add("is-selected");
+      const check = document.createElement("span");
+      check.className = "exam-report-multi-select-check";
+      check.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.className = "exam-report-multi-select-label";
+      label.textContent = level.label || level.name;
+      option.appendChild(check);
+      option.appendChild(label);
+      levelMultiMenu.appendChild(option);
+    });
+  }
+
+  function setMultiLevelIds(ids, { silent } = {}) {
+    multiLevelIds = normalizeMultiSelection(ids);
+    syncMultiHiddenInputs();
+    updateMultiSummary();
+    renderMultiMenu();
+    if (!silent) {
+      if (isMultiLevelSelection()) {
+        form.querySelectorAll('input[name="level_scope"]').forEach((scopeInput) => {
+          scopeInput.checked = scopeInput.value === "all_level";
+        });
+        classSelect.value = "";
+      }
+      fillClasses("");
+      setOptions(studentSelect, [], "Select student", "");
+      updateVisibility();
+    }
+  }
+
+  function syncLevelControlMode() {
+    const multi = usesMultiLevels();
+    const levelLabel = form.querySelector('label[for="exam-report-level"], label[for="exam-report-level-multi"]');
+    show(levelSelect, !multi);
+    show(levelMulti, multi);
+    show(levelMultiSuffix, multi);
+    levelSelect.disabled = multi;
+    levelSelect.name = multi ? "" : "level_id";
+    if (levelLabel) {
+      levelLabel.setAttribute("for", multi ? "exam-report-level-multi" : "exam-report-level");
+    }
+    if (!multi) closeMultiMenu();
+  }
+
   function clearDownstreamFromExam() {
-    fillLevels("");
+    fillLevels([]);
     fillClasses("");
     setOptions(studentSelect, [], "Select student", "");
     form.querySelectorAll('input[name="report_kind"]').forEach((input) => {
@@ -1081,18 +1284,20 @@
     const kind = selectedKind();
     const scope = selectedScope();
     examSelect.required = Boolean(yearSelect.value);
-    levelSelect.required = Boolean(examSelect.value) && Boolean(kind);
+    levelSelect.required = Boolean(examSelect.value) && Boolean(kind) && !usesMultiLevels(kind);
     classSelect.required =
       kind === "individual" ||
-      (kindUsesLevelScope(kind) && scope === "individual_class" && !isAllLevels());
+      (kindUsesLevelScope(kind) && scope === "individual_class" && !isMultiLevelSelection());
     studentSelect.required = kind === "individual";
   }
 
   function canGenerate() {
     const kind = selectedKind();
-    if (!yearSelect.value || !examSelect.value || !kind || !levelSelect.value) return false;
+    if (!yearSelect.value || !examSelect.value || !kind) return false;
+    const ids = selectedLevelIds();
+    if (!ids.length) return false;
     if (kindUsesLevelScope(kind)) {
-      if (isAllLevels()) return true;
+      if (isMultiLevelSelection()) return true;
       const scope = selectedScope();
       if (!scope) return false;
       if (scope === "individual_class" && !classSelect.value) return false;
@@ -1106,15 +1311,17 @@
     const hasExam = Boolean(examSelect.value);
     const kind = selectedKind();
     const scope = selectedScope();
-    const allLevels = isAllLevels();
+    const multiSelection = isMultiLevelSelection();
+    const hasLevel = selectedLevelIds().length > 0;
+    syncLevelControlMode();
     show(steps.exam, hasYear);
     show(steps.kind, hasExam);
     show(steps.level, hasExam && Boolean(kind));
-    show(steps.levelScope, kindUsesLevelScope(kind) && Boolean(levelSelect.value) && !allLevels);
+    show(steps.levelScope, kindUsesLevelScope(kind) && hasLevel && !multiSelection);
     const needClass =
       kind === "individual" ||
-      (kindUsesLevelScope(kind) && scope === "individual_class" && !allLevels);
-    show(steps.class, needClass && Boolean(levelSelect.value));
+      (kindUsesLevelScope(kind) && scope === "individual_class" && !multiSelection);
+    show(steps.class, needClass && hasLevel);
     show(steps.student, kind === "individual" && Boolean(classSelect.value));
     if (classStepLabel) {
       classStepLabel.textContent =
@@ -1131,8 +1338,21 @@
     setOptions(examSelect, currentExams(), "Select assessment", selectedId);
   }
 
-  function fillLevels(selectedId) {
-    setOptions(levelSelect, currentLevels(), "Select academic level", selectedId);
+  function fillLevels(selectedIds) {
+    const ids = Array.isArray(selectedIds)
+      ? selectedIds
+      : selectedIds
+        ? [String(selectedIds)]
+        : [];
+    syncLevelControlMode();
+    if (usesMultiLevels()) {
+      setMultiLevelIds(ids, { silent: true });
+    } else {
+      multiLevelIds = [];
+      syncMultiHiddenInputs();
+      closeMultiMenu();
+      setOptions(levelSelect, currentLevels(), "Select academic level", ids[0] || "");
+    }
   }
 
   function fillClasses(selectedId) {
@@ -1142,7 +1362,8 @@
   async function fillStudents(selectedId) {
     const requestId = ++studentRequest;
     setOptions(studentSelect, [], "Select student", "");
-    if (!levelSelect.value || !classSelect.value) {
+    const ids = selectedLevelIds().filter((id) => id !== "all");
+    if (ids.length !== 1 || !classSelect.value) {
       if (studentHint) studentHint.hidden = true;
       updateVisibility();
       return;
@@ -1153,7 +1374,7 @@
     }
     try {
       const url = new URL(studentsUrl, window.location.origin);
-      url.searchParams.set("level_id", levelSelect.value);
+      url.searchParams.set("level_id", ids[0]);
       url.searchParams.set("class_id", classSelect.value);
       const response = await fetch(url.toString(), {
         headers: { Accept: "application/json" },
@@ -1203,8 +1424,13 @@
       form.querySelectorAll('input[name="level_scope"]').forEach((scopeInput) => {
         scopeInput.checked = false;
       });
-      const keepLevel = levelSelect.value === "all" && !kindUsesLevelScope() ? "" : levelSelect.value;
-      fillLevels(keepLevel);
+      const previous = selectedLevelIds();
+      const keep = usesMultiLevels()
+        ? normalizeMultiSelection(previous)
+        : previous.includes("all")
+          ? ["all"]
+          : previous.slice(0, 1);
+      fillLevels(keep);
       fillClasses("");
       setOptions(studentSelect, [], "Select student", "");
       updateVisibility();
@@ -1221,6 +1447,43 @@
     fillClasses("");
     setOptions(studentSelect, [], "Select student", "");
     updateVisibility();
+  });
+
+  if (levelMultiTrigger) {
+    levelMultiTrigger.addEventListener("click", () => {
+      if (levelMultiMenu.hidden) openMultiMenu();
+      else closeMultiMenu();
+    });
+  }
+
+  if (levelMultiMenu) {
+    levelMultiMenu.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-value]");
+      if (!option || !levelMultiMenu.contains(option)) return;
+      const value = String(option.dataset.value || "");
+      if (!value) return;
+      let next;
+      if (value === "all") {
+        next = multiLevelIds.includes("all") ? [] : ["all"];
+      } else if (multiLevelIds.includes("all")) {
+        next = [value];
+      } else if (multiLevelIds.includes(value)) {
+        next = multiLevelIds.filter((id) => id !== value);
+      } else {
+        next = multiLevelIds.concat(value);
+      }
+      setMultiLevelIds(next);
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!levelMulti || levelMulti.hidden || levelMultiMenu.hidden) return;
+    if (levelMulti.contains(event.target)) return;
+    closeMultiMenu();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeMultiMenu();
   });
 
   form.querySelectorAll('input[name="level_scope"]').forEach((input) => {
@@ -1262,7 +1525,7 @@
       );
       if (kindInput) kindInput.checked = true;
     }
-    fillLevels(initial.levelId);
+    fillLevels(initial.levelIds);
     if (initial.levelScope) {
       const scopeInput = form.querySelector(
         `input[name="level_scope"][value="${initial.levelScope}"]`
@@ -1280,7 +1543,7 @@
     yearSelect.value = initial.yearId;
     fillExams(initial.examId);
     if (initial.examId) {
-      fillLevels(initial.levelId);
+      fillLevels(initial.levelIds);
       restoreSelection();
     } else {
       updateVisibility();
@@ -1290,7 +1553,7 @@
     if (inferredYear) {
       yearSelect.value = inferredYear;
       fillExams(initial.examId);
-      fillLevels(initial.levelId);
+      fillLevels(initial.levelIds);
       restoreSelection();
     } else {
       updateVisibility();
@@ -1344,7 +1607,7 @@
       overflow: visible !important;
       background: #fff;
       color: #10233f;
-      font: 400 11pt/1.35 "DM Sans", "Segoe UI", sans-serif;
+      font: 700 11pt/1.35 "DM Sans", "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
     .no-print, .exam-matrix-scroll-hint { display: none !important; }
@@ -1359,6 +1622,7 @@
       box-shadow: none;
       break-inside: auto;
       page-break-inside: auto;
+      font-weight: 700;
     }
     .exam-matrix-sheet + .exam-matrix-sheet {
       break-before: page;
@@ -1418,8 +1682,9 @@
     .exam-matrix-list-motto,
     .exam-matrix-list-contact {
       margin: 0.35mm 0 0;
-      color: #4d5f7a;
+      color: #334155;
       font-size: 6.5pt;
+      font-weight: 700;
       line-height: 1.2;
       text-align: center;
     }
@@ -1430,9 +1695,9 @@
       margin: 1.1mm 0 0;
       padding-top: 1mm;
       border-top: 0.4pt solid #d5deec;
-      color: #334155;
+      color: #1e293b;
       font-size: 7pt;
-      font-weight: 650;
+      font-weight: 700;
     }
     .exam-matrix-list-wrap {
       overflow: visible !important;
@@ -1463,6 +1728,7 @@
       text-align: center;
       vertical-align: middle;
       font-size: 7.5pt;
+      font-weight: 700;
       line-height: 1.15;
     }
     .exam-matrix-list-table th.is-left,
@@ -1495,7 +1761,7 @@
     .exam-matrix-list-table.has-class-col td.is-left:nth-child(3) {
       width: 6%;
       white-space: nowrap;
-      font-weight: 650;
+      font-weight: 700;
     }
     .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class.is-tone-a {
       color: #1b4fd6;
@@ -1554,19 +1820,19 @@
       line-height: 1.15;
       vertical-align: baseline;
     }
-    .exam-matrix-mark strong { font-size: 8pt; color: #10233f; }
+    .exam-matrix-mark strong { font-size: 8pt; font-weight: 800; color: #10233f; }
     .exam-matrix-mark em {
       margin-left: 0.18em;
       color: #1b4fd6;
       font-size: 6.5pt;
       font-style: normal;
-      font-weight: 750;
+      font-weight: 800;
     }
-    .exam-matrix-empty { color: #a8b4c7; }
+    .exam-matrix-empty { color: #94a3b8; font-weight: 700; }
     .exam-matrix-absent {
       color: #9a3412;
       font-size: 7pt;
-      font-weight: 750;
+      font-weight: 800;
     }
     html[data-export-mode="raw"] .export-grade,
     html[data-export-mode="raw"] .export-grade-col {
@@ -1574,15 +1840,16 @@
     }
     .exam-analytics-code {
       display: block;
-      color: #64748b;
+      color: #475569;
       font-size: 6.5pt;
-      font-weight: 650;
+      font-weight: 700;
     }
     .exam-analytics-table {
       width: 100% !important;
       table-layout: fixed !important;
       margin: 0;
       border-collapse: collapse;
+      font-weight: 700;
     }
     .exam-analytics-table .exam-analytics-col-pos { width: 7mm; }
     .exam-analytics-table .exam-analytics-col-class { width: 32mm; }
@@ -1592,6 +1859,7 @@
     .exam-analytics-table td {
       padding: 0.7mm 0.4mm;
       font-size: 7pt;
+      font-weight: 700;
       text-align: center;
       vertical-align: middle;
     }
@@ -1640,6 +1908,7 @@
     }
     .exam-analytics-pair strong {
       font-size: 7.5pt;
+      font-weight: 800;
     }
     .exam-analytics-pair em {
       display: block;
@@ -1648,11 +1917,11 @@
       color: #1b4fd6;
       font-size: 6.2pt;
       font-style: normal;
-      font-weight: 750;
+      font-weight: 800;
     }
     .exam-analytics-sat {
       white-space: nowrap;
-      font-weight: 650;
+      font-weight: 700;
     }
     .exam-analytics-sheet-title {
       margin: 3mm 0 1.4mm;

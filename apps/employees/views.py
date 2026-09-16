@@ -4441,11 +4441,13 @@ def _exam_report_builder_catalog():
                 {
                     "id": level.id,
                     "name": level.name,
+                    "order": level.order,
                     "classes": [
                         {
                             "id": academic_class.id,
                             "name": academic_class.name,
                             "label": academic_class.display_label,
+                            "order": academic_class.order,
                         }
                         for academic_class in level.classes.all()
                     ],
@@ -4502,22 +4504,65 @@ def _merge_exam_catalog_levels(exams):
                 levels_by_id[level["id"]] = {
                     "id": level["id"],
                     "name": level["name"],
+                    "order": level.get("order", 0),
                     "classes": list(level.get("classes") or []),
                 }
                 continue
+            if level.get("order") is not None:
+                existing["order"] = level.get("order", existing.get("order", 0))
             known = {item["id"] for item in existing["classes"]}
             for academic_class in level.get("classes") or []:
                 if academic_class["id"] not in known:
                     existing["classes"].append(academic_class)
                     known.add(academic_class["id"])
-    return list(levels_by_id.values())
+    levels = list(levels_by_id.values())
+    for level in levels:
+        level["classes"] = sorted(
+            level.get("classes") or [],
+            key=lambda item: (
+                item.get("order", 0) or 0,
+                (item.get("label") or item.get("name") or "").casefold(),
+                item.get("id") or 0,
+            ),
+        )
+    levels.sort(
+        key=lambda item: (
+            item.get("order", 0) or 0,
+            (item.get("name") or "").casefold(),
+            item.get("id") or 0,
+        )
+    )
+    return levels
+
+
+def _exam_report_selected_level_ids(request):
+    """Collect level_id values from a single- or multi-select report builder."""
+    raw_values = []
+    for value in request.GET.getlist("level_id"):
+        cleaned = (value or "").strip()
+        if cleaned:
+            raw_values.append(cleaned)
+    if not raw_values:
+        cleaned = (request.GET.get("level_id") or "").strip()
+        if cleaned:
+            raw_values.append(cleaned)
+    # Preserve order while dropping duplicates.
+    unique = []
+    seen = set()
+    for value in raw_values:
+        if value in seen:
+            continue
+        seen.add(value)
+        unique.append(value)
+    return unique
 
 
 def _exam_report_selection(request):
     year_id = (request.GET.get("year_id") or "").strip()
     exam_id = (request.GET.get("exam_id") or "").strip()
     report_kind = (request.GET.get("report_kind") or "").strip()
-    level_id = (request.GET.get("level_id") or "").strip()
+    level_ids = _exam_report_selected_level_ids(request)
+    level_id = level_ids[0] if len(level_ids) == 1 else ("all" if "all" in level_ids else "")
     level_scope = (request.GET.get("level_scope") or "").strip()
     class_id = (request.GET.get("class_id") or "").strip()
     student_id = (request.GET.get("student_id") or "").strip()
@@ -4528,6 +4573,7 @@ def _exam_report_selection(request):
         "exam_id": exam_id,
         "report_kind": report_kind,
         "level_id": level_id,
+        "level_ids": level_ids,
         "level_scope": level_scope,
         "class_id": class_id,
         "student_id": student_id,
@@ -4555,7 +4601,12 @@ def _exam_report_selection(request):
     if exam_id == "all":
         exams = list(
             GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
-            .prefetch_related("academic_levels")
+            .prefetch_related(
+                Prefetch(
+                    "academic_levels",
+                    queryset=AcademicLevel.objects.order_by("order", "name"),
+                )
+            )
             .filter(**year_filter)
             .order_by("academic_term__order", "created_at")
         )
@@ -4566,7 +4617,12 @@ def _exam_report_selection(request):
     else:
         exam = (
             GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
-            .prefetch_related("academic_levels")
+            .prefetch_related(
+                Prefetch(
+                    "academic_levels",
+                    queryset=AcademicLevel.objects.order_by("order", "name"),
+                )
+            )
             .filter(pk=int(exam_id), **year_filter)
             .first()
         )
@@ -4579,21 +4635,87 @@ def _exam_report_selection(request):
         return selection, {
             "error": "Choose whether this is an academic level, individual, or subject analytics report."
         }
-    all_levels_mode = level_id == "all"
-    if all_levels_mode:
+
+    available_levels = _levels_for_exam_report(exams)
+    available_by_id = {str(level.id): level for level in available_levels}
+    wants_all_levels = "all" in level_ids
+    selected_level_ids = [value for value in level_ids if value.isdigit()]
+    multi_levels_mode = False
+    all_levels_mode = False
+
+    if report_kind == "subject_analytics":
+        if wants_all_levels:
+            levels = available_levels
+            if not levels:
+                return selection, {
+                    "error": "No academic levels are attached to the chosen assessment(s)."
+                }
+            all_levels_mode = True
+            level = None
+            level_scope = "all_level"
+            level_id = "all"
+            selection["level_id"] = "all"
+            selection["level_ids"] = ["all"]
+        elif not level_ids:
+            return selection, {"error": "Select one or more academic levels."}
+        elif len(selected_level_ids) > 1:
+            levels = _sort_levels_by_settings(
+                [
+                    available_by_id[value]
+                    for value in selected_level_ids
+                    if value in available_by_id
+                ]
+            )
+            if not levels:
+                return selection, {
+                    "error": "None of the selected academic levels belong to the chosen assessment(s)."
+                }
+            multi_levels_mode = True
+            all_levels_mode = True  # reuse multi-level sheet builder path
+            level = None
+            level_scope = "all_level"
+            level_id = ",".join(str(item.id) for item in levels)
+            selection["level_id"] = level_id
+            selection["level_ids"] = [str(item.id) for item in levels]
+        elif len(selected_level_ids) == 1:
+            level = available_by_id.get(selected_level_ids[0])
+            if level is None:
+                level = _academic_level_report_queryset().filter(pk=int(selected_level_ids[0])).first()
+            if level is None:
+                return selection, {"error": "The selected academic level could not be found."}
+            leveled_exams = [item for item in exams if _exam_has_academic_levels(item)]
+            if leveled_exams and not any(
+                _exam_includes_academic_level(item, level.id) for item in leveled_exams
+            ):
+                return selection, {
+                    "error": "The selected academic level is not part of the chosen assessment(s)."
+                }
+            levels = [level]
+            level_id = str(level.id)
+            selection["level_id"] = level_id
+            selection["level_ids"] = [level_id]
+        else:
+            return selection, {"error": "Select one or more academic levels."}
+    elif wants_all_levels:
         if report_kind == "individual":
             return selection, {"error": "Select an academic level."}
-        levels = _levels_for_exam_report(exams)
+        levels = available_levels
         if not levels:
             return selection, {
                 "error": "No academic levels are attached to the chosen assessment(s)."
             }
+        all_levels_mode = True
         level = None
         level_scope = "all_level"
-    elif not level_id.isdigit():
+        level_id = "all"
+        selection["level_id"] = "all"
+        selection["level_ids"] = ["all"]
+    elif not selected_level_ids:
         return selection, {"error": "Select an academic level."}
     else:
-        level = _academic_level_report_queryset().filter(pk=int(level_id)).first()
+        level = available_by_id.get(selected_level_ids[0])
+        if level is None:
+            level = _academic_level_report_queryset().filter(pk=int(selected_level_ids[0])).first()
         if level is None:
             return selection, {"error": "The selected academic level could not be found."}
         leveled_exams = [item for item in exams if _exam_has_academic_levels(item)]
@@ -4602,6 +4724,9 @@ def _exam_report_selection(request):
         ):
             return selection, {"error": "The selected academic level is not part of the chosen assessment(s)."}
         levels = [level]
+        level_id = str(level.id)
+        selection["level_id"] = level_id
+        selection["level_ids"] = [level_id]
 
     selected_class = None
     selected_student = None
@@ -4609,7 +4734,10 @@ def _exam_report_selection(request):
 
     if report_kind in {"academic_level", "subject_analytics"}:
         if all_levels_mode:
-            scope_label = "All academic levels"
+            if multi_levels_mode:
+                scope_label = ", ".join(item.name for item in levels)
+            else:
+                scope_label = "All academic levels"
         elif level_scope not in {"all_level", "individual_class"}:
             return selection, {
                 "error": "Choose whether to generate for the whole grade or one class."
@@ -4850,6 +4978,18 @@ def _academic_level_report_queryset():
                 )
             ),
         ),
+    ).order_by("order", "name")
+
+
+def _sort_levels_by_settings(levels):
+    """Arrange levels using the curriculum academic-level order setting."""
+    return sorted(
+        levels,
+        key=lambda level: (
+            getattr(level, "order", 0) or 0,
+            (getattr(level, "name", None) or "").casefold(),
+            getattr(level, "id", 0) or 0,
+        ),
     )
 
 
@@ -4916,18 +5056,22 @@ def _align_analytics_cells(cells, source_subjects, union_subjects):
 
 
 def _rerank_analytics_class_rows(rows):
-    rows.sort(
+    """Assign performance ranks, then arrange rows by academic-level settings order."""
+    performance_sorted = sorted(
+        rows,
         key=lambda row: (
             row.get("mean_score") is None,
             -(row["mean_score"] if row.get("mean_score") is not None else 0),
             -(row["total_score"] if row.get("total_score") is not None else 0),
+            row.get("level_order", 10**9),
+            row.get("class_order", 10**9),
             (row.get("class_label") or "").casefold(),
-        )
+        ),
     )
     present_index = 0
     last_key = object()
     last_rank = None
-    for row in rows:
+    for row in performance_sorted:
         if row.get("mean_score") is None:
             row["rank"] = None
             continue
@@ -4937,10 +5081,17 @@ def _rerank_analytics_class_rows(rows):
             last_rank = present_index
             last_key = key
         row["rank"] = last_rank
+    rows.sort(
+        key=lambda row: (
+            row.get("level_order", 10**9),
+            row.get("class_order", 10**9),
+            (row.get("class_label") or "").casefold(),
+        )
+    )
     labels = [row.get("class_label") or "" for row in rows]
     tone_by_label = {
         label: ("a" if index % 2 == 0 else "b")
-        for index, label in enumerate(sorted(labels, key=lambda value: value.casefold()))
+        for index, label in enumerate(labels)
     }
     for row in rows:
         row["class_tone"] = tone_by_label.get(row.get("class_label") or "", "a")
@@ -4992,7 +5143,7 @@ def _build_all_level_analytics_sheets(levels, exams):
     """One card with a table per academic category, using that category's subjects."""
     payloads = []
     student_count = 0
-    for level in levels:
+    for level in _sort_levels_by_settings(levels):
         students = list(_students_in_academic_level(level))
         if not students:
             continue
@@ -5021,20 +5172,22 @@ def _build_all_level_analytics_sheets(levels, exams):
         student_count += len(students)
 
     by_category = OrderedDict()
-    for payload in sorted(
-        payloads,
-        key=lambda item: (
-            _category_sort_key(item["category"]),
-            item["level"].order,
-            item["level"].name.casefold(),
-        ),
-    ):
+    for payload in payloads:
         by_category.setdefault(payload["category"], []).append(payload)
+
+    category_items = sorted(
+        by_category.items(),
+        key=lambda item: (
+            min((entry["level"].order for entry in item[1]), default=0),
+            _category_sort_key(item[0]),
+            item[0].casefold(),
+        ),
+    )
 
     sheets = []
     max_subjects = 0
     multiple_exams = len(exams) > 1
-    for category, group in by_category.items():
+    for category, group in category_items:
         union_subjects = OrderedDict()
         grade_bands = []
         for payload in group:
@@ -5060,6 +5213,11 @@ def _build_all_level_analytics_sheets(levels, exams):
                     if level.name and level.name.casefold() not in label.casefold():
                         row["class_label"] = f"{level.name} · {label}"
                     row["level_name"] = level.name
+                    row["level_order"] = level.order
+                    academic_class = row.get("academic_class")
+                    row["class_order"] = (
+                        academic_class.order if academic_class is not None else 10**9
+                    )
                     row["cells"] = _align_analytics_cells(
                         row.get("cells"), payload["subjects"], union_list
                     )
@@ -5111,7 +5269,7 @@ def _build_all_level_matrix_sheets(levels, exams):
     sheets = []
     student_count = 0
     subject_count = 0
-    for level in levels:
+    for level in _sort_levels_by_settings(levels):
         students = list(_students_in_academic_level(level))
         if not students:
             continue
@@ -5394,6 +5552,7 @@ def _analytics_class_groups(students, level, selected_class=None):
             {
                 "academic_class": selected_class,
                 "label": selected_class.display_label,
+                "level_order": level.order,
                 "students": list(students),
             }
         ]
@@ -5418,6 +5577,7 @@ def _analytics_class_groups(students, level, selected_class=None):
             {
                 "academic_class": academic_class,
                 "label": academic_class.display_label,
+                "level_order": level.order,
                 "students": class_students,
             }
         )
@@ -5427,11 +5587,12 @@ def _analytics_class_groups(students, level, selected_class=None):
             continue
         label = (student.class_group or "").strip() or "Unassigned"
         leftovers.setdefault(label, []).append(student)
-    for label, class_students in leftovers.items():
+    for label, class_students in sorted(leftovers.items(), key=lambda item: item[0].casefold()):
         groups.append(
             {
                 "academic_class": None,
                 "label": label,
+                "level_order": level.order,
                 "students": class_students,
             }
         )
@@ -5475,9 +5636,12 @@ def _analytics_class_row(group, subjects, mark_lookup, out_of_by_subject, grade_
     valid_means = [cell["percent"] for cell in cells if cell["percent"] is not None]
     mean_score = round(sum(valid_means) / len(valid_means)) if valid_means else None
     mean_band = _grade_band_for_percent(mean_score, grade_bands)
+    academic_class = group.get("academic_class")
     return {
         "class_label": group["label"],
-        "academic_class": group["academic_class"],
+        "academic_class": academic_class,
+        "class_order": academic_class.order if academic_class is not None else 10**9,
+        "level_order": group.get("level_order", 0),
         "student_count": len(group["students"]),
         "present_count": len(present_percent_rows),
         "absent_count": len(group["students"]) - len(present_percent_rows),
@@ -5519,6 +5683,7 @@ def _build_subject_analytics_sheets(
                 row["mean_score"] is None,
                 -(row["mean_score"] if row["mean_score"] is not None else 0),
                 -(row["total_score"] if row["total_score"] is not None else 0),
+                row.get("class_order", 10**9),
                 (row["class_label"] or "").casefold(),
             )
         )
@@ -5535,14 +5700,18 @@ def _build_subject_analytics_sheets(
                 last_rank = present_index
                 last_key = key
             row["rank"] = last_rank
-        class_labels = [row["class_label"] for row in rows]
-        class_tone_by_label = {
-            label: ("a" if index % 2 == 0 else "b")
-            for index, label in enumerate(sorted(class_labels, key=lambda value: value.casefold()))
-        }
-        for row in rows:
-            row["class_tone"] = class_tone_by_label.get(row["class_label"], "a")
-
+        ranked_classes = [row for row in rows if row.get("mean_score") is not None]
+        strongest_class = ranked_classes[0] if ranked_classes else None
+        weakest_class = ranked_classes[-1] if ranked_classes else None
+        # Keep ranks, but present classes in curriculum class order.
+        rows.sort(
+            key=lambda row: (
+                row.get("class_order", 10**9),
+                (row.get("class_label") or "").casefold(),
+            )
+        )
+        for index, row in enumerate(rows):
+            row["class_tone"] = "a" if index % 2 == 0 else "b"
         all_present_rows = []
         for group in groups:
             for student in group["students"]:
@@ -5580,9 +5749,6 @@ def _build_subject_analytics_sheets(
         present_totals = [
             row["total_score"] for row in rows if row.get("total_score") is not None
         ]
-        ranked_classes = [row for row in rows if row.get("mean_score") is not None]
-        strongest_class = ranked_classes[0] if ranked_classes else None
-        weakest_class = ranked_classes[-1] if ranked_classes else None
         strongest_subject = next(
             (
                 item

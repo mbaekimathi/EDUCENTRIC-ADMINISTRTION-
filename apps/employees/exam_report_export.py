@@ -509,7 +509,7 @@ class PrintStyleExamPDF(FPDF):
         self.set_line_width(0.45)
         self.line(0, self.h - 9, self.w, self.h - 9)
         self.set_y(-7.2)
-        self.set_font(self.font_family, "", 6.6)
+        self.set_font(self.font_family, "B", 6.6)
         self.set_text_color(*_PDF_MUTED)
         issued = self.report.get("issued_on")
         left = "  ·  ".join(
@@ -575,24 +575,24 @@ class PrintStyleExamPDF(FPDF):
         )
         if self.brand["motto"] and not compact:
             self.set_x(cx)
-            self.set_font(self.font_family, "", 6.6)
+            self.set_font(self.font_family, "B", 6.6)
             self.set_text_color(*_PDF_MUTED)
             self.cell(
                 center_w,
                 2.8,
-                _fit(self, f'"{self.brand["motto"]}"', center_w, self.font_family, "", 6.6),
+                _fit(self, f'"{self.brand["motto"]}"', center_w, self.font_family, "B", 6.6),
                 align="C",
                 new_x="LMARGIN",
                 new_y="NEXT",
             )
         if self.brand["contact"] and not compact:
             self.set_x(cx)
-            self.set_font(self.font_family, "", 5.8)
+            self.set_font(self.font_family, "B", 5.8)
             self.set_text_color(*_PDF_MUTED)
             self.cell(
                 center_w,
                 2.5,
-                _fit(self, self.brand["contact"], center_w, self.font_family, "", 5.8),
+                _fit(self, self.brand["contact"], center_w, self.font_family, "B", 5.8),
                 align="C",
                 new_x="LMARGIN",
                 new_y="NEXT",
@@ -678,14 +678,14 @@ class PrintStyleExamPDF(FPDF):
         )
         if self.brand["motto"] and not compact:
             self.set_x(tx)
-            self.set_font(self.font_family, "", 7.2)
+            self.set_font(self.font_family, "B", 7.2)
             self.set_text_color(*_PDF_MUTED)
-            self.cell(tw, 3.4, _fit(self, f'"{self.brand["motto"]}"', tw, self.font_family, "", 7.2), new_x="LMARGIN", new_y="NEXT")
+            self.cell(tw, 3.4, _fit(self, f'"{self.brand["motto"]}"', tw, self.font_family, "B", 7.2), new_x="LMARGIN", new_y="NEXT")
         if self.brand["contact"] and not compact:
             self.set_x(tx)
-            self.set_font(self.font_family, "", 6.5)
+            self.set_font(self.font_family, "B", 6.5)
             self.set_text_color(*_PDF_MUTED)
-            self.cell(tw, 3.2, _fit(self, self.brand["contact"], tw, self.font_family, "", 6.5), new_x="LMARGIN", new_y="NEXT")
+            self.cell(tw, 3.2, _fit(self, self.brand["contact"], tw, self.font_family, "B", 6.5), new_x="LMARGIN", new_y="NEXT")
         year = self.report.get("academic_year")
         exam_bits = []
         if year is not None:
@@ -739,7 +739,7 @@ class PrintStyleExamPDF(FPDF):
             facts.append(("Level", level.name))
         for label, value in facts:
             self.set_x(rx + 1)
-            self.set_font(self.font_family, "", 6.5)
+            self.set_font(self.font_family, "B", 6.5)
             self.set_text_color(*_PDF_MUTED)
             self.cell(right_w * 0.38, 3.35, label)
             self.set_font(self.font_family, "B", 6.8)
@@ -791,7 +791,7 @@ class PrintStyleExamPDF(FPDF):
             self.set_fill_color(*self.primary)
             self.rect(x, y, 1.0, h, "F")
             self.set_xy(x + 2.4, y + 1.5)
-            self.set_font(self.font_family, "", 6.3)
+            self.set_font(self.font_family, "B", 6.3)
             self.set_text_color(*_PDF_MUTED)
             self.cell(box_w - 4, 3, label.upper())
             self.set_xy(x + 2.4, y + 5.1)
@@ -806,7 +806,7 @@ class PrintStyleExamPDF(FPDF):
         self.set_fill_color(*self.primary)
         self.rect(self.l_margin, y, 1.0, 10, "F")
         self.set_xy(self.l_margin + 2.4, y + 1.2)
-        self.set_font(self.font_family, "", 6.3)
+        self.set_font(self.font_family, "B", 6.3)
         self.set_text_color(*_PDF_MUTED)
         self.cell(self.epw - 4, 3, remark_item[0].upper())
         self.set_xy(self.l_margin + 2.4, y + 4.5)
@@ -922,13 +922,12 @@ class PrintStyleExamPDF(FPDF):
             self.set_text_color(*_PDF_INK)
             for col_i, (width, value) in enumerate(zip(widths, values)):
                 self.set_xy(x, y)
-                style = "B" if col_i == 0 else ""
-                self.set_font(self.font_family, style, font_size)
+                self.set_font(self.font_family, "B", font_size)
                 align = "L" if col_i in {0, col_count - 1} else "C"
                 self.cell(
                     width,
                     row_h,
-                    _fit(self, value, width, self.font_family, style, font_size),
+                    _fit(self, value, width, self.font_family, "B", font_size),
                     border="B",
                     align=align,
                     fill=True,
@@ -1003,9 +1002,9 @@ class PrintStyleExamPDF(FPDF):
             self.set_text_color(*_PDF_NAVY)
             self.cell(box_w, 3.4, title)
             self.set_xy(x, y + 14.4)
-            self.set_font(self.font_family, "", 6.3)
+            self.set_font(self.font_family, "B", 6.3)
             self.set_text_color(*_PDF_MUTED)
-            self.cell(box_w, 3.1, _fit(self, subtitle, box_w, self.font_family, "", 6.3))
+            self.cell(box_w, 3.1, _fit(self, subtitle, box_w, self.font_family, "B", 6.3))
         self.set_y(y + 20)
 
     def draw_matrix_table(self, sheet):
@@ -1061,14 +1060,13 @@ class PrintStyleExamPDF(FPDF):
                 is_summary = heading in summary_keys
                 cell_fill = _PDF_SUMMARY if is_summary and not is_mean else fill
                 self.set_fill_color(*cell_fill)
-                style = "B" if is_mean or heading in {"learner", "#"} or is_summary else ""
-                self.set_font(self.font_family, style, font_size)
+                self.set_font(self.font_family, "B", font_size)
                 align = "L" if heading in {"learner"} else "C"
                 self.set_xy(x, y)
                 self.cell(
                     width,
                     row_h,
-                    _fit(self, value, width, self.font_family, style, font_size),
+                    _fit(self, value, width, self.font_family, "B", font_size),
                     border="B",
                     align=align,
                     fill=True,
@@ -1112,13 +1110,12 @@ class PrintStyleExamPDF(FPDF):
                 heading = str(header[col_i] or "").casefold()
                 is_summary = heading in {"total", "mean", "grade"}
                 self.set_fill_color(*(_PDF_SUMMARY if is_summary and not is_mean else fill))
-                style = "B" if col_i in {0, 1} or is_summary or is_mean else ""
-                self.set_font(self.font_family, style, font_size)
+                self.set_font(self.font_family, "B", font_size)
                 self.set_xy(x, y)
                 self.cell(
                     width,
                     row_h,
-                    _fit(self, value, width, self.font_family, style, font_size),
+                    _fit(self, value, width, self.font_family, "B", font_size),
                     border="B",
                     align="L" if col_i in left_cols else "C",
                     fill=True,
@@ -1153,7 +1150,7 @@ def build_exam_report_pdf(report, *, mode="raw"):
         pdf = PrintStyleExamPDF(report, mode, landscape=False)
         if not cards:
             pdf.add_page()
-            pdf.set_font(pdf.font_family, "", 11)
+            pdf.set_font(pdf.font_family, "B", 11)
             pdf.set_text_color(*_PDF_MUTED)
             pdf.cell(0, 8, "No report data to export.", new_x="LMARGIN", new_y="NEXT")
         for card in cards:
