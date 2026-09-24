@@ -814,15 +814,11 @@ class GradeBand(models.Model):
                 condition=models.Q(end_percent__gte=models.F("start_percent")),
                 name="grade_band_end_gte_start",
             ),
-            models.UniqueConstraint(
-                fields=["code"],
-                condition=models.Q(academic_level__isnull=True),
-                name="unique_default_grade_band_code",
-            ),
+            # Unconditional unique (MariaDB does not support conditional uniques).
+            # Default bands (academic_level NULL) rely on clean() — SQL NULLs are not equal.
             models.UniqueConstraint(
                 fields=["academic_level", "code"],
-                condition=models.Q(academic_level__isnull=False),
-                name="unique_level_grade_band_code",
+                name="unique_grade_band_code_per_level",
             ),
         ]
         verbose_name = "grade band"
@@ -840,6 +836,20 @@ class GradeBand(models.Model):
             and self.end_percent < self.start_percent
         ):
             raise ValidationError({"end_percent": "End % must be at or above start %."})
+        if self.code:
+            code = self.code.strip().upper()
+            duplicates = GradeBand.objects.filter(code=code, academic_level=self.academic_level)
+            if self.pk:
+                duplicates = duplicates.exclude(pk=self.pk)
+            if duplicates.exists():
+                scope = (
+                    self.academic_level.name
+                    if self.academic_level_id
+                    else "the default grading system"
+                )
+                raise ValidationError(
+                    {"code": f"Code {code} already exists for {scope}."}
+                )
 
     def __str__(self):
         scope = self.academic_level.code if self.academic_level_id else "DEFAULT"
