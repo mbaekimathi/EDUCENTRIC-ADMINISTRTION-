@@ -18,6 +18,25 @@ def noop_reverse(apps, schema_editor):
     pass
 
 
+def drop_level_code_unique(apps, schema_editor):
+    connection = schema_editor.connection
+    if connection.vendor == "mysql":
+        schema_editor.execute(
+            "ALTER TABLE `curriculum_learningarea` "
+            "DROP INDEX `unique_learning_area_code_per_level`"
+        )
+        return
+    if connection.vendor == "sqlite":
+        schema_editor.execute(
+            "DROP INDEX IF EXISTS unique_learning_area_code_per_level"
+        )
+        return
+    schema_editor.execute(
+        "ALTER TABLE curriculum_learningarea "
+        "DROP CONSTRAINT IF EXISTS unique_learning_area_code_per_level"
+    )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("curriculum", "0005_category_as_text_input"),
@@ -32,13 +51,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql=(
-                        "ALTER TABLE `curriculum_learningarea` "
-                        "DROP INDEX `unique_learning_area_code_per_level`"
-                    ),
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                migrations.RunPython(drop_level_code_unique, noop_reverse),
             ],
         ),
         migrations.AddField(

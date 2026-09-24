@@ -2,6 +2,43 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def _rename_learning_area_level_column(schema_editor, *, to_academic: bool):
+    connection = schema_editor.connection
+    table = "curriculum_learningarea"
+    old_col = "education_level_id" if to_academic else "academic_level_id"
+    new_col = "academic_level_id" if to_academic else "education_level_id"
+
+    if connection.vendor == "mysql":
+        schema_editor.execute(
+            f"ALTER TABLE `{table}` "
+            f"CHANGE `{old_col}` `{new_col}` bigint(20) NOT NULL"
+        )
+        return
+
+    if connection.vendor == "sqlite":
+        with connection.cursor() as cursor:
+            cursor.execute(f"PRAGMA table_info({table})")
+            columns = {row[1] for row in cursor.fetchall()}
+        if old_col not in columns:
+            return
+        schema_editor.execute(
+            f"ALTER TABLE {table} RENAME COLUMN {old_col} TO {new_col}"
+        )
+        return
+
+    schema_editor.execute(
+        f"ALTER TABLE {table} RENAME COLUMN {old_col} TO {new_col}"
+    )
+
+
+def rename_to_academic_level(apps, schema_editor):
+    _rename_learning_area_level_column(schema_editor, to_academic=True)
+
+
+def rename_to_education_level(apps, schema_editor):
+    _rename_learning_area_level_column(schema_editor, to_academic=False)
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("curriculum", "0003_learning_area"),
@@ -27,15 +64,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql=(
-                        "ALTER TABLE `curriculum_learningarea` "
-                        "CHANGE `education_level_id` `academic_level_id` bigint(20) NOT NULL"
-                    ),
-                    reverse_sql=(
-                        "ALTER TABLE `curriculum_learningarea` "
-                        "CHANGE `academic_level_id` `education_level_id` bigint(20) NOT NULL"
-                    ),
+                migrations.RunPython(
+                    rename_to_academic_level,
+                    rename_to_education_level,
                 ),
             ],
         ),
