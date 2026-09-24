@@ -4912,6 +4912,15 @@ class ExamTimetableGenerationTests(TestCase):
         page = self.client.get(detail_url)
         self.assertNotContains(page, "data-exam-current-input")
         self.assertContains(page, "Published exams cannot be set as current")
+        self.assertContains(page, 'data-open-modal="exam-status"')
+
+        reopen = self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": generation.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": detail_url},
+        )
+        self.assertRedirects(reopen, detail_url)
+        generation.refresh_from_db()
+        self.assertEqual(generation.status, GeneratedExamTimetable.Status.MARKING)
 
     def test_only_current_exam_can_change_status(self):
         ExamSupervisorAllocation.objects.create(
@@ -4941,7 +4950,7 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertRedirects(blocked, scheduled_url)
         scheduled_page = self.client.get(scheduled_url)
         self.assertContains(scheduled_page, "Only one assessment can be current at a time")
-        self.assertNotContains(scheduled_page, 'data-open-modal="exam-status"')
+        self.assertContains(scheduled_page, 'data-open-modal="exam-status"')
 
         allowed = self.client.post(
             reverse("employees:update_exam_record_status", kwargs={"exam_id": current_exam.id}),

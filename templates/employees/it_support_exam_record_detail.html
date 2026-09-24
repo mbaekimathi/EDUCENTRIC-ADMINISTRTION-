@@ -4,16 +4,12 @@
 {% block header_title %}{% if selected_level %}{{ selected_level.name }}{% else %}{{ exam_title }}{% endif %}{% endblock %}
 
 {% block sidebar_modules %}
-{% include "employees/includes/exam_record_levels_sidebar.html" %}
+{% include "employees/includes/exam_record_detail_sidebar.html" %}
 {% endblock %}
 
 {% block workspace_content %}
 
-{% if selected_level %}
-{% include "employees/includes/page_nav_drawer.html" with label="Assessment tools & levels" panel_id="exam-record-page-nav" nav_template="employees/includes/nav/exam_record_levels.html" collapsed=True %}
-{% else %}
-{% include "employees/includes/nav/exam_record_levels.html" %}
-{% endif %}
+{% include "employees/includes/page_nav_drawer.html" with label="Assessment tools & levels" panel_id="exam-record-page-nav" nav_template="employees/includes/nav/exam_record_detail_page.html" collapsed=True %}
 {% if selected_level %}
 <section class="marks-card it-marks-sheet marks-workbench">
   {% if students %}

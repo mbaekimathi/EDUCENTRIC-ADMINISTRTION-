@@ -6753,11 +6753,7 @@ def _initial_exam_status():
 
 
 def _can_change_exam_status(exam):
-    if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
-        return False
-    if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
-        return _active_workflow_exam() is None
-    return exam.status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
+    return exam.status in {choice for choice, _label in GeneratedExamTimetable.Status.choices}
 
 
 def _can_set_as_current_exam(exam):
@@ -8894,19 +8890,30 @@ def update_exam_record_status(request, exam_id):
         error(request, "Select a valid assessment status.")
         return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
 
-    if exam.status == GeneratedExamTimetable.Status.PUBLISHED:
-        error(request, "Published exams cannot be changed.")
-        return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
-
     active = _active_workflow_exam()
     if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
-        if status not in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
-            error(request, "Scheduled exams can only be started by setting them to In session.")
+        if status == GeneratedExamTimetable.Status.SCHEDULED:
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
-        if active is not None:
+        if status not in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
+            error(
+                request,
+                "Scheduled assessments can move to in session, marking, or analysing first.",
+            )
+            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+        if active is not None and active.pk != exam.pk:
             error(
                 request,
                 f"Only one exam can be current at a time. Finish {active.display_name} before starting another.",
+            )
+            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+    elif exam.status == GeneratedExamTimetable.Status.PUBLISHED:
+        if status == GeneratedExamTimetable.Status.SCHEDULED:
+            error(request, "Published assessments cannot be moved back to scheduled.")
+            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
+        if status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES and active is not None and active.pk != exam.pk:
+            error(
+                request,
+                f"Only one exam can be current at a time. Finish {active.display_name} before reopening this one.",
             )
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
     elif exam.status not in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
@@ -9832,6 +9839,7 @@ def exam_record_detail(request, exam_id, level_id=None):
             "active_nav": "dashboard",
             "active_module": "assessment-management",
             "page": _it_support_exam_page("exam-records"),
+            "active_exam_tool": "exam-records",
             "exam": generation,
             "exam_title": _exam_record_title(generation),
             "academic_levels": academic_levels,
