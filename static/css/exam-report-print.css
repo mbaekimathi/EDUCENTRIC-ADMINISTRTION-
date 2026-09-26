@@ -166,7 +166,8 @@ body {
   font-size: 7.5pt;
   line-height: 1.15;
   overflow: hidden;
-  word-wrap: break-word;
+  word-wrap: normal;
+  word-break: normal;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -198,8 +199,21 @@ body {
 
 .exam-matrix-list-table th.exam-matrix-learner,
 .exam-matrix-list-table td.exam-matrix-learner {
-  white-space: nowrap;
+  white-space: nowrap !important;
   text-overflow: ellipsis;
+  word-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.exam-matrix-list-table th.exam-matrix-pos-col,
+.exam-matrix-list-table td.exam-matrix-pos-col {
+  font-weight: 800;
+  text-align: center;
+}
+
+.exam-matrix-list-meta span + span::before {
+  content: " · ";
+  color: #8091aa;
 }
 
 .exam-matrix-list-table th.exam-matrix-class,
