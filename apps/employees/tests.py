@@ -1493,6 +1493,8 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertEqual(columns[1]["kind"], "learner")
         self.assertTrue(any(col["kind"] == "subject" for col in columns))
         self.assertContains(response, "exam-matrix-grid-table")
+        self.assertContains(response, "src-table-matrix")
+        self.assertContains(response, "src-section-label")
 
     def test_curriculum_section_pages_load_without_curriculum_sidebar(self):
         response = self.client.get(

@@ -286,14 +286,14 @@
   {% if report.is_matrix and report.matrix_sheets %}
   <div class="exam-report-matrices" aria-label="Academic level mark sheets">
     {% for sheet in report.matrix_sheets %}
-    <section class="exam-matrix-list exam-matrix-sheet" aria-label="{{ sheet.exam_title }}">
-      <header class="exam-matrix-list-head" aria-label="Mark sheet letterhead">
-        <div class="exam-matrix-list-brand">
-          <div class="exam-matrix-list-logo-wrap">
+    <article class="student-report-card exam-matrix-sheet" aria-label="{{ sheet.exam_title }}">
+      <div class="src-sheet">
+        <header class="src-dual-head" aria-label="Mark sheet letterhead">
+          <section class="src-dual-school" aria-label="School letterhead">
             {% if report.school_profile and report.school_profile.school_logo %}
-            <img class="exam-matrix-list-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
+            <img class="src-dual-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
             {% else %}
-            <span class="exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
+            <span class="src-dual-logo src-dual-logo-mark" aria-hidden="true">
               {% if report.school_profile %}
                 {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
               {% else %}
@@ -301,43 +301,44 @@
               {% endif %}
             </span>
             {% endif %}
-          </div>
-          <div class="exam-matrix-list-titles">
-            <p class="exam-matrix-list-kicker">Academic level mark sheet</p>
-            <h2 class="is-uppercase">
+            <div class="src-dual-copy">
+              <p class="src-dual-kicker">Academic level mark sheet</p>
+              <h1 class="is-uppercase">
+                {% if report.school_profile %}
+                  {{ report.school_profile.official_name|default:report.school_profile.display_name }}
+                {% else %}
+                  Edu-Centric School
+                {% endif %}
+              </h1>
+              {% if report.school_profile and report.school_profile.motto %}
+              <p class="src-dual-motto">&ldquo;{{ report.school_profile.motto }}&rdquo;</p>
+              {% endif %}
               {% if report.school_profile %}
-                {{ report.school_profile.official_name|default:report.school_profile.display_name }}
-              {% else %}
-                Edu-Centric School
+                {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
+                <p class="src-dual-contact">
+                  {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
+                  {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} &middot; {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                  {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} &middot; {% endif %}{{ report.school_profile.general_email }}{% endif %}
+                </p>
+                {% endif %}
               {% endif %}
-            </h2>
-            {% if report.school_profile and report.school_profile.motto %}
-            <p class="exam-matrix-list-motto">&ldquo;{{ report.school_profile.motto }}&rdquo;</p>
-            {% endif %}
-            {% if report.school_profile %}
-              {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
-              <p class="exam-matrix-list-contact">
-                {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
-                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} Â· {% endif %}{{ report.school_profile.main_phone }}{% endif %}
-                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} Â· {% endif %}{{ report.school_profile.general_email }}{% endif %}
+              <p class="src-dual-school-meta">
+                <span>{{ sheet.exam_title }}{% if sheet.academic_term %} &middot; {{ sheet.academic_term.name }}{% endif %}</span>
+                <span>{% if sheet.scope_label %}{{ sheet.scope_label }}{% elif sheet.level_name %}{{ sheet.level_name }} &middot; whole grade{% elif report.level %}{{ report.level.name }}{% if report.selected_class %} &middot; {{ report.selected_class.display_label }}{% else %} &middot; whole grade{% endif %}{% else %}All academic levels{% endif %}</span>
+                <span>{{ sheet.student_count }} student{{ sheet.student_count|pluralize }} &middot; {{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
               </p>
-              {% endif %}
-            {% endif %}
+            </div>
+          </section>
+        </header>
+        <section class="src-results" aria-label="Assessment results">
+          <p class="src-section-label">Assessment results</p>
+          <div class="src-table-wrap exam-matrix-list-wrap" tabindex="0">
+            <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
+            {% include "employees/includes/exam_matrix_mark_sheet_table.html" with sheet=sheet report=report %}
           </div>
-          <div class="exam-matrix-list-brand-spacer" aria-hidden="true"></div>
-        </div>
-        <p class="exam-matrix-list-meta">
-          <span>{{ sheet.exam_title }}{% if sheet.academic_term %} Â· {{ sheet.academic_term.name }}{% endif %}</span>
-          <span>{% if sheet.scope_label %}{{ sheet.scope_label }}{% elif sheet.level_name %}{{ sheet.level_name }} Â· whole grade{% elif report.level %}{{ report.level.name }}{% if report.selected_class %} Â· {{ report.selected_class.display_label }}{% else %} Â· whole grade{% endif %}{% else %}All academic levels{% endif %}</span>
-          <span>{{ sheet.student_count }} student{{ sheet.student_count|pluralize }}</span>
-          <span>{{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
-        </p>
-      </header>
-      <div class="exam-matrix-list-wrap" tabindex="0">
-        <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
-        {% include "employees/includes/exam_matrix_mark_sheet_table.html" with sheet=sheet report=report %}
+        </section>
       </div>
-    </section>
+    </article>
     {% endfor %}
   </div>
   {% elif report.is_analytics and report.analytics_sheets %}
@@ -1486,7 +1487,7 @@
   if (!printButtons.length && !exportPrintButtons.length) return;
 
   const printStylesheetUrl = new URL(
-    "{% static 'css/exam-report-print.css' %}?v=20260926e",
+    "{% static 'css/exam-report-print.css' %}?v=20260926f",
     window.location.href
   ).href;
   const printFontStylesheet =

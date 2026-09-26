@@ -48,6 +48,83 @@ body {
   page-break-before: page;
 }
 
+.src-sheet {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.src-dual-head {
+  margin: 0 0 2mm;
+  padding: 0 0 1.4mm;
+  border-bottom: 1.1pt solid #1b4fd6;
+}
+
+.src-dual-school {
+  display: grid;
+  grid-template-columns: 14mm minmax(0, 1fr);
+  gap: 2mm;
+  align-items: start;
+}
+
+.src-dual-logo,
+.src-dual-logo-mark {
+  width: 14mm;
+  height: 14mm;
+  object-fit: contain;
+}
+
+.src-dual-logo-mark {
+  display: grid;
+  place-items: center;
+  border-radius: 1.2mm;
+  background: #1b4fd6;
+  color: #fff;
+  font-weight: 800;
+  font-size: 8pt;
+}
+
+.src-dual-kicker {
+  margin: 0;
+  color: #1b4fd6;
+  font-size: 6pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.src-dual-copy h1 {
+  margin: 0.3mm 0 0;
+  font: 800 10pt/1.15 "Plus Jakarta Sans", "DM Sans", sans-serif;
+}
+
+.src-dual-motto,
+.src-dual-contact,
+.src-dual-school-meta {
+  margin: 0.35mm 0 0;
+  color: #334155;
+  font-size: 6.5pt;
+  line-height: 1.2;
+}
+
+.src-section-label {
+  margin: 0 0 1mm;
+  color: #73849e;
+  font-size: 6pt;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.src-table-wrap {
+  width: 100%;
+  overflow: visible;
+  border: 0.4pt solid #d0dceb;
+  border-radius: 1mm;
+  background: #fff;
+}
+
 .exam-matrix-list-head {
   margin: 0 0 2mm;
   padding: 0 0 1.4mm;
@@ -129,27 +206,36 @@ body {
   width: 100%;
 }
 
-.exam-matrix-list-table {
+.src-table,
+table.src-table-matrix {
   width: 100%;
   min-width: 0;
   max-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   border-spacing: 0;
-  border: 1.1pt solid #1e293b;
-  font-size: 8pt;
+  font-size: 7.5pt;
 }
 
-.exam-matrix-list-table thead {
+.src-table thead,
+table.src-table-matrix thead {
   display: table-header-group;
 }
 
-.exam-matrix-list-table tbody {
+.src-table tbody,
+table.src-table-matrix tbody {
   display: table-row-group;
 }
 
-.exam-matrix-list-table th,
-.exam-matrix-list-table td {
+.src-table tfoot,
+table.src-table-matrix tfoot {
+  display: table-footer-group;
+}
+
+.src-table th,
+.src-table td,
+table.src-table-matrix th,
+table.src-table-matrix td {
   position: static;
   left: auto;
   right: auto;
@@ -192,11 +278,15 @@ body {
   width: 4.25%;
 }
 
-.exam-matrix-list-table th.is-left,
-.exam-matrix-list-table td.is-left {
+.src-table th.is-left,
+.src-table td.is-left,
+table.src-table-matrix th.is-left,
+table.src-table-matrix td.is-left {
   text-align: left;
 }
 
+table.src-table-matrix th.exam-matrix-learner,
+table.src-table-matrix td.exam-matrix-learner,
 .exam-matrix-list-table th.exam-matrix-learner,
 .exam-matrix-list-table td.exam-matrix-learner {
   white-space: nowrap !important;
@@ -222,7 +312,8 @@ body {
   text-align: center;
 }
 
-.exam-matrix-list-table thead th {
+.src-table thead th,
+table.src-table-matrix thead th {
   background: #e8eef8;
   color: #1e293b;
   font-size: 6.5pt;
@@ -232,20 +323,45 @@ body {
   border-bottom: 1pt solid #1e293b;
 }
 
-.exam-matrix-summary-col,
-.exam-matrix-grade-col {
+.src-avg-col {
   background: #eef3fb;
-  border-left: 0.9pt solid #334155;
+  box-shadow: inset 0.9pt 0 0 #334155;
 }
 
-.exam-matrix-list-table tbody tr:nth-child(even) td {
+.src-table tbody tr:nth-child(even) td,
+table.src-table-matrix tbody tr:nth-child(even) td {
   background: #f8fafc;
 }
 
+table.src-table-matrix tfoot th,
+table.src-table-matrix tfoot td,
 .exam-matrix-list-table tr.exam-matrix-mean-row th,
 .exam-matrix-list-table tr.exam-matrix-mean-row td {
   background: #e2eaf7;
   border-top: 1.1pt solid #1e293b;
+}
+
+.src-mark strong,
+.src-mark em {
+  display: inline;
+  line-height: 1.15;
+}
+
+.src-mark strong {
+  font-size: 7.5pt;
+  font-weight: 800;
+}
+
+.src-mark em {
+  margin-left: 0.18em;
+  color: #1b4fd6;
+  font-size: 6pt;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.src-empty {
+  color: #94a3b8;
 }
 
 .exam-matrix-mark-stack {

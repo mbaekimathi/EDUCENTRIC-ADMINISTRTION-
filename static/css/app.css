@@ -16309,6 +16309,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 
 /* Sticky/frozen columns are for on-screen scroll only — they stack on top of each other in print. */
 @media not print {
+  .exam-report-page table.src-table-matrix,
   .exam-report-page .exam-matrix-list-table {
     --exam-matrix-pos-w: 2.75rem;
     --exam-matrix-learner-w: 12rem;
@@ -16318,6 +16319,8 @@ body.is-reordering-academic-levels [data-normal-only] {
     border: 1px solid #64748b;
   }
 
+  .exam-report-page table.src-table-matrix th.exam-matrix-pos-col,
+  .exam-report-page table.src-table-matrix td.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table th.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table td.exam-matrix-pos-col {
     position: sticky;
@@ -16327,6 +16330,8 @@ body.is-reordering-academic-levels [data-normal-only] {
     box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
   }
 
+  .exam-report-page table.src-table-matrix.has-class-col th.exam-matrix-class,
+  .exam-report-page table.src-table-matrix.has-class-col td.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table.has-class-col th.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table.has-class-col td.exam-matrix-class {
     position: sticky;
@@ -16336,6 +16341,8 @@ body.is-reordering-academic-levels [data-normal-only] {
     box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
   }
 
+  .exam-report-page table.src-table-matrix th.exam-matrix-learner,
+  .exam-report-page table.src-table-matrix td.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table td.exam-matrix-learner {
     position: sticky;
@@ -16345,11 +16352,16 @@ body.is-reordering-academic-levels [data-normal-only] {
     box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.28);
   }
 
+  .exam-report-page table.src-table-matrix:not(.has-class-col) th.exam-matrix-learner,
+  .exam-report-page table.src-table-matrix:not(.has-class-col) td.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table:not(.has-class-col) th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table:not(.has-class-col) td.exam-matrix-learner {
     left: var(--exam-matrix-pos-w);
   }
 
+  .exam-report-page table.src-table-matrix thead th.exam-matrix-pos-col,
+  .exam-report-page table.src-table-matrix thead th.exam-matrix-learner,
+  .exam-report-page table.src-table-matrix.has-class-col thead th.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table thead th.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table thead th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table.has-class-col thead th.exam-matrix-class {
@@ -16357,12 +16369,18 @@ body.is-reordering-academic-levels [data-normal-only] {
     background: linear-gradient(180deg, #f4f7fc 0%, #e9f0fb 100%);
   }
 
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-pos-col,
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-learner,
+  .exam-report-page table.src-table-matrix.has-class-col tbody tr:nth-child(even) td.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table.has-class-col tbody tr:nth-child(even) td.exam-matrix-class {
     background: #f8fafc;
   }
 
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-pos-col,
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-learner,
+  .exam-report-page table.src-table-matrix.has-class-col tbody tr:hover td.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table.has-class-col tbody tr:hover td.exam-matrix-class {
@@ -16376,29 +16394,41 @@ body.is-reordering-academic-levels [data-normal-only] {
     box-shadow: inset 1px 0 0 #d7e2f4;
   }
 
-  .exam-report-page .exam-matrix-grade-col {
+  .exam-report-page .exam-matrix-grade-col,
+  .exam-report-page table.src-table-matrix td.export-grade-col,
+  .exam-report-page table.src-table-matrix th.export-grade-col {
     position: sticky;
     right: 0;
     z-index: 2;
     box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
   }
 
-  .exam-report-page .exam-matrix-list-table thead th.exam-matrix-grade-col {
+  .exam-report-page .exam-matrix-list-table thead th.exam-matrix-grade-col,
+  .exam-report-page table.src-table-matrix thead th.export-grade-col {
     z-index: 3;
   }
 
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-summary-col,
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-grade-col,
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-avg-col,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-summary-col,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-grade-col,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-avg-col {
     background: #eef3fb;
   }
 
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-summary-col,
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-grade-col,
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-avg-col,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-summary-col,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-grade-col,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-avg-col {
     background: #e8f0ff;
   }
 
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.exam-matrix-pos-col,
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.exam-matrix-learner,
+  .exam-report-page table.src-table-matrix.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
@@ -16408,28 +16438,36 @@ body.is-reordering-academic-levels [data-normal-only] {
     box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
   }
 
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.exam-matrix-pos-col,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col {
     left: 0;
   }
 
+  .exam-report-page table.src-table-matrix.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
     left: var(--exam-matrix-pos-w);
     z-index: 3;
   }
 
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner {
     left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-class-w));
   }
 
+  .exam-report-page table.src-table-matrix:not(.has-class-col) tr.exam-matrix-mean-row th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table:not(.has-class-col) tr.exam-matrix-mean-row th.exam-matrix-learner {
     left: var(--exam-matrix-pos-w);
   }
 
+  .exam-report-page table.src-table-matrix tfoot th,
+  .exam-report-page table.src-table-matrix tfoot td,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-summary-col,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
     background: #e4ecff;
   }
 
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.export-grade-col,
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.export-grade-col,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
     position: sticky;
     right: 0;
@@ -17048,6 +17086,16 @@ body.is-reordering-academic-levels [data-normal-only] {
 
 .src-table-multi {
   min-width: 36rem;
+}
+
+.exam-report-page table.src-table.src-table-matrix {
+  table-layout: fixed;
+  min-width: 100%;
+}
+
+.exam-report-page .src-dual-school-meta span + span::before {
+  content: " · ";
+  color: #8091aa;
 }
 
 .src-table th,

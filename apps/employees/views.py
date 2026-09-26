@@ -5669,8 +5669,8 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
             "key": "learner",
             "kind": "learner",
             "label": "Learner",
-            "header_class": "is-left exam-matrix-learner",
-            "cell_class": "is-left exam-matrix-learner",
+            "header_class": "is-left exam-matrix-learner src-subject",
+            "cell_class": "is-left exam-matrix-learner src-subject",
             "col_class": "exam-matrix-print-col-learner",
         }
     )
@@ -5686,8 +5686,8 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
                 "label": subject.code,
                 "title": title,
                 "subject_index": index,
-                "header_class": "exam-matrix-subject-col",
-                "cell_class": "exam-matrix-mark exam-matrix-subject-col",
+                "header_class": "",
+                "cell_class": "src-mark",
                 "col_class": "exam-matrix-print-col-subject",
             }
         )
@@ -5697,24 +5697,24 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
                 "key": "total",
                 "kind": "total",
                 "label": "Total",
-                "header_class": "exam-matrix-summary-col",
-                "cell_class": "exam-matrix-mark exam-matrix-summary-col",
+                "header_class": "src-avg-col",
+                "cell_class": "src-mark src-avg-col",
                 "col_class": "exam-matrix-print-col-summary",
             },
             {
                 "key": "avg",
                 "kind": "avg",
                 "label": "Avg",
-                "header_class": "exam-matrix-summary-col",
-                "cell_class": "exam-matrix-mark exam-matrix-summary-col",
+                "header_class": "src-avg-col",
+                "cell_class": "src-mark src-avg-col",
                 "col_class": "exam-matrix-print-col-summary",
             },
             {
                 "key": "grade",
                 "kind": "grade",
                 "label": "Grade",
-                "header_class": "exam-matrix-summary-col exam-matrix-grade-col export-grade-col",
-                "cell_class": "exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col",
+                "header_class": "src-avg-col export-grade-col",
+                "cell_class": "src-mark src-avg-col export-grade-col",
                 "col_class": "exam-matrix-print-col-summary",
             },
         ]
