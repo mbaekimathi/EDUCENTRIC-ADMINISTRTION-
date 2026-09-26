@@ -1488,6 +1488,11 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertEqual(by_name[middle.id]["position"], 2)
         self.assertEqual(by_name[lower.id]["position"], 3)
         self.assertEqual([row["student"].id for row in rows[:3]], [higher.id, middle.id, lower.id])
+        columns = report["matrix_sheets"][0]["columns"]
+        self.assertEqual(columns[0]["kind"], "position")
+        self.assertEqual(columns[1]["kind"], "learner")
+        self.assertTrue(any(col["kind"] == "subject" for col in columns))
+        self.assertContains(response, "exam-matrix-grid-table")
 
     def test_curriculum_section_pages_load_without_curriculum_sidebar(self):
         response = self.client.get(

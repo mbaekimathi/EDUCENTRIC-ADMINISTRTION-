@@ -248,16 +248,41 @@ body {
   border-top: 1.1pt solid #1e293b;
 }
 
-.exam-matrix-mark {
+.exam-matrix-mark-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15mm;
+  line-height: 1.05;
+  max-width: 100%;
+}
+
+.exam-matrix-mark-stack .exam-matrix-mark-score,
+.exam-matrix-mark-stack .exam-matrix-mark-grade {
   display: block;
-  text-align: center;
-  line-height: 1.1;
+  line-height: 1.05;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.exam-matrix-mark-stack .exam-matrix-mark-score {
+  font-size: 7.5pt;
+  font-weight: 800;
+}
+
+.exam-matrix-mark-stack .exam-matrix-mark-grade {
+  margin: 0;
+  color: #1b4fd6;
+  font-size: 6pt;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .exam-matrix-mark strong,
 .exam-matrix-mark em {
   display: block;
-  line-height: 1.1;
+  line-height: 1.05;
 }
 
 .exam-matrix-mark strong {

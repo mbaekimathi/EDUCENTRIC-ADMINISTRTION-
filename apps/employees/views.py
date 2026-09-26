@@ -5168,6 +5168,13 @@ def _exam_report_selection(request):
                 mark_subjects=mark_subjects,
             )
 
+    show_class_column = report_kind == "academic_level" and level_scope == "all_level"
+    if matrix_sheets:
+        _attach_matrix_sheet_table_layout(
+            matrix_sheets,
+            show_class_column=show_class_column,
+        )
+
     return selection, {
         "exam": exam,
         "exam_title": exam_title,
@@ -5188,7 +5195,7 @@ def _exam_report_selection(request):
         "is_matrix": report_kind == "academic_level",
         "is_analytics": report_kind == "subject_analytics",
         # Whole grade only: Class column helps distinguish streams. Per-class hides it.
-        "show_class_column": report_kind == "academic_level" and level_scope == "all_level",
+        "show_class_column": show_class_column,
         "grade_bands": grade_bands,
         "school_profile": school_profile,
         "class_teacher_name": class_teacher_name,
@@ -5632,6 +5639,96 @@ def _build_individual_trend_chart(exam_columns, exam_means, subject_rows=None):
         "points": plotted,
         "baseline_y": pad_t + plot_h,
     }
+
+
+def _matrix_mark_sheet_columns(subjects, *, show_class_column):
+    """Column definitions for mark sheet tables (one header cell per data column)."""
+    columns = [
+        {
+            "key": "position",
+            "kind": "position",
+            "label": "#",
+            "header_class": "exam-matrix-pos-col",
+            "cell_class": "exam-matrix-pos-col",
+            "col_class": "exam-matrix-print-col-pos",
+        },
+    ]
+    if show_class_column:
+        columns.append(
+            {
+                "key": "class",
+                "kind": "class",
+                "label": "Class",
+                "header_class": "is-left exam-matrix-class",
+                "cell_class": "is-left exam-matrix-class",
+                "col_class": "exam-matrix-print-col-class",
+            }
+        )
+    columns.append(
+        {
+            "key": "learner",
+            "kind": "learner",
+            "label": "Learner",
+            "header_class": "is-left exam-matrix-learner",
+            "cell_class": "is-left exam-matrix-learner",
+            "col_class": "exam-matrix-print-col-learner",
+        }
+    )
+    for index, subject in enumerate(subjects):
+        component_codes = getattr(subject, "component_codes", "") or ""
+        title = subject.name
+        if component_codes:
+            title = f"{subject.name} ({component_codes})"
+        columns.append(
+            {
+                "key": f"subject-{subject.id}",
+                "kind": "subject",
+                "label": subject.code,
+                "title": title,
+                "subject_index": index,
+                "header_class": "exam-matrix-subject-col",
+                "cell_class": "exam-matrix-mark exam-matrix-subject-col",
+                "col_class": "exam-matrix-print-col-subject",
+            }
+        )
+    columns.extend(
+        [
+            {
+                "key": "total",
+                "kind": "total",
+                "label": "Total",
+                "header_class": "exam-matrix-summary-col",
+                "cell_class": "exam-matrix-mark exam-matrix-summary-col",
+                "col_class": "exam-matrix-print-col-summary",
+            },
+            {
+                "key": "avg",
+                "kind": "avg",
+                "label": "Avg",
+                "header_class": "exam-matrix-summary-col",
+                "cell_class": "exam-matrix-mark exam-matrix-summary-col",
+                "col_class": "exam-matrix-print-col-summary",
+            },
+            {
+                "key": "grade",
+                "kind": "grade",
+                "label": "Grade",
+                "header_class": "exam-matrix-summary-col exam-matrix-grade-col export-grade-col",
+                "cell_class": "exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col",
+                "col_class": "exam-matrix-print-col-summary",
+            },
+        ]
+    )
+    return columns
+
+
+def _attach_matrix_sheet_table_layout(matrix_sheets, *, show_class_column):
+    for sheet in matrix_sheets or []:
+        sheet["columns"] = _matrix_mark_sheet_columns(
+            sheet.get("subjects") or [],
+            show_class_column=show_class_column,
+        )
+    return matrix_sheets
 
 
 def _build_level_matrix_sheets(

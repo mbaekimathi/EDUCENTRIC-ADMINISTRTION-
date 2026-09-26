@@ -335,134 +335,7 @@
       </header>
       <div class="exam-matrix-list-wrap" tabindex="0">
         <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
-        <table class="exam-matrix-list-table{% if report.show_class_column %} has-class-col{% endif %}">
-          <colgroup>
-            <col class="exam-matrix-print-col-pos">
-            <col class="exam-matrix-print-col-learner">
-            {% if report.show_class_column %}
-            <col class="exam-matrix-print-col-class">
-            {% endif %}
-            {% for subject in sheet.subjects %}
-            <col class="exam-matrix-print-col-subject">
-            {% endfor %}
-            <col class="exam-matrix-print-col-summary">
-            <col class="exam-matrix-print-col-summary">
-            <col class="exam-matrix-print-col-summary">
-          </colgroup>
-          <thead>
-            <tr>
-              <th class="exam-matrix-pos-col" title="Position">#</th>
-              <th class="is-left exam-matrix-learner">Learner</th>
-              {% if report.show_class_column %}
-              <th class="is-left exam-matrix-class">Class</th>
-              {% endif %}
-              {% for subject in sheet.subjects %}
-              <th title="{% if subject.component_codes %}{{ subject.name }} ({{ subject.component_codes }}){% else %}{{ subject.name }}{% endif %}">{{ subject.code }}</th>
-              {% endfor %}
-              <th class="exam-matrix-summary-col" title="Total marks">Total</th>
-              <th class="exam-matrix-summary-col" title="Average">Avg</th>
-              <th class="exam-matrix-summary-col exam-matrix-grade-col export-grade-col" title="Overall grade">Grade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in sheet.rows %}
-            <tr>
-              <td class="exam-matrix-pos-col">
-                {% if row.position != None %}
-                  <strong>{{ row.position }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              <td class="is-left exam-matrix-learner">{{ row.student.display_name }}</td>
-              {% if report.show_class_column %}
-              <td class="is-left exam-matrix-class is-tone-{{ row.class_tone|default:'a' }}">{{ row.class_label }}</td>
-              {% endif %}
-              {% for cell in row.cells %}
-              <td class="exam-matrix-mark">
-                {% if cell.percent != None %}
-                  <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              {% endfor %}
-              {% if row.is_absent %}
-              <td class="exam-matrix-mark exam-matrix-summary-col" colspan="3">
-                <span class="exam-matrix-absent">Absent</span>
-              </td>
-              {% else %}
-              <td class="exam-matrix-mark exam-matrix-summary-col">
-                {% if row.total_marks != None %}
-                  <strong>{{ row.total_marks }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col">
-                {% if row.mean_percent != None %}
-                  <strong>{{ row.mean_percent }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
-                {% if row.overall_grade %}
-                  <strong>{{ row.overall_grade }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              {% endif %}
-            </tr>
-            {% empty %}
-            <tr>
-              <td class="is-left" colspan="{% if report.show_class_column %}{{ sheet.subjects|length|add:6 }}{% else %}{{ sheet.subjects|length|add:5 }}{% endif %}">
-                No students found for this academic level.
-              </td>
-            </tr>
-            {% endfor %}
-            {% if sheet.subject_means %}
-            <tr class="exam-matrix-mean-row">
-              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">&mdash;</span></td>
-              <th class="is-left exam-matrix-learner" scope="row">Class mean</th>
-              {% if report.show_class_column %}
-              <td class="is-left exam-matrix-class"></td>
-              {% endif %}
-              {% for mean in sheet.subject_means %}
-              <td class="exam-matrix-mark">
-                {% if mean.percent_mean != None %}
-                  <strong>{{ mean.percent_mean }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              {% endfor %}
-              <td class="exam-matrix-mark exam-matrix-summary-col">
-                {% if sheet.class_total_marks != None %}
-                  <strong>{{ sheet.class_total_marks }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col">
-                {% if sheet.class_mean != None %}
-                  <strong>{{ sheet.class_mean }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
-                {% if sheet.class_mean_grade %}
-                  <strong>{{ sheet.class_mean_grade }}</strong>
-                {% else %}
-                  <span class="exam-matrix-empty">&mdash;</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% endif %}
-          </tbody>
-        </table>
+        {% include "employees/includes/exam_matrix_mark_sheet_table.html" with sheet=sheet report=report %}
       </div>
     </section>
     {% endfor %}
@@ -1613,7 +1486,7 @@
   if (!printButtons.length && !exportPrintButtons.length) return;
 
   const printStylesheetUrl = new URL(
-    "{% static 'css/exam-report-print.css' %}?v=20260926d",
+    "{% static 'css/exam-report-print.css' %}?v=20260926e",
     window.location.href
   ).href;
   const printFontStylesheet =

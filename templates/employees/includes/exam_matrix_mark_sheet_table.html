@@ -1,0 +1,146 @@
+<table
+  class="exam-matrix-list-table exam-matrix-grid-table{% if report.show_class_column %} has-class-col{% endif %}"
+  role="table"
+  aria-label="Mark sheet results"
+>
+  <colgroup>
+    {% for col in sheet.columns %}
+    <col class="{{ col.col_class }}">
+    {% endfor %}
+  </colgroup>
+  <thead>
+    <tr>
+      {% for col in sheet.columns %}
+      <th
+        scope="col"
+        class="{{ col.header_class }}"
+        {% if col.title %}title="{{ col.title }}"{% endif %}
+      >{{ col.label }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in sheet.rows %}
+    <tr>
+      {% for col in sheet.columns %}
+        {% if col.kind == "position" %}
+      <td class="{{ col.cell_class }}">
+        {% if row.position != None %}
+          <strong>{{ row.position }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% elif col.kind == "class" %}
+      <td class="{{ col.cell_class }} is-tone-{{ row.class_tone|default:'a' }}">{{ row.class_label }}</td>
+        {% elif col.kind == "learner" %}
+      <td class="{{ col.cell_class }}">{{ row.student.display_name }}</td>
+        {% elif col.kind == "subject" %}
+      <td class="{{ col.cell_class }}">
+        {% for cell in row.cells %}
+          {% if forloop.counter0 == col.subject_index %}
+            {% if cell.percent != None %}
+              <span class="exam-matrix-mark-stack">
+                <strong class="exam-matrix-mark-score">{{ cell.percent }}</strong>
+                {% if cell.grade %}<em class="exam-matrix-mark-grade export-grade">{{ cell.grade }}</em>{% endif %}
+              </span>
+            {% else %}
+              <span class="exam-matrix-empty">&mdash;</span>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </td>
+        {% elif row.is_absent and col.kind == "total" %}
+      <td class="{{ col.cell_class }}" colspan="3">
+        <span class="exam-matrix-absent">Absent</span>
+      </td>
+        {% elif row.is_absent and col.kind == "avg" %}
+        {% elif row.is_absent and col.kind == "grade" %}
+        {% elif col.kind == "total" %}
+      <td class="{{ col.cell_class }}">
+        {% if row.total_marks != None %}
+          <strong>{{ row.total_marks }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% elif col.kind == "avg" %}
+      <td class="{{ col.cell_class }}">
+        {% if row.mean_percent != None %}
+          <strong>{{ row.mean_percent }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% elif col.kind == "grade" %}
+      <td class="{{ col.cell_class }}">
+        {% if row.overall_grade %}
+          <strong>{{ row.overall_grade }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% empty %}
+    <tr>
+      <td class="is-left" colspan="{{ sheet.columns|length }}">
+        No students found for this academic level.
+      </td>
+    </tr>
+    {% endfor %}
+    {% if sheet.subject_means %}
+    <tr class="exam-matrix-mean-row">
+      {% for col in sheet.columns %}
+        {% if col.kind == "position" %}
+      <td class="{{ col.cell_class }}"><span class="exam-matrix-empty">&mdash;</span></td>
+        {% elif col.kind == "class" %}
+      <td class="{{ col.cell_class }}"></td>
+        {% elif col.kind == "learner" %}
+      <th class="{{ col.cell_class }}" scope="row">Class mean</th>
+        {% elif col.kind == "subject" %}
+      <td class="{{ col.cell_class }}">
+        {% for mean in sheet.subject_means %}
+          {% if forloop.counter0 == col.subject_index %}
+            {% if mean.percent_mean != None %}
+              <span class="exam-matrix-mark-stack">
+                <strong class="exam-matrix-mark-score">{{ mean.percent_mean }}</strong>
+                {% if mean.grade %}<em class="exam-matrix-mark-grade export-grade">{{ mean.grade }}</em>{% endif %}
+              </span>
+            {% else %}
+              <span class="exam-matrix-empty">&mdash;</span>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </td>
+        {% elif col.kind == "total" %}
+      <td class="{{ col.cell_class }}">
+        {% if sheet.class_total_marks != None %}
+          <strong>{{ sheet.class_total_marks }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% elif col.kind == "avg" %}
+      <td class="{{ col.cell_class }}">
+        {% if sheet.class_mean != None %}
+          <strong>{{ sheet.class_mean }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% elif col.kind == "grade" %}
+      <td class="{{ col.cell_class }}">
+        {% if sheet.class_mean_grade %}
+          <strong>{{ sheet.class_mean_grade }}</strong>
+        {% else %}
+          <span class="exam-matrix-empty">&mdash;</span>
+        {% endif %}
+      </td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
