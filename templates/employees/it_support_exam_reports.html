@@ -335,6 +335,19 @@
       <div class="exam-matrix-list-wrap" tabindex="0">
         <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
         <table class="exam-matrix-list-table{% if report.show_class_column %} has-class-col{% endif %}">
+          <colgroup>
+            <col class="exam-matrix-print-col-pos">
+            <col class="exam-matrix-print-col-learner">
+            {% if report.show_class_column %}
+            <col class="exam-matrix-print-col-class">
+            {% endif %}
+            {% for subject in sheet.subjects %}
+            <col class="exam-matrix-print-col-subject">
+            {% endfor %}
+            <col class="exam-matrix-print-col-summary">
+            <col class="exam-matrix-print-col-summary">
+            <col class="exam-matrix-print-col-summary">
+          </colgroup>
           <thead>
             <tr>
               <th class="exam-matrix-pos-col" title="Position">#</th>
