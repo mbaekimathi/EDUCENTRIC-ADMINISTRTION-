@@ -5653,6 +5653,16 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
             "col_class": "exam-matrix-print-col-pos",
         },
     ]
+    columns.append(
+        {
+            "key": "learner",
+            "kind": "learner",
+            "label": "Name",
+            "header_class": "is-left exam-matrix-learner src-subject",
+            "cell_class": "is-left exam-matrix-learner src-subject",
+            "col_class": "exam-matrix-print-col-learner",
+        }
+    )
     if show_class_column:
         columns.append(
             {
@@ -5664,16 +5674,6 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
                 "col_class": "exam-matrix-print-col-class",
             }
         )
-    columns.append(
-        {
-            "key": "learner",
-            "kind": "learner",
-            "label": "Learner",
-            "header_class": "is-left exam-matrix-learner src-subject",
-            "cell_class": "is-left exam-matrix-learner src-subject",
-            "col_class": "exam-matrix-print-col-learner",
-        }
-    )
     for index, subject in enumerate(subjects):
         component_codes = getattr(subject, "component_codes", "") or ""
         title = subject.name

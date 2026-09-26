@@ -2,11 +2,41 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def _learning_area_level_columns(connection):
+    table = "curriculum_learningarea"
+    with connection.cursor() as cursor:
+        if connection.vendor == "mysql":
+            cursor.execute(
+                """
+                SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s
+                """,
+                [table],
+            )
+            return {row[0] for row in cursor.fetchall()}
+        if connection.vendor == "sqlite":
+            cursor.execute(f"PRAGMA table_info({table})")
+            return {row[1] for row in cursor.fetchall()}
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = %s
+            """,
+            [table],
+        )
+        return {row[0] for row in cursor.fetchall()}
+
+
 def _rename_learning_area_level_column(schema_editor, *, to_academic: bool):
     connection = schema_editor.connection
     table = "curriculum_learningarea"
     old_col = "education_level_id" if to_academic else "academic_level_id"
     new_col = "academic_level_id" if to_academic else "education_level_id"
+
+    columns = _learning_area_level_columns(connection)
+    if old_col not in columns:
+        return
 
     if connection.vendor == "mysql":
         schema_editor.execute(
@@ -16,11 +46,6 @@ def _rename_learning_area_level_column(schema_editor, *, to_academic: bool):
         return
 
     if connection.vendor == "sqlite":
-        with connection.cursor() as cursor:
-            cursor.execute(f"PRAGMA table_info({table})")
-            columns = {row[1] for row in cursor.fetchall()}
-        if old_col not in columns:
-            return
         schema_editor.execute(
             f"ALTER TABLE {table} RENAME COLUMN {old_col} TO {new_col}"
         )

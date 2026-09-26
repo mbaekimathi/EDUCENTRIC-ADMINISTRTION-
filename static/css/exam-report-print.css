@@ -259,23 +259,38 @@ table.src-table-matrix td {
 }
 
 .exam-matrix-print-col-pos {
-  width: 4%;
+  width: 3%;
 }
 
 .exam-matrix-print-col-learner {
-  width: 21%;
+  width: 15%;
+}
+
+table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
+  width: 12%;
 }
 
 .exam-matrix-print-col-class {
-  width: 5%;
-}
-
-.exam-matrix-print-col-subject {
-  width: auto;
+  width: 4%;
 }
 
 .exam-matrix-print-col-summary {
-  width: 4.25%;
+  width: 3.25%;
+}
+
+/* Remaining width split evenly so every subject column prints on one landscape page. */
+table.src-table-matrix:not(.has-class-col) {
+  --exam-matrix-fixed-pct: 30.75%;
+}
+
+table.src-table-matrix.has-class-col {
+  --exam-matrix-fixed-pct: 34.25%;
+}
+
+.exam-matrix-print-col-subject {
+  width: calc(
+    (100% - var(--exam-matrix-fixed-pct)) / max(var(--exam-matrix-subject-count, 1), 1)
+  );
 }
 
 .src-table th.is-left,

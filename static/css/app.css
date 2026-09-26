@@ -16330,33 +16330,26 @@ body.is-reordering-academic-levels [data-normal-only] {
     box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
   }
 
-  .exam-report-page table.src-table-matrix.has-class-col th.exam-matrix-class,
-  .exam-report-page table.src-table-matrix.has-class-col td.exam-matrix-class,
-  .exam-report-page .exam-matrix-list-table.has-class-col th.exam-matrix-class,
-  .exam-report-page .exam-matrix-list-table.has-class-col td.exam-matrix-class {
-    position: sticky;
-    left: var(--exam-matrix-pos-w);
-    z-index: 3;
-    background: #fff;
-    box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
-  }
-
   .exam-report-page table.src-table-matrix th.exam-matrix-learner,
   .exam-report-page table.src-table-matrix td.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table td.exam-matrix-learner {
     position: sticky;
-    left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-class-w));
+    left: var(--exam-matrix-pos-w);
     z-index: 3;
     background: #fff;
     box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.28);
   }
 
-  .exam-report-page table.src-table-matrix:not(.has-class-col) th.exam-matrix-learner,
-  .exam-report-page table.src-table-matrix:not(.has-class-col) td.exam-matrix-learner,
-  .exam-report-page .exam-matrix-list-table:not(.has-class-col) th.exam-matrix-learner,
-  .exam-report-page .exam-matrix-list-table:not(.has-class-col) td.exam-matrix-learner {
-    left: var(--exam-matrix-pos-w);
+  .exam-report-page table.src-table-matrix.has-class-col th.exam-matrix-class,
+  .exam-report-page table.src-table-matrix.has-class-col td.exam-matrix-class,
+  .exam-report-page .exam-matrix-list-table.has-class-col th.exam-matrix-class,
+  .exam-report-page .exam-matrix-list-table.has-class-col td.exam-matrix-class {
+    position: sticky;
+    left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
+    z-index: 2;
+    background: #fff;
+    box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
   }
 
   .exam-report-page table.src-table-matrix thead th.exam-matrix-pos-col,
@@ -16445,17 +16438,12 @@ body.is-reordering-academic-levels [data-normal-only] {
 
   .exam-report-page table.src-table-matrix.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class,
   .exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
-    left: var(--exam-matrix-pos-w);
+    left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
     z-index: 3;
   }
 
   .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.exam-matrix-learner,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner {
-    left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-class-w));
-  }
-
-  .exam-report-page table.src-table-matrix:not(.has-class-col) tr.exam-matrix-mean-row th.exam-matrix-learner,
-  .exam-report-page .exam-matrix-list-table:not(.has-class-col) tr.exam-matrix-mean-row th.exam-matrix-learner {
     left: var(--exam-matrix-pos-w);
   }
 
@@ -17089,8 +17077,18 @@ body.is-reordering-academic-levels [data-normal-only] {
 }
 
 .exam-report-page table.src-table.src-table-matrix {
-  table-layout: fixed;
-  min-width: 100%;
+  table-layout: auto;
+  width: max-content;
+  min-width: max(100%, calc(9rem + var(--exam-matrix-subject-count, 8) * 3.35rem + 10rem));
+}
+
+.exam-report-page table.src-table-matrix .exam-matrix-print-col-subject {
+  min-width: 3.35rem;
+}
+
+.exam-report-page table.src-table-matrix thead th:not(.is-left):not(.exam-matrix-pos-col):not(.src-avg-col),
+.exam-report-page table.src-table-matrix td.src-mark {
+  min-width: 3.35rem;
 }
 
 .exam-report-page .src-dual-school-meta span + span::before {

@@ -2,6 +2,7 @@
   class="src-table src-table-matrix exam-matrix-grid-table{% if report.show_class_column %} has-class-col{% endif %}"
   role="table"
   aria-label="Mark sheet results"
+  style="--exam-matrix-subject-count: {{ sheet.subject_count|default:sheet.subjects|length }};"
 >
   <colgroup>
     {% for col in sheet.columns %}
