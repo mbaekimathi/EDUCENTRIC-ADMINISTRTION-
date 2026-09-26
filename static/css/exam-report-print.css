@@ -1,0 +1,310 @@
+/* Isolated stylesheet for exam mark sheets / analytics iframe print (no sticky rules). */
+@page {
+  size: A4 landscape;
+  margin: 6mm;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: auto;
+  overflow: visible;
+  background: #fff;
+  color: #10233f;
+  font: 700 9pt/1.3 "DM Sans", "Segoe UI", sans-serif;
+}
+
+.no-print,
+.exam-matrix-scroll-hint {
+  display: none !important;
+}
+
+.exam-report-matrices {
+  display: block;
+  width: 100%;
+}
+
+.exam-matrix-list {
+  display: block;
+  width: 100%;
+  margin: 0 0 5mm;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  box-shadow: none;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.exam-matrix-sheet + .exam-matrix-sheet {
+  break-before: page;
+  page-break-before: page;
+}
+
+.exam-matrix-list-head {
+  margin: 0 0 2mm;
+  padding: 0 0 1.4mm;
+  border-bottom: 1.1pt solid #1b4fd6;
+}
+
+.exam-matrix-list-brand {
+  display: grid;
+  grid-template-columns: 14mm minmax(0, 1fr) 14mm;
+  gap: 2mm;
+  align-items: center;
+}
+
+.exam-matrix-list-logo-wrap,
+.exam-matrix-list-brand-spacer {
+  width: 14mm;
+}
+
+.exam-matrix-list-logo,
+.exam-matrix-list-logo-mark {
+  width: 14mm;
+  height: 14mm;
+  object-fit: contain;
+  background: #fff;
+}
+
+.exam-matrix-list-logo-mark {
+  display: grid;
+  place-items: center;
+  border-radius: 1.2mm;
+  background: #1b4fd6;
+  color: #fff;
+  font-weight: 800;
+  font-size: 8pt;
+}
+
+.exam-matrix-list-titles {
+  text-align: center;
+  width: 100%;
+}
+
+.exam-matrix-list-kicker {
+  margin: 0;
+  color: #1b4fd6;
+  font-size: 6pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.exam-matrix-list-head h2 {
+  margin: 0.3mm 0 0;
+  font: 800 10pt/1.15 "Plus Jakarta Sans", "DM Sans", sans-serif;
+  text-align: center;
+}
+
+.exam-matrix-list-motto,
+.exam-matrix-list-contact {
+  margin: 0.35mm 0 0;
+  color: #334155;
+  font-size: 6.5pt;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.exam-matrix-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8mm 2mm;
+  margin: 1.1mm 0 0;
+  padding-top: 1mm;
+  border-top: 0.4pt solid #d5deec;
+  color: #1e293b;
+  font-size: 7pt;
+}
+
+.exam-matrix-list-wrap {
+  overflow: visible;
+  width: 100%;
+}
+
+.exam-matrix-list-table {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 1.1pt solid #1e293b;
+  font-size: 8pt;
+}
+
+.exam-matrix-list-table thead {
+  display: table-header-group;
+}
+
+.exam-matrix-list-table tbody {
+  display: table-row-group;
+}
+
+.exam-matrix-list-table th,
+.exam-matrix-list-table td {
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  z-index: auto;
+  box-shadow: none;
+  transform: none;
+  min-width: 0;
+  max-width: none;
+  padding: 0.75mm 0.45mm;
+  border: 0.55pt solid #64748b;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 7.5pt;
+  line-height: 1.15;
+  overflow: hidden;
+  word-wrap: break-word;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.exam-matrix-print-col-pos {
+  width: 4%;
+}
+
+.exam-matrix-print-col-learner {
+  width: 21%;
+}
+
+.exam-matrix-print-col-class {
+  width: 5%;
+}
+
+.exam-matrix-print-col-subject {
+  width: auto;
+}
+
+.exam-matrix-print-col-summary {
+  width: 4.25%;
+}
+
+.exam-matrix-list-table th.is-left,
+.exam-matrix-list-table td.is-left {
+  text-align: left;
+}
+
+.exam-matrix-list-table th.exam-matrix-learner,
+.exam-matrix-list-table td.exam-matrix-learner {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.exam-matrix-list-table th.exam-matrix-class,
+.exam-matrix-list-table td.exam-matrix-class {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.exam-matrix-list-table thead th {
+  background: #e8eef8;
+  color: #1e293b;
+  font-size: 6.5pt;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1pt solid #1e293b;
+}
+
+.exam-matrix-summary-col,
+.exam-matrix-grade-col {
+  background: #eef3fb;
+  border-left: 0.9pt solid #334155;
+}
+
+.exam-matrix-list-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.exam-matrix-list-table tr.exam-matrix-mean-row th,
+.exam-matrix-list-table tr.exam-matrix-mean-row td {
+  background: #e2eaf7;
+  border-top: 1.1pt solid #1e293b;
+}
+
+.exam-matrix-mark {
+  display: block;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.exam-matrix-mark strong,
+.exam-matrix-mark em {
+  display: block;
+  line-height: 1.1;
+}
+
+.exam-matrix-mark strong {
+  font-size: 7.5pt;
+  font-weight: 800;
+}
+
+.exam-matrix-mark em {
+  margin: 0;
+  color: #1b4fd6;
+  font-size: 6pt;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.exam-matrix-empty {
+  color: #94a3b8;
+}
+
+.exam-matrix-absent {
+  color: #9a3412;
+  font-size: 7pt;
+  font-weight: 800;
+}
+
+html[data-export-mode="raw"] .export-grade,
+html[data-export-mode="raw"] .export-grade-col {
+  display: none !important;
+}
+
+/* Subject analytics tables inside the same print document */
+.exam-analytics-table {
+  width: 100%;
+  table-layout: fixed;
+  margin: 0 0 3mm;
+}
+
+.exam-analytics-sheet-title {
+  margin: 3mm 0 1.4mm;
+  color: #1b4fd6;
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.exam-analytics-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.exam-analytics-pair strong {
+  font-size: 7.5pt;
+}
+
+.exam-analytics-pair em {
+  color: #1b4fd6;
+  font-size: 6.2pt;
+  font-style: normal;
+  font-weight: 800;
+}

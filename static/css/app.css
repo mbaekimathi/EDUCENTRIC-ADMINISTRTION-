@@ -16264,15 +16264,6 @@ body.is-reordering-academic-levels [data-normal-only] {
   overscroll-behavior-x: contain;
 }
 
-.exam-report-page .exam-matrix-list-table {
-  --exam-matrix-pos-w: 2.75rem;
-  --exam-matrix-learner-w: 12rem;
-  --exam-matrix-class-w: 4.75rem;
-  min-width: 100%;
-  width: max-content;
-  border: 1px solid #64748b;
-}
-
 .exam-report-page .exam-report-analytics .exam-matrix-list-wrap {
   overflow-x: auto;
 }
@@ -16289,114 +16280,126 @@ body.is-reordering-academic-levels [data-normal-only] {
   border: 1px solid #94a3b8;
 }
 
-.exam-report-page .exam-matrix-list-table th.exam-matrix-pos-col,
-.exam-report-page .exam-matrix-list-table td.exam-matrix-pos-col {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  background: #fff;
-  box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
-}
+/* Sticky/frozen columns are for on-screen scroll only — they stack on top of each other in print. */
+@media not print {
+  .exam-report-page .exam-matrix-list-table {
+    --exam-matrix-pos-w: 2.75rem;
+    --exam-matrix-learner-w: 12rem;
+    --exam-matrix-class-w: 4.75rem;
+    min-width: 100%;
+    width: max-content;
+    border: 1px solid #64748b;
+  }
 
-.exam-report-page .exam-matrix-list-table th.exam-matrix-learner,
-.exam-report-page .exam-matrix-list-table td.exam-matrix-learner {
-  position: sticky;
-  left: var(--exam-matrix-pos-w);
-  z-index: 3;
-  background: #fff;
-  box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.28);
-}
+  .exam-report-page .exam-matrix-list-table th.exam-matrix-pos-col,
+  .exam-report-page .exam-matrix-list-table td.exam-matrix-pos-col {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #fff;
+    box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.22);
+  }
 
-.exam-report-page .exam-matrix-list-table.has-class-col th.exam-matrix-class,
-.exam-report-page .exam-matrix-list-table.has-class-col td.exam-matrix-class {
-  position: sticky;
-  left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
-  z-index: 2;
-  background: #fff;
-  box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
-}
+  .exam-report-page .exam-matrix-list-table th.exam-matrix-learner,
+  .exam-report-page .exam-matrix-list-table td.exam-matrix-learner {
+    position: sticky;
+    left: var(--exam-matrix-pos-w);
+    z-index: 3;
+    background: #fff;
+    box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.28);
+  }
 
-.exam-report-page .exam-matrix-list-table thead th.exam-matrix-pos-col,
-.exam-report-page .exam-matrix-list-table thead th.exam-matrix-learner,
-.exam-report-page .exam-matrix-list-table.has-class-col thead th.exam-matrix-class {
-  z-index: 4;
-  background: linear-gradient(180deg, #f4f7fc 0%, #e9f0fb 100%);
-}
+  .exam-report-page .exam-matrix-list-table.has-class-col th.exam-matrix-class,
+  .exam-report-page .exam-matrix-list-table.has-class-col td.exam-matrix-class {
+    position: sticky;
+    left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
+    z-index: 2;
+    background: #fff;
+    box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
+  }
 
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-pos-col,
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-learner,
-.exam-report-page .exam-matrix-list-table.has-class-col tbody tr:nth-child(even) td.exam-matrix-class {
-  background: #f8fafc;
-}
+  .exam-report-page .exam-matrix-list-table thead th.exam-matrix-pos-col,
+  .exam-report-page .exam-matrix-list-table thead th.exam-matrix-learner,
+  .exam-report-page .exam-matrix-list-table.has-class-col thead th.exam-matrix-class {
+    z-index: 4;
+    background: linear-gradient(180deg, #f4f7fc 0%, #e9f0fb 100%);
+  }
 
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-pos-col,
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-learner,
-.exam-report-page .exam-matrix-list-table.has-class-col tbody tr:hover td.exam-matrix-class {
-  background: #eef4ff;
-}
+  .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-pos-col,
+  .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-learner,
+  .exam-report-page .exam-matrix-list-table.has-class-col tbody tr:nth-child(even) td.exam-matrix-class {
+    background: #f8fafc;
+  }
 
-.exam-report-page .exam-matrix-summary-col,
-.exam-report-page .exam-matrix-grade-col,
-.exam-report-page .exam-matrix-avg-col {
-  background: #f3f7ff;
-  box-shadow: inset 1px 0 0 #d7e2f4;
-}
+  .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-pos-col,
+  .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-learner,
+  .exam-report-page .exam-matrix-list-table.has-class-col tbody tr:hover td.exam-matrix-class {
+    background: #eef4ff;
+  }
 
-.exam-report-page .exam-matrix-grade-col {
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
-}
+  .exam-report-page .exam-matrix-summary-col,
+  .exam-report-page .exam-matrix-grade-col,
+  .exam-report-page .exam-matrix-avg-col {
+    background: #f3f7ff;
+    box-shadow: inset 1px 0 0 #d7e2f4;
+  }
 
-.exam-report-page .exam-matrix-list-table thead th.exam-matrix-grade-col {
-  z-index: 3;
-}
+  .exam-report-page .exam-matrix-grade-col {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
+  }
 
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-summary-col,
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-grade-col,
-.exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-avg-col {
-  background: #eef3fb;
-}
+  .exam-report-page .exam-matrix-list-table thead th.exam-matrix-grade-col {
+    z-index: 3;
+  }
 
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-summary-col,
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-grade-col,
-.exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-avg-col {
-  background: #e8f0ff;
-}
+  .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-summary-col,
+  .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-grade-col,
+  .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-avg-col {
+    background: #eef3fb;
+  }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col,
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner,
-.exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
-  position: sticky;
-  z-index: 3;
-  background: #eef3fb;
-  box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
-}
+  .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-summary-col,
+  .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-grade-col,
+  .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-avg-col {
+    background: #e8f0ff;
+  }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col {
-  left: 0;
-}
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col,
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner,
+  .exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
+    position: sticky;
+    z-index: 3;
+    background: #eef3fb;
+    box-shadow: 2px 0 8px -4px rgba(21, 35, 63, 0.18);
+  }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner {
-  left: var(--exam-matrix-pos-w);
-}
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-pos-col {
+    left: 0;
+  }
 
-.exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
-  left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
-  z-index: 2;
-}
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row th.exam-matrix-learner {
+    left: var(--exam-matrix-pos-w);
+  }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-summary-col,
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
-  background: #e4ecff;
-}
+  .exam-report-page .exam-matrix-list-table.has-class-col tr.exam-matrix-mean-row td.exam-matrix-class {
+    left: calc(var(--exam-matrix-pos-w) + var(--exam-matrix-learner-w));
+    z-index: 2;
+  }
 
-.exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-summary-col,
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
+    background: #e4ecff;
+  }
+
+  .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
+    position: sticky;
+    right: 0;
+    z-index: 3;
+    box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
+  }
 }
 
 .exam-report-page .exam-matrix-list-meta span {
@@ -18100,7 +18103,6 @@ body.is-reordering-academic-levels [data-normal-only] {
     min-width: 0 !important;
     max-width: none !important;
     overflow: hidden !important;
-    contain: layout paint;
   }
 
   .exam-report-page .exam-matrix-list-table:not(.exam-analytics-table) {

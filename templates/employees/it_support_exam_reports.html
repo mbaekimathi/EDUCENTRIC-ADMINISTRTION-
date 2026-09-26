@@ -1,4 +1,5 @@
 ﻿{% extends "layouts/workspace.html" %}
+{% load static %}
 {% block title %}{{ page.title }} | Edu-Centric{% endblock %}
 {% block header_eyebrow %}Curriculum reports{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
@@ -1611,6 +1612,8 @@
   const exportPrintButtons = document.querySelectorAll("[data-export-print]");
   if (!printButtons.length && !exportPrintButtons.length) return;
 
+  const printStylesheet = "{% static 'css/exam-report-print.css' %}?v=20260926c";
+
   const setExportMode = (mode) => {
     const value = mode === "raw" ? "raw" : "graded";
     document.documentElement.setAttribute("data-export-mode", value);
@@ -1621,8 +1624,84 @@
     document.documentElement.removeAttribute("data-export-mode");
   };
 
+  const applyRawModeToClone = (clone, mode) => {
+    if (mode !== "raw") return;
+    clone.querySelectorAll(".export-grade, .export-grade-col").forEach((node) => node.remove());
+    clone.querySelectorAll('td[colspan="3"]').forEach((cell) => {
+      cell.colSpan = 2;
+    });
+  };
+
+  const printMatrixDocument = (mode) => {
+    const source = document.querySelector(".exam-report-matrices");
+    if (!source) return false;
+
+    const clone = source.cloneNode(true);
+    clone.querySelectorAll(".no-print, .exam-matrix-scroll-hint").forEach((node) => node.remove());
+    applyRawModeToClone(clone, mode);
+    clone.querySelectorAll("img").forEach((img) => {
+      if (img.getAttribute("src")) img.src = img.src;
+    });
+
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.setAttribute("title", "Assessment report print");
+    frame.style.cssText =
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;";
+    document.body.appendChild(frame);
+
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html lang="en" data-export-mode="${mode}"><head><meta charset="utf-8">
+      <title>Assessment report</title>
+      <link rel="stylesheet" href="${printStylesheet}">
+    </head><body></body></html>`);
+    doc.close();
+    doc.body.appendChild(doc.importNode(clone, true));
+
+    let printed = false;
+    const cleanup = () => {
+      frame.remove();
+      clearExportMode();
+    };
+
+    const triggerPrint = () => {
+      if (printed) return;
+      printed = true;
+      try {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } finally {
+        window.setTimeout(cleanup, 1500);
+      }
+    };
+
+    const images = Array.from(doc.images || []);
+    if (!images.length) {
+      window.setTimeout(triggerPrint, 80);
+      return true;
+    }
+    let remaining = images.length;
+    const markDone = () => {
+      remaining -= 1;
+      if (remaining <= 0) triggerPrint();
+    };
+    images.forEach((img) => {
+      if (img.complete) {
+        markDone();
+        return;
+      }
+      img.addEventListener("load", markDone, { once: true });
+      img.addEventListener("error", markDone, { once: true });
+    });
+    window.setTimeout(triggerPrint, 2000);
+    return true;
+  };
+
   const printReport = (mode = "graded") => {
     setExportMode(mode);
+    if (printMatrixDocument(mode)) return;
+
     const previous = document.title;
     document.title = "\u00a0";
     const restore = () => {
