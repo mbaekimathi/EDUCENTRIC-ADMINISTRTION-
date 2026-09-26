@@ -16291,8 +16291,11 @@ body.is-reordering-academic-levels [data-normal-only] {
   overscroll-behavior-x: contain;
 }
 
+.exam-report-page .exam-matrix-sheet .src-table-wrap,
+.exam-report-page .exam-matrix-sheet .exam-matrix-list-wrap,
 .exam-report-page .exam-report-analytics .exam-matrix-list-wrap {
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .exam-report-page .exam-analytics-table {
@@ -16307,6 +16310,56 @@ body.is-reordering-academic-levels [data-normal-only] {
   border: 1px solid #94a3b8;
 }
 
+.exam-report-page table.src-table-matrix th,
+.exam-report-page table.src-table-matrix td {
+  border: 1px solid #94a3b8;
+}
+
+.exam-report-page table.src-table-matrix thead th {
+  border-bottom: 1px solid #64748b;
+}
+
+.exam-report-page table.src-table-matrix td.src-mark .exam-matrix-mark-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  line-height: 1.05;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.exam-report-page table.src-table-matrix td.src-mark .exam-matrix-mark-score {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.exam-report-page table.src-table-matrix td.src-mark .exam-matrix-mark-grade {
+  margin: 0;
+  color: #1b4fd6;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.exam-report-page table.src-table-matrix.exam-matrix-dense {
+  font-size: 0.72rem;
+  --exam-matrix-learner-w: 9.75rem;
+}
+
+.exam-report-page table.src-table-matrix.exam-matrix-dense td.src-mark,
+.exam-report-page table.src-table-matrix.exam-matrix-dense .exam-matrix-print-col-subject,
+.exam-report-page table.src-table-matrix.exam-matrix-dense thead th.exam-matrix-subject-col {
+  min-width: 2.75rem;
+}
+
+.exam-report-page table.src-table-matrix thead th.exam-matrix-subject-col {
+  font-size: 0.58rem;
+  letter-spacing: 0.03em;
+  padding-inline: 0.28rem;
+}
+
 /* Sticky/frozen columns are for on-screen scroll only — they stack on top of each other in print. */
 @media not print {
   .exam-report-page table.src-table-matrix,
@@ -16314,6 +16367,7 @@ body.is-reordering-academic-levels [data-normal-only] {
     --exam-matrix-pos-w: 2.75rem;
     --exam-matrix-learner-w: 12rem;
     --exam-matrix-class-w: 4.75rem;
+    --exam-matrix-sticky-col-w: 3.2rem;
     min-width: 100%;
     width: max-content;
     border: 1px solid #64748b;
@@ -16388,22 +16442,52 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .exam-report-page .exam-matrix-grade-col,
-  .exam-report-page table.src-table-matrix td.export-grade-col,
-  .exam-report-page table.src-table-matrix th.export-grade-col {
+  .exam-report-page table.src-table-matrix td.exam-matrix-sticky-grade,
+  .exam-report-page table.src-table-matrix th.exam-matrix-sticky-grade {
     position: sticky;
     right: 0;
     z-index: 2;
     box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
   }
 
+  .exam-report-page table.src-table-matrix td.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix th.exam-matrix-sticky-avg {
+    position: sticky;
+    right: var(--exam-matrix-sticky-col-w);
+    z-index: 2;
+    box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.16);
+  }
+
+  .exam-report-page table.src-table-matrix td.exam-matrix-sticky-total,
+  .exam-report-page table.src-table-matrix th.exam-matrix-sticky-total {
+    position: sticky;
+    right: calc(var(--exam-matrix-sticky-col-w) * 2);
+    z-index: 2;
+    box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.14);
+  }
+
+  .exam-report-page table.src-table-matrix th.exam-matrix-sticky-total,
+  .exam-report-page table.src-table-matrix th.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix th.exam-matrix-sticky-grade,
+  .exam-report-page table.src-table-matrix td.exam-matrix-sticky-total,
+  .exam-report-page table.src-table-matrix td.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix td.exam-matrix-sticky-grade {
+    background: #f3f7ff;
+  }
+
   .exam-report-page .exam-matrix-list-table thead th.exam-matrix-grade-col,
-  .exam-report-page table.src-table-matrix thead th.export-grade-col {
-    z-index: 3;
+  .exam-report-page table.src-table-matrix thead th.exam-matrix-sticky-grade,
+  .exam-report-page table.src-table-matrix thead th.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix thead th.exam-matrix-sticky-total {
+    z-index: 4;
   }
 
   .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-summary-col,
   .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-grade-col,
   .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-avg-col,
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-sticky-total,
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-sticky-grade,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-summary-col,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-grade-col,
   .exam-report-page .exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-avg-col {
@@ -16413,6 +16497,9 @@ body.is-reordering-academic-levels [data-normal-only] {
   .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-summary-col,
   .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-grade-col,
   .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-avg-col,
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-sticky-total,
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix tbody tr:hover td.exam-matrix-sticky-grade,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-summary-col,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-grade-col,
   .exam-report-page .exam-matrix-list-table tbody tr:hover td.exam-matrix-avg-col {
@@ -16454,13 +16541,29 @@ body.is-reordering-academic-levels [data-normal-only] {
     background: #e4ecff;
   }
 
-  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.export-grade-col,
-  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.export-grade-col,
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.exam-matrix-sticky-grade,
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.exam-matrix-sticky-grade,
   .exam-report-page .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col {
     position: sticky;
     right: 0;
     z-index: 3;
     box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.18);
+  }
+
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.exam-matrix-sticky-avg,
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.exam-matrix-sticky-avg {
+    position: sticky;
+    right: var(--exam-matrix-sticky-col-w);
+    z-index: 3;
+    box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.16);
+  }
+
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row td.exam-matrix-sticky-total,
+  .exam-report-page table.src-table-matrix tr.exam-matrix-mean-row th.exam-matrix-sticky-total {
+    position: sticky;
+    right: calc(var(--exam-matrix-sticky-col-w) * 2);
+    z-index: 3;
+    box-shadow: -2px 0 8px -4px rgba(21, 35, 63, 0.14);
   }
 }
 
@@ -17086,9 +17189,9 @@ body.is-reordering-academic-levels [data-normal-only] {
   min-width: 3.35rem;
 }
 
-.exam-report-page table.src-table-matrix thead th:not(.is-left):not(.exam-matrix-pos-col):not(.src-avg-col),
-.exam-report-page table.src-table-matrix td.src-mark {
-  min-width: 3.35rem;
+.exam-report-page table.src-table-matrix thead th.exam-matrix-subject-col,
+.exam-report-page table.src-table-matrix td.exam-matrix-subject-col {
+  min-width: 3.1rem;
 }
 
 .exam-report-page .src-dual-school-meta span + span::before {

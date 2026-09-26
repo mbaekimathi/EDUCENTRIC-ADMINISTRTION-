@@ -1496,6 +1496,17 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "src-table-matrix")
         self.assertContains(response, "src-section-label")
 
+    def test_matrix_subject_column_label_avoids_single_letter_headers(self):
+        from apps.employees.views import _matrix_subject_column_label
+
+        class _Subject:
+            def __init__(self, code, name):
+                self.code = code
+                self.name = name
+
+        self.assertEqual(_matrix_subject_column_label(_Subject("G", "Geography")), "GEOG")
+        self.assertEqual(_matrix_subject_column_label(_Subject("MATHS", "Mathematics")), "MATHS")
+
     def test_curriculum_section_pages_load_without_curriculum_sidebar(self):
         response = self.client.get(
             reverse(

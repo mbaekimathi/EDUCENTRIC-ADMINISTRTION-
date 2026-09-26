@@ -1,8 +1,9 @@
+{% with subject_n=sheet.subjects|length %}
 <table
-  class="src-table src-table-matrix exam-matrix-grid-table{% if report.show_class_column %} has-class-col{% endif %}"
+  class="src-table src-table-matrix exam-matrix-grid-table{% if report.show_class_column %} has-class-col{% endif %}{% if subject_n >= 7 %} exam-matrix-dense{% endif %}"
   role="table"
   aria-label="Mark sheet results"
-  style="--exam-matrix-subject-count: {{ sheet.subject_count|default:sheet.subjects|length }};"
+  style="--exam-matrix-subject-count: {{ subject_n }};"
 >
   <colgroup>
     {% for col in sheet.columns %}
@@ -41,7 +42,9 @@
         {% for cell in row.cells %}
           {% if forloop.counter0 == col.subject_index %}
             {% if cell.percent != None %}
-              <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
+        <span class="exam-matrix-mark-stack">
+          <strong class="exam-matrix-mark-score">{{ cell.percent }}</strong>{% if cell.grade %}<em class="exam-matrix-mark-grade export-grade">{{ cell.grade }}</em>{% endif %}
+        </span>
             {% else %}
               <span class="src-empty">&mdash;</span>
             {% endif %}
@@ -92,7 +95,9 @@
         {% for mean in sheet.subject_means %}
           {% if forloop.counter0 == col.subject_index %}
             {% if mean.percent_mean != None %}
-              <strong>{{ mean.percent_mean }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
+        <span class="exam-matrix-mark-stack">
+          <strong class="exam-matrix-mark-score">{{ mean.percent_mean }}</strong>{% if mean.grade %}<em class="exam-matrix-mark-grade export-grade">{{ mean.grade }}</em>{% endif %}
+        </span>
             {% else %}
               <span class="src-empty">&mdash;</span>
             {% endif %}
@@ -117,3 +122,4 @@
   </tfoot>
   {% endif %}
 </table>
+{% endwith %}

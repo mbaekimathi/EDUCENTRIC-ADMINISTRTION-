@@ -5641,6 +5641,25 @@ def _build_individual_trend_chart(exam_columns, exam_means, subject_rows=None):
     }
 
 
+def _matrix_subject_column_label(subject):
+    """Header text for a subject column (avoid single-letter codes that look like gender etc.)."""
+    code = (getattr(subject, "code", None) or "").strip()
+    name = (getattr(subject, "name", None) or "").strip()
+    if len(code) > 2:
+        return code
+    if not name:
+        return code or "—"
+    words = [part for part in name.replace("-", " ").split() if part]
+    if len(words) >= 2:
+        acronym = "".join(word[0] for word in words[:4]).upper()
+        if len(acronym) >= 2:
+            return acronym[:5]
+    alnum = "".join(ch for ch in name.upper() if ch.isalnum())
+    if len(alnum) >= 3:
+        return alnum[:4]
+    return code.upper() if code else alnum[:4]
+
+
 def _matrix_mark_sheet_columns(subjects, *, show_class_column):
     """Column definitions for mark sheet tables (one header cell per data column)."""
     columns = [
@@ -5683,11 +5702,11 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
             {
                 "key": f"subject-{subject.id}",
                 "kind": "subject",
-                "label": subject.code,
+                "label": _matrix_subject_column_label(subject),
                 "title": title,
                 "subject_index": index,
-                "header_class": "",
-                "cell_class": "src-mark",
+                "header_class": "exam-matrix-subject-col",
+                "cell_class": "src-mark exam-matrix-subject-col",
                 "col_class": "exam-matrix-print-col-subject",
             }
         )
@@ -5697,24 +5716,24 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
                 "key": "total",
                 "kind": "total",
                 "label": "Total",
-                "header_class": "src-avg-col",
-                "cell_class": "src-mark src-avg-col",
+                "header_class": "src-avg-col exam-matrix-sticky-total",
+                "cell_class": "src-mark src-avg-col exam-matrix-sticky-total",
                 "col_class": "exam-matrix-print-col-summary",
             },
             {
                 "key": "avg",
                 "kind": "avg",
                 "label": "Avg",
-                "header_class": "src-avg-col",
-                "cell_class": "src-mark src-avg-col",
+                "header_class": "src-avg-col exam-matrix-sticky-avg",
+                "cell_class": "src-mark src-avg-col exam-matrix-sticky-avg",
                 "col_class": "exam-matrix-print-col-summary",
             },
             {
                 "key": "grade",
                 "kind": "grade",
                 "label": "Grade",
-                "header_class": "src-avg-col export-grade-col",
-                "cell_class": "src-mark src-avg-col export-grade-col",
+                "header_class": "src-avg-col export-grade-col exam-matrix-sticky-grade",
+                "cell_class": "src-mark src-avg-col export-grade-col exam-matrix-sticky-grade",
                 "col_class": "exam-matrix-print-col-summary",
             },
         ]

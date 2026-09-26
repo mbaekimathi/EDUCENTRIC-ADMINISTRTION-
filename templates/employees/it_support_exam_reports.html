@@ -333,7 +333,7 @@
         <section class="src-results" aria-label="Assessment results">
           <p class="src-section-label">Assessment results</p>
           <div class="src-table-wrap exam-matrix-list-wrap" tabindex="0">
-            <p class="exam-matrix-scroll-hint no-print" aria-hidden="true">Swipe or scroll sideways to view all subjects</p>
+            <p class="exam-matrix-scroll-hint no-print">Scroll sideways to see every subject — #, name, class, and totals stay visible.</p>
             {% include "employees/includes/exam_matrix_mark_sheet_table.html" with sheet=sheet report=report %}
           </div>
         </section>
@@ -1487,7 +1487,7 @@
   if (!printButtons.length && !exportPrintButtons.length) return;
 
   const printStylesheetUrl = new URL(
-    "{% static 'css/exam-report-print.css' %}?v=20260926g",
+    "{% static 'css/exam-report-print.css' %}?v=20260926h",
     window.location.href
   ).href;
   const printFontStylesheet =
