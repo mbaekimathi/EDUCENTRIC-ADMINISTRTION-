@@ -6699,6 +6699,84 @@ class TeacherExamRecordsTests(TestCase):
         mark.refresh_from_db()
         self.assertEqual(mark.marks, 25)
 
+    def test_teacher_exam_class_shows_combined_subject_section(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        art = LearningArea.objects.create(name="Art", code="ART")
+        art.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=art,
+            teacher=self.teacher,
+        )
+        math_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=self.subject,
+            out_of_marks=50,
+        )
+        art_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=art,
+            out_of_marks=50,
+        )
+        combined = CombinedExamSubject.objects.create(
+            academic_level=self.level,
+            name="CREATIVE ARTS",
+            code="CA-COMB",
+        )
+        CombinedExamSubjectComponent.objects.bulk_create(
+            [
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=math_setting,
+                    position=1,
+                ),
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=art_setting,
+                    position=2,
+                ),
+            ]
+        )
+        parent = ParentGuardian.objects.create(
+            full_name="JANE DOE",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000333",
+            email="jane.combined.teacher@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="G1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+        response = self.client.post(
+            class_url,
+            {
+                f"mark_{student.id}_{self.subject.id}": "40",
+                f"mark_{student.id}_{art.id}": "30",
+            },
+        )
+        self.assertRedirects(response, class_url)
+        page = self.client.get(class_url)
+        self.assertContains(page, "CREATIVE ARTS")
+        self.assertContains(page, "MATH + ART")
+        self.assertContains(page, "CA-COMB")
+        self.assertContains(page, ">70<")
+
     def test_changing_out_of_settings_does_not_alter_saved_percent_until_edit(self):
         from apps.admissions.models import ParentGuardian, Student
 

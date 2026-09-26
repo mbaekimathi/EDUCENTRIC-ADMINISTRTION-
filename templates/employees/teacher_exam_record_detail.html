@@ -76,12 +76,23 @@
     {% endif %}
 
     <div class="marks-card-body">
-      {% if subjects %}
-      <table class="marks-card-table">
+      {% if mark_sections %}
+      {% for section in mark_sections %}
+      {% if section.kind == "combined" %}
+      <div class="marks-combined-section" data-combined-section>
+        <header class="marks-combined-head">
+          <div>
+            <h3 class="is-uppercase">{{ section.name }}</h3>
+            <p class="subtle">{{ section.component_codes }} · combined out of {{ section.combined_out_of }}</p>
+          </div>
+          <span class="marks-subject-code is-combined">{{ section.code }}</span>
+        </header>
+      {% endif %}
+      <table class="marks-card-table{% if section.kind == 'combined' %} is-combined-block{% endif %}"{% if section.kind == "combined" %} data-combined-table{% endif %}>
         <colgroup>
           <col class="marks-col-student">
           <col class="marks-col-admit">
-          {% for subject in subjects %}
+          {% for column in section.columns %}
           <col class="marks-col-mark">
           {% endfor %}
         </colgroup>
@@ -89,22 +100,28 @@
           <tr>
             <th scope="col" class="marks-student-cell">Student</th>
             <th scope="col" class="marks-admit-cell">Admission</th>
-            {% for subject in subjects %}
-            <th scope="col" class="marks-mark-cell" title="{{ subject.name }} · out of {{ subject.exam_out_of }}">
+            {% for column in section.columns %}
+            <th scope="col" class="marks-mark-cell" title="{% if column.kind == 'combined_total' %}{{ column.name }} · combined from {{ column.component_codes }}{% else %}{{ column.name }} · out of {{ column.exam_out_of }}{% endif %}">
               <span class="marks-col-head">
-                <span class="marks-subject-code">{{ subject.code }}</span>
-                <span class="marks-out-of">/ {{ subject.exam_out_of }}</span>
+                <span class="marks-subject-code{% if column.kind == 'combined_total' %} is-combined{% endif %}">{{ column.code }}</span>
+                {% if column.kind != "combined_total" %}
+                <span class="marks-out-of">/ {{ column.exam_out_of }}</span>
+                {% else %}
+                <span class="marks-out-of">combined</span>
+                {% endif %}
               </span>
             </th>
             {% endfor %}
           </tr>
         </thead>
-        <tbody data-student-sort-body>
-          {% for student in students %}
+        <tbody{% if section.kind != "combined" %} data-student-sort-body{% endif %}>
+          {% for row in section.rows %}
+          {% with student=row.student %}
           <tr
-            data-student-row
+            {% if section.kind != "combined" %}data-student-row{% endif %}
             data-sort-name="{{ student.display_name }}"
             data-sort-admission="{{ student.admission_number }}"
+            {% if section.kind == "combined" %}data-combined-row{% endif %}
           >
             <td class="marks-student-cell">
               <strong class="is-uppercase exam-student-name" title="{{ student.display_name }}">
@@ -119,16 +136,21 @@
             <td class="marks-admit-cell">
               {% if student.admission_number %}<code class="marks-admit">{{ student.admission_number }}</code>{% else %}—{% endif %}
             </td>
-            {% for cell in student.mark_cells %}
+            {% for cell in row.cells %}
             <td class="marks-mark-cell">
+              {% if cell.kind == "combined" %}
+              <span class="marks-pct is-combined" data-combined-percent title="Combined from {{ cell.component_codes }}">
+                {% if cell.percent != None %}{{ cell.percent }}%{% endif %}
+              </span>
+              {% else %}
               <label class="sr-only" for="{{ cell.field_name }}">{{ cell.subject.name }} marks for {{ student.display_name }}, out of {{ cell.out_of }}</label>
               <div class="marks-mark-stack">
                 <span class="marks-input-wrap">
                   <input
                     id="{{ cell.field_name }}"
-                    class="exam-mark-input"
+                    class="exam-mark-input{% if not cell.editable %} is-readonly-peer{% endif %}"
                     type="text"
-                    name="{{ cell.field_name }}"
+                    name="{% if cell.editable %}{{ cell.field_name }}{% endif %}"
                     value="{% if cell.raw != None %}{{ cell.raw }}{% endif %}"
                     min="0"
                     max="{{ cell.out_of }}"
@@ -137,28 +159,37 @@
                     autocomplete="off"
                     placeholder="—"
                     data-exam-mark
+                    {% if section.kind == "combined" and cell.editable %}data-combined-component{% endif %}
                     data-out-of="{{ cell.out_of }}"
                     data-current-out-of="{{ cell.current_out_of }}"
                     {% if cell.saved_out_of %}data-saved-out-of="{{ cell.saved_out_of }}"{% endif %}
                     data-subject-id="{{ cell.subject.id }}"
                     readonly
+                    {% if not cell.editable %}tabindex="-1" aria-readonly="true" title="Marked by another teacher"{% endif %}
                   >
                   <span class="marks-out-suffix" aria-hidden="true">/ {{ cell.out_of }}</span>
                 </span>
                 <span class="marks-pct" data-converted-for="{{ cell.field_name }}">{% if cell.percent != None %}{{ cell.percent }}%{% endif %}</span>
               </div>
+              {% endif %}
             </td>
             {% endfor %}
           </tr>
+          {% endwith %}
           {% endfor %}
         </tbody>
-        {% if subject_means %}
+        {% if section.means %}
         <tfoot>
           <tr class="marks-mean-row">
             <th scope="row" class="marks-student-cell">Class mean</th>
             <td class="marks-admit-cell"></td>
-            {% for mean in subject_means %}
+            {% for mean in section.means %}
             <td class="marks-mark-cell">
+              {% if mean.kind == "combined_total" %}
+              <span class="marks-pct is-combined marks-mean-pct" data-combined-mean-percent>
+                {% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}
+              </span>
+              {% else %}
               <div class="marks-mark-stack">
                 <span class="marks-input-wrap marks-mean-value">
                   <span data-mean-raw-for="{{ mean.subject.id }}">{% if mean.raw_mean != None %}{{ mean.raw_mean }}{% else %}—{% endif %}</span>
@@ -168,12 +199,17 @@
                   {% if mean.percent_mean != None %}{{ mean.percent_mean }}%{% else %}—{% endif %}
                 </span>
               </div>
+              {% endif %}
             </td>
             {% endfor %}
           </tr>
         </tfoot>
         {% endif %}
       </table>
+      {% if section.kind == "combined" %}
+      </div>
+      {% endif %}
+      {% endfor %}
       {% else %}
       <div class="marks-card-empty">
         <strong>No subjects for this class</strong>
@@ -323,10 +359,49 @@
       const marks = Number(raw);
       converted.textContent = Number.isFinite(marks) ? `${Math.round((marks * 100) / outOf)}%` : "";
     }
+    updateCombinedRow(input.closest("[data-combined-row]"));
     updateMeans();
   }
 
+  function updateCombinedRow(row) {
+    if (!row) return;
+    const combinedTarget = row.querySelector("[data-combined-percent]");
+    if (!combinedTarget) return;
+    let totalRaw = 0;
+    let totalOut = 0;
+    let complete = true;
+    row.querySelectorAll("[data-combined-component]").forEach((input) => {
+      const raw = input.value.trim();
+      const outOf = Number(input.getAttribute("data-out-of") || "0");
+      if (raw === "" || !outOf) {
+        complete = false;
+        return;
+      }
+      const marks = Number(raw);
+      if (!Number.isFinite(marks)) {
+        complete = false;
+        return;
+      }
+      totalRaw += marks;
+      totalOut += outOf;
+    });
+    combinedTarget.textContent = complete && totalOut ? `${Math.round((totalRaw * 100) / totalOut)}%` : "";
+  }
+
   function updateMeans() {
+    form.querySelectorAll("[data-combined-table]").forEach((table) => {
+      const meanTarget = table.querySelector("[data-combined-mean-percent]");
+      if (!meanTarget) return;
+      const percents = [];
+      table.querySelectorAll("[data-combined-percent]").forEach((node) => {
+        const text = (node.textContent || "").replace("%", "").trim();
+        if (text !== "" && Number.isFinite(Number(text))) percents.push(Number(text));
+      });
+      meanTarget.textContent = percents.length
+        ? `${Math.round(percents.reduce((sum, value) => sum + value, 0) / percents.length)}%`
+        : "—";
+    });
+
     const grouped = new Map();
     form.querySelectorAll("[data-exam-mark]").forEach((input) => {
       const subjectId = input.getAttribute("data-subject-id");
@@ -356,6 +431,7 @@
   form.querySelectorAll("[data-exam-mark]").forEach((input) => {
     input.addEventListener("input", () => convertMark(input));
   });
+  form.querySelectorAll("[data-combined-row]").forEach((row) => updateCombinedRow(row));
   updateMeans();
 })();
 </script>

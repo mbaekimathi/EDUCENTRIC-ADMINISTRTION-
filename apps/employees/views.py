@@ -810,6 +810,244 @@ def _teacher_class_subjects(employee, academic_class, level):
     return subjects
 
 
+def _teacher_exam_mark_sections(employee, academic_class, level):
+    """Mark-sheet layout: standalone subjects plus combined blocks with all components."""
+    subjects = _teacher_class_subjects(employee, academic_class, level)
+    allocated_ids = set(
+        ClassSubjectAllocation.objects.filter(
+            teacher=employee, academic_class=academic_class
+        ).values_list("learning_area_id", flat=True)
+    )
+    if not subjects:
+        return [], subjects
+    out_of_by_subject = _exam_record_out_of(level, subjects)
+    for subject in subjects:
+        subject.exam_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
+
+    sections = []
+    for column in _exam_record_display_columns(level):
+        if column["kind"] == "subject":
+            area = column["subject"]
+            if area.id not in allocated_ids:
+                continue
+            sections.append(
+                {
+                    "kind": "standalone",
+                    "code": column["code"],
+                    "name": column["name"],
+                    "component_ids": [],
+                    "columns": [
+                        {
+                            "kind": "subject",
+                            "subject": area,
+                            "code": column["code"],
+                            "name": column["name"],
+                            "exam_out_of": out_of_by_subject.get(area.id, area.total_marks),
+                            "editable": True,
+                        }
+                    ],
+                }
+            )
+            continue
+
+        component_ids = list(column["component_ids"])
+        if not any(component_id in allocated_ids for component_id in component_ids):
+            continue
+        components = []
+        for component in column["combined"].components.all():
+            area = component.subject_setting.learning_area
+            components.append(
+                {
+                    "kind": "subject",
+                    "subject": area,
+                    "code": area.code,
+                    "name": area.name,
+                    "exam_out_of": out_of_by_subject.get(area.id, area.total_marks),
+                    "editable": area.id in allocated_ids,
+                }
+            )
+        combined = column["combined"]
+        sections.append(
+            {
+                "kind": "combined",
+                "combined": combined,
+                "code": column["code"],
+                "name": column["name"],
+                "component_codes": column["component_codes"],
+                "component_ids": component_ids,
+                "combined_out_of": combined.out_of_marks,
+                "columns": [
+                    *components,
+                    {
+                        "kind": "combined_total",
+                        "code": column["code"],
+                        "name": column["name"],
+                        "component_codes": column["component_codes"],
+                        "exam_out_of": combined.out_of_marks,
+                        "editable": False,
+                    },
+                ],
+            }
+        )
+    return sections, subjects
+
+
+def _teacher_exam_mark_cell(student, column, marks_lookup, out_of_by_subject):
+    subject = column["subject"]
+    current_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
+    entry = marks_lookup.get((student.id, subject.id))
+    stored = _exam_mark_entry_raw(entry)
+    saved_out_of = _exam_mark_entry_out_of(entry, None) if isinstance(entry, dict) else None
+    if stored not in (None, "") and saved_out_of is not None:
+        display_out_of = saved_out_of
+    else:
+        display_out_of = current_out_of
+    settings_changed = (
+        stored not in (None, "")
+        and saved_out_of is not None
+        and int(saved_out_of) != int(current_out_of)
+    )
+    percent = _marks_as_percent(stored, display_out_of)
+    editable = column.get("editable", True)
+    return {
+        "kind": "subject",
+        "subject": subject,
+        "out_of": display_out_of,
+        "current_out_of": current_out_of,
+        "saved_out_of": saved_out_of,
+        "settings_changed": settings_changed,
+        "raw": stored,
+        "percent": percent,
+        "field_name": f"mark_{student.id}_{subject.id}",
+        "editable": editable,
+        "readonly": not editable,
+    }
+
+
+def _attach_teacher_exam_mark_sections(students, sections, marks_lookup, out_of_by_subject):
+    for student in students:
+        student.mark_section_rows = []
+        for section in sections:
+            row_cells = []
+            if section["kind"] == "standalone":
+                for column in section["columns"]:
+                    row_cells.append(
+                        _teacher_exam_mark_cell(student, column, marks_lookup, out_of_by_subject)
+                    )
+            else:
+                for column in section["columns"]:
+                    if column["kind"] == "combined_total":
+                        percent = _combined_exam_percent(
+                            marks_lookup,
+                            student.id,
+                            section["component_ids"],
+                            out_of_by_subject,
+                        )
+                        row_cells.append(
+                            {
+                                "kind": "combined",
+                                "code": column["code"],
+                                "name": column["name"],
+                                "component_codes": column["component_codes"],
+                                "percent": percent,
+                                "readonly": True,
+                            }
+                        )
+                        continue
+                    row_cells.append(
+                        _teacher_exam_mark_cell(student, column, marks_lookup, out_of_by_subject)
+                    )
+            student.mark_section_rows.append(row_cells)
+        student.mark_cells = [
+            cell for row in student.mark_section_rows for cell in row if cell.get("kind") == "subject"
+        ]
+
+
+def _teacher_exam_section_means(students, section, section_index):
+    present_students = [
+        student
+        for student in students
+        if _exam_student_attempted_percents(
+            cell.get("percent")
+            for row in getattr(student, "mark_section_rows", [])
+            for cell in row
+        )
+        or any(
+            cell.get("raw") not in (None, "")
+            for row in getattr(student, "mark_section_rows", [])
+            for cell in row
+            if cell.get("kind") == "subject"
+        )
+    ]
+    means = []
+    for col_index, column in enumerate(section["columns"]):
+        if column["kind"] == "combined_total":
+            values = []
+            for student in present_students:
+                rows = getattr(student, "mark_section_rows", [])
+                if section_index >= len(rows) or col_index >= len(rows[section_index]):
+                    values.append(0)
+                    continue
+                percent = rows[section_index][col_index].get("percent")
+                if percent in (None, ""):
+                    values.append(0)
+                    continue
+                try:
+                    values.append(int(percent))
+                except (TypeError, ValueError):
+                    values.append(0)
+            means.append(
+                {
+                    "kind": "combined_total",
+                    "percent_mean": round(sum(values) / len(values)) if values else None,
+                }
+            )
+            continue
+
+        subject = column["subject"]
+        percent_values = []
+        out_of = column.get("exam_out_of")
+        for student in present_students:
+            rows = getattr(student, "mark_section_rows", [])
+            if section_index >= len(rows) or col_index >= len(rows[section_index]):
+                percent_values.append(0)
+                continue
+            cell = rows[section_index][col_index]
+            out_of = cell.get("out_of") or out_of
+            percent = cell.get("percent")
+            if percent in (None, ""):
+                percent = _marks_as_percent(cell.get("raw"), out_of)
+            if percent in (None, ""):
+                percent_values.append(0)
+                continue
+            try:
+                percent_values.append(int(percent))
+            except (TypeError, ValueError):
+                percent_values.append(0)
+        if percent_values:
+            percent_mean = round(sum(percent_values) / len(percent_values))
+            try:
+                out_of_value = int(out_of) if out_of not in (None, "") else None
+            except (TypeError, ValueError):
+                out_of_value = None
+            raw_mean = (
+                round((percent_mean * out_of_value) / 100) if out_of_value else None
+            )
+        else:
+            raw_mean = None
+            percent_mean = None
+        means.append(
+            {
+                "kind": "subject",
+                "subject": subject,
+                "raw_mean": raw_mean,
+                "percent_mean": percent_mean,
+                "out_of": out_of,
+            }
+        )
+    return means
+
+
 def _teacher_exam_subject_groups(employee, generation):
     exam_level_ids = set(generation.academic_levels.values_list("id", flat=True))
     allocations = (
@@ -2942,7 +3180,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
     selected_level = None
     students = []
     subjects = []
-    subject_means = []
+    mark_sections = []
     out_of_settings_changed = False
     if class_id is not None:
         selected_class = next((item for item in exam_classes if item.id == class_id), None)
@@ -2954,18 +3192,17 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             list(_students_in_academic_level(selected_level, selected_class, sort=sort_mode)),
             sort_mode,
         )
-        subjects = _teacher_class_subjects(
+        mark_sections, subjects = _teacher_exam_mark_sections(
             employee, selected_class, selected_level
         )
         out_of_by_subject = _exam_record_out_of(selected_level, subjects)
-        for subject in subjects:
-            subject.exam_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
         class_url = reverse(
             "employees:teacher_exam_record_class",
             kwargs={"exam_id": generation.id, "class_id": selected_class.id},
         )
         marks_editable = generation.status == GeneratedExamTimetable.Status.MARKING
         if request.method == "POST":
+            validation_failed = False
             if not marks_editable:
                 error(
                     request,
@@ -2983,46 +3220,47 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                     )
                 except (TypeError, ValueError, ValidationError):
                     error(request, "Enter whole numbers within each subject's total marks.")
-                    _attach_exam_mark_cells(
-                        students,
-                        subjects,
-                        {
-                            (student.id, subject.id): (
-                                request.POST.get(f"mark_{student.id}_{subject.id}") or ""
-                            ).strip()
-                            for student in students
-                            for subject in subjects
-                        },
-                        out_of_by_subject,
+                    validation_failed = True
+                    post_lookup = {
+                        (student.id, subject.id): (
+                            request.POST.get(f"mark_{student.id}_{subject.id}") or ""
+                        ).strip()
+                        for student in students
+                        for subject in subjects
+                    }
+                    _attach_teacher_exam_mark_sections(
+                        students, mark_sections, post_lookup, out_of_by_subject
                     )
-                    subject_means = _exam_record_subject_means(students, subjects)
                 else:
                     success(request, "Student marks were saved.")
                     return redirect(_with_student_sort(class_url, sort_mode))
-            marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
-            out_of_settings_changed = _exam_marks_out_of_settings_changed(
-                marks_lookup, out_of_by_subject
-            )
-            _attach_exam_mark_cells(
-                students,
-                subjects,
-                marks_lookup,
-                out_of_by_subject,
-            )
-            subject_means = _exam_record_subject_means(students, subjects)
+            if not validation_failed:
+                marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
+                out_of_settings_changed = _exam_marks_out_of_settings_changed(
+                    marks_lookup, out_of_by_subject
+                )
+                _attach_teacher_exam_mark_sections(
+                    students, mark_sections, marks_lookup, out_of_by_subject
+                )
         else:
             marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
             out_of_settings_changed = _exam_marks_out_of_settings_changed(
                 marks_lookup, out_of_by_subject
             )
-            _attach_exam_mark_cells(
-                students,
-                subjects,
-                marks_lookup,
-                out_of_by_subject,
+            _attach_teacher_exam_mark_sections(
+                students, mark_sections, marks_lookup, out_of_by_subject
             )
-            subject_means = _exam_record_subject_means(students, subjects)
+        for index, section in enumerate(mark_sections):
+            section["rows"] = [
+                {
+                    "student": student,
+                    "cells": student.mark_section_rows[index],
+                }
+                for student in students
+            ]
+            section["means"] = _teacher_exam_section_means(students, section, index)
     else:
+        mark_sections = []
         marks_editable = generation.status == GeneratedExamTimetable.Status.MARKING
     return render(
         request,
@@ -3042,7 +3280,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             "selected_level": selected_level,
             "students": students,
             "subjects": subjects,
-            "subject_means": subject_means,
+            "mark_sections": mark_sections,
             "out_of_settings_changed": out_of_settings_changed,
             "marks_editable": marks_editable,
             **(_student_sort_template_context(request) if selected_class else {}),
