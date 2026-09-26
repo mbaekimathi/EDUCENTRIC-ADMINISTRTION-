@@ -227,8 +227,7 @@ table.src-table-matrix tbody {
   display: table-row-group;
 }
 
-.src-table tfoot,
-table.src-table-matrix tfoot {
+.src-table tfoot {
   display: table-footer-group;
 }
 
@@ -348,12 +347,14 @@ table.src-table-matrix tbody tr:nth-child(even) td {
   background: #f8fafc;
 }
 
-table.src-table-matrix tfoot th,
-table.src-table-matrix tfoot td,
+table.src-table-matrix tbody tr.exam-matrix-mean-row th,
+table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 .exam-matrix-list-table tr.exam-matrix-mean-row th,
 .exam-matrix-list-table tr.exam-matrix-mean-row td {
   background: #e2eaf7;
   border-top: 1.1pt solid #1e293b;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .src-mark strong,

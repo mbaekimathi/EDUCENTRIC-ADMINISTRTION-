@@ -79,9 +79,7 @@
       </td>
     </tr>
     {% endfor %}
-  </tbody>
-  {% if sheet.subject_means %}
-  <tfoot>
+    {% if sheet.subject_means and sheet.rows %}
     <tr class="exam-matrix-mean-row">
       {% for col in sheet.columns %}
         {% if col.kind == "position" %}
@@ -89,7 +87,7 @@
         {% elif col.kind == "class" %}
       <td class="{{ col.cell_class }}"></td>
         {% elif col.kind == "learner" %}
-      <th class="{{ col.cell_class }}" scope="row">Class mean</th>
+      <th class="{{ col.cell_class }}" scope="row">{{ sheet.mean_label|default:"Class mean" }}</th>
         {% elif col.kind == "subject" %}
       <th class="{{ col.cell_class }}">
         {% for mean in sheet.subject_means %}
@@ -119,7 +117,7 @@
         {% endif %}
       {% endfor %}
     </tr>
-  </tfoot>
-  {% endif %}
+    {% endif %}
+  </tbody>
 </table>
 {% endwith %}

@@ -16360,6 +16360,19 @@ body.is-reordering-academic-levels [data-normal-only] {
   padding-inline: 0.28rem;
 }
 
+.exam-report-page table.src-table-matrix tbody tr.exam-matrix-mean-row th,
+.exam-report-page table.src-table-matrix tbody tr.exam-matrix-mean-row td {
+  border-top: 2px solid #334155;
+  background: #eef3fb;
+  font-weight: 700;
+}
+
+.exam-report-page table.src-table-matrix tbody tr.exam-matrix-mean-row th.exam-matrix-learner {
+  text-align: left;
+  color: #10233f;
+  font-size: 0.72rem;
+}
+
 /* Sticky/frozen columns are for on-screen scroll only — they stack on top of each other in print. */
 @media not print {
   .exam-report-page table.src-table-matrix,

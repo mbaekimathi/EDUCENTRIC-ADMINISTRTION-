@@ -5742,7 +5742,9 @@ def _matrix_mark_sheet_columns(subjects, *, show_class_column):
 
 
 def _attach_matrix_sheet_table_layout(matrix_sheets, *, show_class_column):
+    mean_label = "Grade mean" if show_class_column else "Class mean"
     for sheet in matrix_sheets or []:
+        sheet["mean_label"] = sheet.get("mean_label") or mean_label
         sheet["columns"] = _matrix_mark_sheet_columns(
             sheet.get("subjects") or [],
             show_class_column=show_class_column,
