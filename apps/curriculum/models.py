@@ -1029,6 +1029,7 @@ class GeneratedExamTimetable(models.Model):
         default=Status.SCHEDULED,
     )
     deadline = models.DateTimeField(null=True, blank=True)
+    is_current = models.BooleanField("current assessment", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1039,6 +1040,10 @@ class GeneratedExamTimetable(models.Model):
     def save(self, *args, **kwargs):
         self.name = (self.name or "").strip().upper()
         super().save(*args, **kwargs)
+        if self.is_current:
+            GeneratedExamTimetable.objects.exclude(pk=self.pk).filter(is_current=True).update(
+                is_current=False
+            )
 
     @property
     def display_name(self):

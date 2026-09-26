@@ -6727,29 +6727,19 @@ def delete_workspace_student(request, student_id):
     return _redirect_student_management()
 
 
-def _active_workflow_exam():
-    """Return the single exam currently progressing through the workflow."""
-    return (
-        GeneratedExamTimetable.objects.filter(
-            status__in=GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
-        )
-        .order_by("-created_at")
-        .first()
-    )
-
-
-def _in_session_exam():
-    return (
-        GeneratedExamTimetable.objects.filter(status=GeneratedExamTimetable.Status.IN_SESSION)
-        .order_by("-created_at")
-        .first()
-    )
+def _current_exam_record():
+    """Return the assessment selected as the current focus in exam management."""
+    return GeneratedExamTimetable.objects.filter(is_current=True).order_by("-created_at").first()
 
 
 def _initial_exam_status():
-    if _active_workflow_exam() is not None:
+    if _current_exam_record() is not None:
         return GeneratedExamTimetable.Status.SCHEDULED
     return GeneratedExamTimetable.Status.IN_SESSION
+
+
+def _initial_exam_is_current():
+    return _current_exam_record() is None
 
 
 def _can_change_exam_status(exam):
@@ -6760,14 +6750,14 @@ def _can_set_as_current_exam(exam):
     return exam.status != GeneratedExamTimetable.Status.PUBLISHED
 
 
-def _demote_other_active_exams(exam):
-    GeneratedExamTimetable.objects.exclude(pk=exam.pk).filter(
-        status__in=GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
-    ).update(status=GeneratedExamTimetable.Status.SCHEDULED)
+def _clear_other_current_exams(exam):
+    GeneratedExamTimetable.objects.exclude(pk=exam.pk).filter(is_current=True).update(
+        is_current=False
+    )
 
 
 def _is_current_exam(exam):
-    return exam.status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES
+    return bool(exam.is_current)
 
 
 def _annotate_exam_workflow_flags(exam, active=None):
@@ -6777,6 +6767,9 @@ def _annotate_exam_workflow_flags(exam, active=None):
 
 
 def _current_exam_for_dashboard():
+    exam = _current_exam_record()
+    if exam is not None:
+        return exam
     for status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
         exam = (
             GeneratedExamTimetable.objects.filter(status=status)
@@ -8716,7 +8709,6 @@ def _grouped_registered_exams():
         .annotate(sitting_count=Count("sittings", distinct=True))
         .order_by("-academic_year__start_date", "academic_term__order", "-created_at")
     )
-    active = _active_workflow_exam()
     for exam in generations:
         _annotate_exam_workflow_flags(exam)
     exam_groups = []
@@ -8890,7 +8882,6 @@ def update_exam_record_status(request, exam_id):
         error(request, "Select a valid assessment status.")
         return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
 
-    active = _active_workflow_exam()
     if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
         if status == GeneratedExamTimetable.Status.SCHEDULED:
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
@@ -8900,31 +8891,21 @@ def update_exam_record_status(request, exam_id):
                 "Scheduled assessments can move to in session, marking, or analysing first.",
             )
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
-        if active is not None and active.pk != exam.pk:
-            error(
-                request,
-                f"Only one exam can be current at a time. Finish {active.display_name} before starting another.",
-            )
-            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
     elif exam.status == GeneratedExamTimetable.Status.PUBLISHED:
         if status == GeneratedExamTimetable.Status.SCHEDULED:
             error(request, "Published assessments cannot be moved back to scheduled.")
-            return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
-        if status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES and active is not None and active.pk != exam.pk:
-            error(
-                request,
-                f"Only one exam can be current at a time. Finish {active.display_name} before reopening this one.",
-            )
             return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
     elif exam.status not in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
         error(request, "You can only change status for the current exam.")
         return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
 
     with transaction.atomic():
-        if status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
-            _demote_other_active_exams(exam)
         exam.status = status
-        exam.save(update_fields=["status"])
+        update_fields = ["status"]
+        if status == GeneratedExamTimetable.Status.PUBLISHED and exam.is_current:
+            exam.is_current = False
+            update_fields.append("is_current")
+        exam.save(update_fields=update_fields)
     label = dict(GeneratedExamTimetable.Status.choices).get(status, status)
     success(request, f"{exam.display_name} status set to {label.lower()}.")
     return _exam_record_manage_redirect(request, exam_id, level_id=level_id)
@@ -8954,9 +8935,9 @@ def set_current_exam_record(request, exam_id):
     is_current = request.POST.get("is_current") == "1"
 
     if not is_current:
-        if exam.status in GeneratedExamTimetable.ACTIVE_WORKFLOW_STATUSES:
-            exam.status = GeneratedExamTimetable.Status.SCHEDULED
-            exam.save(update_fields=["status"])
+        if _is_current_exam(exam):
+            exam.is_current = False
+            exam.save(update_fields=["is_current"])
             success(request, f"{exam.display_name} is no longer the current exam.")
         return redirect(redirect_target)
 
@@ -8964,10 +8945,13 @@ def set_current_exam_record(request, exam_id):
         return redirect(redirect_target)
 
     with transaction.atomic():
-        _demote_other_active_exams(exam)
+        _clear_other_current_exams(exam)
+        exam.is_current = True
+        update_fields = ["is_current"]
         if exam.status == GeneratedExamTimetable.Status.SCHEDULED:
             exam.status = GeneratedExamTimetable.Status.IN_SESSION
-            exam.save(update_fields=["status"])
+            update_fields.append("status")
+        exam.save(update_fields=update_fields)
     success(request, f"{exam.display_name} is now the current exam.")
     return redirect(redirect_target)
 
@@ -10496,6 +10480,7 @@ def exam_timetable_generation(request, page=None):
                             start_date=start,
                             end_date=end,
                             status=_initial_exam_status(),
+                            is_current=_initial_exam_is_current(),
                         )
                         generation.academic_levels.set(selected_levels)
                         sitting_count, total_slots = _generate_exams_for_levels(

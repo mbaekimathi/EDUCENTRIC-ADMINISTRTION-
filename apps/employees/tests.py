@@ -4922,7 +4922,7 @@ class ExamTimetableGenerationTests(TestCase):
         generation.refresh_from_db()
         self.assertEqual(generation.status, GeneratedExamTimetable.Status.MARKING)
 
-    def test_only_current_exam_can_change_status(self):
+    def test_scheduled_exam_can_enter_session_while_another_is_active(self):
         ExamSupervisorAllocation.objects.create(
             academic_class=self.academic_class,
             learning_area=self.subject,
@@ -4943,14 +4943,19 @@ class ExamTimetableGenerationTests(TestCase):
         scheduled_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
         current_url = reverse("employees:exam_record_detail", kwargs={"exam_id": current_exam.id})
 
-        blocked = self.client.post(
+        response = self.client.post(
             reverse("employees:update_exam_record_status", kwargs={"exam_id": scheduled_exam.id}),
             {"status": GeneratedExamTimetable.Status.IN_SESSION, "next": scheduled_url},
         )
-        self.assertRedirects(blocked, scheduled_url)
-        scheduled_page = self.client.get(scheduled_url)
-        self.assertContains(scheduled_page, "Only one assessment can be current at a time")
-        self.assertContains(scheduled_page, 'data-open-modal="exam-status"')
+        self.assertRedirects(response, scheduled_url)
+        scheduled_exam.refresh_from_db()
+        current_exam.refresh_from_db()
+        self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+        self.assertEqual(
+            GeneratedExamTimetable.objects.filter(status=GeneratedExamTimetable.Status.IN_SESSION).count(),
+            2,
+        )
 
         allowed = self.client.post(
             reverse("employees:update_exam_record_status", kwargs={"exam_id": current_exam.id}),
@@ -5013,6 +5018,36 @@ class ExamTimetableGenerationTests(TestCase):
             1,
         )
 
+    def test_published_exam_can_reopen_marking_while_another_is_active(self):
+        ExamSupervisorAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            supervisor=self.teacher,
+        )
+        self._exam_profile()
+        self._generate_post(exam_name="KNAT 2026")
+        active_exam = GeneratedExamTimetable.objects.get()
+        published_exam = GeneratedExamTimetable.objects.create(
+            name="PRIOR EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 7, 3),
+            status=GeneratedExamTimetable.Status.PUBLISHED,
+        )
+        published_exam.academic_levels.add(self.level)
+        published_url = reverse("employees:exam_record_detail", kwargs={"exam_id": published_exam.id})
+
+        response = self.client.post(
+            reverse("employees:update_exam_record_status", kwargs={"exam_id": published_exam.id}),
+            {"status": GeneratedExamTimetable.Status.MARKING, "next": published_url},
+        )
+        self.assertRedirects(response, published_url)
+        published_exam.refresh_from_db()
+        active_exam.refresh_from_db()
+        self.assertEqual(published_exam.status, GeneratedExamTimetable.Status.MARKING)
+        self.assertEqual(active_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
+
     def test_exam_records_list_shows_set_current_controls(self):
         ExamSupervisorAllocation.objects.create(
             academic_class=self.academic_class,
@@ -5048,7 +5083,8 @@ class ExamTimetableGenerationTests(TestCase):
             {"is_current": "0", "next": detail_url},
         )
         current_exam.refresh_from_db()
-        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+        self.assertFalse(current_exam.is_current)
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
 
         scheduled_exam = GeneratedExamTimetable.objects.create(
             name="NEXT EXAM",
@@ -5066,6 +5102,7 @@ class ExamTimetableGenerationTests(TestCase):
         )
         self.assertRedirects(response, scheduled_detail_url)
         scheduled_exam.refresh_from_db()
+        self.assertTrue(scheduled_exam.is_current)
         self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
 
     def test_set_current_exam_from_list(self):
@@ -5083,7 +5120,8 @@ class ExamTimetableGenerationTests(TestCase):
             {"is_current": "0", "next": records_url},
         )
         current_exam.refresh_from_db()
-        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+        self.assertFalse(current_exam.is_current)
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
 
         scheduled_exam = GeneratedExamTimetable.objects.create(
             name="NEXT EXAM",
@@ -5100,6 +5138,7 @@ class ExamTimetableGenerationTests(TestCase):
         )
         self.assertRedirects(response, records_url)
         scheduled_exam.refresh_from_db()
+        self.assertTrue(scheduled_exam.is_current)
         self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
         page = self.client.get(records_url)
         self.assertContains(page, "NEXT EXAM")
@@ -5125,7 +5164,9 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertRedirects(response, records_url)
         first_exam.refresh_from_db()
         second_exam.refresh_from_db()
-        self.assertEqual(first_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+        self.assertFalse(first_exam.is_current)
+        self.assertTrue(second_exam.is_current)
+        self.assertEqual(first_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
         self.assertEqual(second_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
 
     def test_set_current_works_when_another_is_marking(self):
@@ -5156,7 +5197,9 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertRedirects(response, records_url)
         current_exam.refresh_from_db()
         scheduled_exam.refresh_from_db()
-        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.SCHEDULED)
+        self.assertFalse(current_exam.is_current)
+        self.assertTrue(scheduled_exam.is_current)
+        self.assertEqual(current_exam.status, GeneratedExamTimetable.Status.MARKING)
         self.assertEqual(scheduled_exam.status, GeneratedExamTimetable.Status.IN_SESSION)
         detail_url = reverse("employees:exam_record_detail", kwargs={"exam_id": scheduled_exam.id})
         page = self.client.get(detail_url)

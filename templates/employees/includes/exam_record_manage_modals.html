@@ -119,7 +119,7 @@
         <p class="exam-manage-dialog-kicker">Assessment workflow</p>
         <h2 id="exam-status-title">Set assessment status</h2>
         {% if exam.status == "SCHEDULED" %}
-        <p class="exam-manage-dialog-lead">Move this assessment into in session or marking when you are ready. Only one assessment can be active at a time.</p>
+        <p class="exam-manage-dialog-lead">Move this assessment into in session or marking when you are ready. Other assessments can run in parallel; use the current toggle when you need to switch focus.</p>
         {% elif exam.status == "PUBLISHED" %}
         <p class="exam-manage-dialog-lead">Reopen marking or an earlier stage if results need corrections before publishing again.</p>
         {% else %}
