@@ -1,4 +1,4 @@
-{% extends "layouts/workspace.html" %}
+﻿{% extends "layouts/workspace.html" %}
 {% block title %}{{ page.title }} | Edu-Centric{% endblock %}
 {% block header_eyebrow %}Curriculum reports{% endblock %}
 {% block header_title %}{{ page.title }}{% endblock %}
@@ -83,7 +83,7 @@
                 >
                 <span>
                   <strong>Academic level report</strong>
-                  <small>Whole grade or one class · students in rows, subjects in columns</small>
+                  <small>Whole grade or one class Â· students in rows, subjects in columns</small>
                 </span>
               </label>
               <label class="exam-report-choice">
@@ -107,7 +107,7 @@
                 >
                 <span>
                   <strong>Subject analytics</strong>
-                  <small>Select one or more levels · classes in rows, subjects in columns</small>
+                  <small>Select one or more levels Â· classes in rows, subjects in columns</small>
                 </span>
               </label>
             </div>
@@ -188,7 +188,7 @@
             <select id="exam-report-student" name="student_id" class="uppercase-input">
               <option value="">Select student</option>
             </select>
-            <small class="field-hint" data-student-hint hidden>Loading students…</small>
+            <small class="field-hint" data-student-hint hidden>Loading studentsâ€¦</small>
           </div>
         </div>
 
@@ -311,14 +311,14 @@
               {% endif %}
             </h2>
             {% if report.school_profile and report.school_profile.motto %}
-            <p class="exam-matrix-list-motto">“{{ report.school_profile.motto }}”</p>
+            <p class="exam-matrix-list-motto">â€œ{{ report.school_profile.motto }}â€</p>
             {% endif %}
             {% if report.school_profile %}
               {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
               <p class="exam-matrix-list-contact">
                 {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
-                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} · {% endif %}{{ report.school_profile.main_phone }}{% endif %}
-                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} · {% endif %}{{ report.school_profile.general_email }}{% endif %}
+                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} Â· {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} Â· {% endif %}{{ report.school_profile.general_email }}{% endif %}
               </p>
               {% endif %}
             {% endif %}
@@ -326,8 +326,8 @@
           <div class="exam-matrix-list-brand-spacer" aria-hidden="true"></div>
         </div>
         <p class="exam-matrix-list-meta">
-          <span>{{ sheet.exam_title }}{% if sheet.academic_term %} · {{ sheet.academic_term.name }}{% endif %}</span>
-          <span>{% if sheet.scope_label %}{{ sheet.scope_label }}{% elif sheet.level_name %}{{ sheet.level_name }} · whole grade{% elif report.level %}{{ report.level.name }}{% if report.selected_class %} · {{ report.selected_class.display_label }}{% else %} · whole grade{% endif %}{% else %}All academic levels{% endif %}</span>
+          <span>{{ sheet.exam_title }}{% if sheet.academic_term %} Â· {{ sheet.academic_term.name }}{% endif %}</span>
+          <span>{% if sheet.scope_label %}{{ sheet.scope_label }}{% elif sheet.level_name %}{{ sheet.level_name }} Â· whole grade{% elif report.level %}{{ report.level.name }}{% if report.selected_class %} Â· {{ report.selected_class.display_label }}{% else %} Â· whole grade{% endif %}{% else %}All academic levels{% endif %}</span>
           <span>{{ sheet.student_count }} student{{ sheet.student_count|pluralize }}</span>
           <span>{{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
         </p>
@@ -357,7 +357,7 @@
                 {% if row.position != None %}
                   <strong>{{ row.position }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               <td class="is-left exam-matrix-learner">{{ row.student.display_name }}</td>
@@ -369,7 +369,7 @@
                 {% if cell.percent != None %}
                   <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               {% endfor %}
@@ -382,21 +382,21 @@
                 {% if row.total_marks != None %}
                   <strong>{{ row.total_marks }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col">
                 {% if row.mean_percent != None %}
                   <strong>{{ row.mean_percent }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
                 {% if row.overall_grade %}
                   <strong>{{ row.overall_grade }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               {% endif %}
@@ -410,7 +410,7 @@
             {% endfor %}
             {% if sheet.subject_means %}
             <tr class="exam-matrix-mean-row">
-              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">—</span></td>
+              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">â€”</span></td>
               <th class="is-left exam-matrix-learner" scope="row">Class mean</th>
               {% if report.show_class_column %}
               <td class="is-left exam-matrix-class"></td>
@@ -420,7 +420,7 @@
                 {% if mean.percent_mean != None %}
                   <strong>{{ mean.percent_mean }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               {% endfor %}
@@ -428,21 +428,21 @@
                 {% if sheet.class_total_marks != None %}
                   <strong>{{ sheet.class_total_marks }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col">
                 {% if sheet.class_mean != None %}
                   <strong>{{ sheet.class_mean }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col export-grade-col">
                 {% if sheet.class_mean_grade %}
                   <strong>{{ sheet.class_mean_grade }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
             </tr>
@@ -481,14 +481,14 @@
               {% endif %}
             </h2>
             {% if report.school_profile and report.school_profile.motto %}
-            <p class="exam-matrix-list-motto">“{{ report.school_profile.motto }}”</p>
+            <p class="exam-matrix-list-motto">â€œ{{ report.school_profile.motto }}â€</p>
             {% endif %}
             {% if report.school_profile %}
               {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
               <p class="exam-matrix-list-contact">
                 {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
-                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} · {% endif %}{{ report.school_profile.main_phone }}{% endif %}
-                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} · {% endif %}{{ report.school_profile.general_email }}{% endif %}
+                {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} Â· {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} Â· {% endif %}{{ report.school_profile.general_email }}{% endif %}
               </p>
               {% endif %}
             {% endif %}
@@ -508,7 +508,7 @@
         {% if sheet.section_title %}
           {{ sheet.section_title }}
         {% else %}
-          {{ sheet.exam_title }}{% if sheet.academic_term %} · {{ sheet.academic_term.name }}{% endif %}
+          {{ sheet.exam_title }}{% if sheet.academic_term %} Â· {{ sheet.academic_term.name }}{% endif %}
         {% endif %}
       </p>
       {% endif %}
@@ -531,7 +531,7 @@
               <th class="is-left exam-matrix-learner">Class</th>
               <th class="exam-analytics-sat" title="Candidates who sat the assessment">Sat</th>
               {% for subject in sheet.subjects %}
-              <th class="exam-analytics-subject" title="{% if subject.component_codes %}{{ subject.name }} ({{ subject.component_codes }}) · mean and grade{% else %}{{ subject.name }} · mean and grade{% endif %}">{{ subject.code }}</th>
+              <th class="exam-analytics-subject" title="{% if subject.component_codes %}{{ subject.name }} ({{ subject.component_codes }}) Â· mean and grade{% else %}{{ subject.name }} Â· mean and grade{% endif %}">{{ subject.code }}</th>
               {% endfor %}
               <th class="exam-matrix-summary-col" title="Total score">Total</th>
               <th class="exam-matrix-summary-col" title="Mean score">Mean</th>
@@ -545,7 +545,7 @@
                 {% if row.rank != None %}
                   <strong>{{ row.rank }}</strong>
                 {% else %}
-                  <span class="exam-matrix-empty">—</span>
+                  <span class="exam-matrix-empty">â€”</span>
                 {% endif %}
               </td>
               <td class="is-left exam-matrix-learner is-tone-{{ row.class_tone|default:'a' }}" title="{{ row.class_label }}">
@@ -557,22 +557,22 @@
                 <span class="exam-analytics-pair">
                   {% if cell.percent != None %}
                     <strong>{{ cell.percent }}</strong>
-                    <em>{{ cell.grade|default:"—" }}</em>
+                    <em>{{ cell.grade|default:"â€”" }}</em>
                   {% else %}
-                    <strong class="exam-matrix-empty">—</strong>
-                    <em class="exam-matrix-empty">—</em>
+                    <strong class="exam-matrix-empty">â€”</strong>
+                    <em class="exam-matrix-empty">â€”</em>
                   {% endif %}
                 </span>
               </td>
               {% endfor %}
               <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
-                {% if row.total_score != None %}<strong>{{ row.total_score }}</strong>{% else %}<span class="exam-matrix-empty">—</span>{% endif %}
+                {% if row.total_score != None %}<strong>{{ row.total_score }}</strong>{% else %}<span class="exam-matrix-empty">â€”</span>{% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
-                {% if row.mean_score != None %}<strong>{{ row.mean_score }}</strong>{% else %}<span class="exam-matrix-empty">—</span>{% endif %}
+                {% if row.mean_score != None %}<strong>{{ row.mean_score }}</strong>{% else %}<span class="exam-matrix-empty">â€”</span>{% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col exam-analytics-mark">
-                {% if row.grade %}<strong>{{ row.grade }}</strong>{% else %}<span class="exam-matrix-empty">—</span>{% endif %}
+                {% if row.grade %}<strong>{{ row.grade }}</strong>{% else %}<span class="exam-matrix-empty">â€”</span>{% endif %}
               </td>
             </tr>
             {% empty %}
@@ -584,7 +584,7 @@
             {% endfor %}
             {% if sheet.subject_means and sheet.rows %}
             <tr class="exam-matrix-mean-row">
-              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">—</span></td>
+              <td class="exam-matrix-pos-col"><span class="exam-matrix-empty">â€”</span></td>
               <th class="is-left exam-matrix-learner" scope="row">{{ sheet.mean_label|default:"Grade mean" }}</th>
               <td class="exam-analytics-sat">{{ sheet.present_count }}/{{ sheet.student_count }}</td>
               {% for mean in sheet.subject_means %}
@@ -592,22 +592,22 @@
                 <span class="exam-analytics-pair">
                   {% if mean.percent_mean != None %}
                     <strong>{{ mean.percent_mean }}</strong>
-                    <em>{{ mean.grade|default:"—" }}</em>
+                    <em>{{ mean.grade|default:"â€”" }}</em>
                   {% else %}
-                    <strong class="exam-matrix-empty">—</strong>
-                    <em class="exam-matrix-empty">—</em>
+                    <strong class="exam-matrix-empty">â€”</strong>
+                    <em class="exam-matrix-empty">â€”</em>
                   {% endif %}
                 </span>
               </td>
               {% endfor %}
               <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
-                {% if sheet.overall_total != None %}<strong>{{ sheet.overall_total }}</strong>{% else %}<span class="exam-matrix-empty">—</span>{% endif %}
+                {% if sheet.overall_total != None %}<strong>{{ sheet.overall_total }}</strong>{% else %}<span class="exam-matrix-empty">â€”</span>{% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
-                {% if sheet.overall_mean != None %}<strong>{{ sheet.overall_mean }}</strong>{% else %}<span class="exam-matrix-empty">—</span>{% endif %}
+                {% if sheet.overall_mean != None %}<strong>{{ sheet.overall_mean }}</strong>{% else %}<span class="exam-matrix-empty">â€”</span>{% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-grade-col exam-analytics-mark">
-                {% if sheet.overall_grade %}<strong>{{ sheet.overall_grade }}</strong>{% else %}<span class="exam-matrix-empty">—</span>{% endif %}
+                {% if sheet.overall_grade %}<strong>{{ sheet.overall_grade }}</strong>{% else %}<span class="exam-matrix-empty">â€”</span>{% endif %}
               </td>
             </tr>
             {% endif %}
@@ -645,22 +645,22 @@
                 {% endif %}
               </h1>
               {% if report.school_profile and report.school_profile.motto %}
-              <p class="src-dual-motto">“{{ report.school_profile.motto }}”</p>
+              <p class="src-dual-motto">â€œ{{ report.school_profile.motto }}â€</p>
               {% endif %}
               {% if report.school_profile %}
                 {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
                 <p class="src-dual-contact">
                   {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
-                  {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} · {% endif %}{{ report.school_profile.main_phone }}{% endif %}
-                  {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} · {% endif %}{{ report.school_profile.general_email }}{% endif %}
+                  {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} Â· {% endif %}{{ report.school_profile.main_phone }}{% endif %}
+                  {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} Â· {% endif %}{{ report.school_profile.general_email }}{% endif %}
                 </p>
                 {% endif %}
               {% endif %}
               <p class="src-dual-school-meta">
                 {% if report.academic_year %}{{ report.academic_year.name }}{% endif %}
                 {% if card.exam_title %}
-                  {% if report.academic_year %} · {% endif %}
-                  {{ card.exam_title }}{% if card.academic_term %} · {{ card.academic_term.name }}{% endif %}
+                  {% if report.academic_year %} Â· {% endif %}
+                  {{ card.exam_title }}{% if card.academic_term %} Â· {{ card.academic_term.name }}{% endif %}
                 {% endif %}
               </p>
             </div>
@@ -683,7 +683,7 @@
             <dl class="src-dual-facts">
               <div>
                 <dt>Admission no.</dt>
-                <dd>{% if card.student.admission_number %}{{ card.student.admission_number }}{% else %}—{% endif %}</dd>
+                <dd>{% if card.student.admission_number %}{{ card.student.admission_number }}{% else %}â€”{% endif %}</dd>
               </div>
               <div>
                 <dt>Assessment no.</dt>
@@ -697,7 +697,7 @@
                   {% elif card.student.class_group %}
                     {{ card.student.class_group }}
                   {% else %}
-                    —
+                    â€”
                   {% endif %}
                 </dd>
               </div>
@@ -714,7 +714,7 @@
         <section class="src-summary" aria-label="Performance summary">
           <div class="src-summary-item{% if card.overall_grade %} src-summary-grade{% endif %} export-grade-block">
             <span>Overall grade</span>
-            <strong>{% if card.overall_grade %}{{ card.overall_grade }}{% else %}—{% endif %}</strong>
+            <strong>{% if card.overall_grade %}{{ card.overall_grade }}{% else %}â€”{% endif %}</strong>
           </div>
           <div class="src-summary-item">
             <span>Mean score</span>
@@ -724,7 +724,7 @@
               {% elif card.mean_percent != None %}
                 {{ card.mean_percent }}%
               {% else %}
-                —
+                â€”
               {% endif %}
             </strong>
           </div>
@@ -740,7 +740,7 @@
               {% elif card.overall_mark_level %}
                 {{ card.overall_mark_level }}
               {% else %}
-                —
+                â€”
               {% endif %}
             </strong>
           </div>
@@ -770,7 +770,7 @@
                     {% if cell.percent != None %}
                       <strong>{{ cell.percent }}</strong>{% if cell.grade %}<em class="export-grade">{{ cell.grade }}</em>{% endif %}
                     {% else %}
-                      <span class="src-empty">—</span>
+                      <span class="src-empty">â€”</span>
                     {% endif %}
                   </td>
                   {% endfor %}
@@ -778,10 +778,10 @@
                     {% if row.mean_percent != None %}
                       <strong>{{ row.mean_percent }}</strong>{% if row.grade %}<em class="export-grade">{{ row.grade }}</em>{% endif %}
                     {% else %}
-                      <span class="src-empty">—</span>
+                      <span class="src-empty">â€”</span>
                     {% endif %}
                   </td>
-                  <td class="is-left src-remark">{% if row.meaning %}{{ row.meaning }}{% elif row.mark_level %}{{ row.mark_level }}{% else %}<span class="src-empty">—</span>{% endif %}</td>
+                  <td class="is-left src-remark">{% if row.meaning %}{{ row.meaning }}{% elif row.mark_level %}{{ row.mark_level }}{% else %}<span class="src-empty">â€”</span>{% endif %}</td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -798,7 +798,7 @@
                     {% if mean.percent != None %}
                       <strong>{{ mean.percent }}</strong>{% if mean.grade %}<em class="export-grade">{{ mean.grade }}</em>{% endif %}
                     {% else %}
-                      —
+                      â€”
                     {% endif %}
                   </th>
                   {% endfor %}
@@ -806,7 +806,7 @@
                     {% if card.mean_percent != None %}
                       <strong>{{ card.mean_percent }}</strong>{% if card.overall_grade %}<em class="export-grade">{{ card.overall_grade }}</em>{% endif %}
                     {% else %}
-                      —
+                      â€”
                     {% endif %}
                   </th>
                   <th class="is-left">
@@ -815,7 +815,7 @@
                     {% elif card.overall_mark_level %}
                       {{ card.overall_mark_level }}
                     {% else %}
-                      —
+                      â€”
                     {% endif %}
                   </th>
                 </tr>
@@ -842,17 +842,17 @@
                     {% if row.raw != None and row.out_of %}
                       {{ row.raw }}/{{ row.out_of }}
                     {% else %}
-                      <span class="src-empty">—</span>
+                      <span class="src-empty">â€”</span>
                     {% endif %}
                   </td>
                   <td class="src-mark src-avg-col">
                     {% if row.percent != None %}
                       <strong>{{ row.percent }}</strong>{% if row.grade %}<em class="export-grade">{{ row.grade }}</em>{% endif %}
                     {% else %}
-                      <span class="src-empty">—</span>
+                      <span class="src-empty">â€”</span>
                     {% endif %}
                   </td>
-                  <td class="is-left src-remark">{% if row.meaning %}{{ row.meaning }}{% elif row.mark_level %}{{ row.mark_level }}{% else %}<span class="src-empty">—</span>{% endif %}</td>
+                  <td class="is-left src-remark">{% if row.meaning %}{{ row.meaning }}{% elif row.mark_level %}{{ row.mark_level }}{% else %}<span class="src-empty">â€”</span>{% endif %}</td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -864,7 +864,7 @@
               <tfoot>
                 <tr>
                   <th class="is-left">Assessment mean</th>
-                  <th>—</th>
+                  <th>â€”</th>
                   <th class="src-mark src-avg-col">
                     <strong>{{ card.mean_percent }}</strong>{% if card.overall_grade %}<em class="export-grade">{{ card.overall_grade }}</em>{% endif %}
                   </th>
@@ -874,7 +874,7 @@
                     {% elif card.overall_mark_level %}
                       {{ card.overall_mark_level }}
                     {% else %}
-                      —
+                      â€”
                     {% endif %}
                   </th>
                 </tr>
@@ -913,7 +913,7 @@
               <polyline class="src-trend-line" points="{{ card.trend.line }}" fill="none"></polyline>
               {% for point in card.trend.points %}
               <circle class="src-trend-dot" cx="{{ point.x }}" cy="{{ point.y }}" r="4.2"></circle>
-              <text class="src-trend-value" x="{{ point.x }}" y="{{ point.y }}" dy="-8" text-anchor="middle">{{ point.percent }}{% if point.grade %}<tspan class="export-grade"> · {{ point.grade }}</tspan>{% endif %}</text>
+              <text class="src-trend-value" x="{{ point.x }}" y="{{ point.y }}" dy="-8" text-anchor="middle">{{ point.percent }}{% if point.grade %}<tspan class="export-grade"> Â· {{ point.grade }}</tspan>{% endif %}</text>
               <text class="src-trend-label" x="{{ point.x }}" y="{{ card.trend.baseline_y }}" dy="16" text-anchor="middle">{{ point.label }}</text>
               {% endfor %}
               {% else %}
@@ -926,7 +926,7 @@
                 height="{{ point.height }}"
                 rx="3"
               ></rect>
-              <text class="src-trend-value" x="{{ point.label_x }}" y="{{ point.y }}" dy="-6" text-anchor="middle">{{ point.percent }}{% if point.grade %}<tspan class="export-grade"> · {{ point.grade }}</tspan>{% endif %}</text>
+              <text class="src-trend-value" x="{{ point.label_x }}" y="{{ point.y }}" dy="-6" text-anchor="middle">{{ point.percent }}{% if point.grade %}<tspan class="export-grade"> Â· {{ point.grade }}</tspan>{% endif %}</text>
               <text class="src-trend-label" x="{{ point.label_x }}" y="{{ card.trend.baseline_y }}" dy="14" text-anchor="middle">{{ point.label }}</text>
               {% endfor %}
               {% endif %}
@@ -1370,7 +1370,7 @@
     }
     if (studentHint) {
       studentHint.hidden = false;
-      studentHint.textContent = "Loading students…";
+      studentHint.textContent = "Loading studentsâ€¦";
     }
     try {
       const url = new URL(studentsUrl, window.location.origin);
@@ -1598,341 +1598,6 @@
   const exportPrintButtons = document.querySelectorAll("[data-export-print]");
   if (!printButtons.length && !exportPrintButtons.length) return;
 
-  const matrixPrintCss = `
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: auto !important;
-      max-height: none !important;
-      overflow: visible !important;
-      background: #fff;
-      color: #10233f;
-      font: 700 11pt/1.35 "DM Sans", "Segoe UI", sans-serif;
-    }
-    * { box-sizing: border-box; }
-    .no-print, .exam-matrix-scroll-hint { display: none !important; }
-    .exam-report-matrices { display: block; }
-    .exam-matrix-list {
-      display: block;
-      width: 100%;
-      margin: 0 0 6mm;
-      padding: 0;
-      border: 0;
-      background: #fff;
-      box-shadow: none;
-      break-inside: auto;
-      page-break-inside: auto;
-      font-weight: 700;
-    }
-    .exam-matrix-sheet + .exam-matrix-sheet {
-      break-before: page;
-      page-break-before: always;
-    }
-    .exam-matrix-list-head {
-      margin: 0 0 2mm;
-      padding: 0 0 1.4mm;
-      border-bottom: 1.1pt solid #1b4fd6;
-    }
-    .exam-matrix-list-brand {
-      display: grid;
-      grid-template-columns: 14mm minmax(0, 1fr) 14mm;
-      gap: 2mm;
-      align-items: center;
-    }
-    .exam-matrix-list-logo-wrap,
-    .exam-matrix-list-brand-spacer {
-      width: 14mm;
-    }
-    .exam-matrix-list-logo,
-    .exam-matrix-list-logo-mark {
-      width: 14mm;
-      height: 14mm;
-      object-fit: contain;
-      flex: 0 0 auto;
-      background: #fff;
-    }
-    .exam-matrix-list-logo-mark {
-      display: grid;
-      place-items: center;
-      border-radius: 1.2mm;
-      background: #1b4fd6;
-      color: #fff;
-      font-weight: 800;
-      font-size: 8pt;
-    }
-    .exam-matrix-list-titles {
-      text-align: center;
-      justify-self: center;
-      width: 100%;
-    }
-    .exam-matrix-list-kicker {
-      margin: 0;
-      color: #1b4fd6;
-      font-size: 6pt;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      text-align: center;
-    }
-    .exam-matrix-list-head h2 {
-      margin: 0.3mm 0 0;
-      font: 800 10pt/1.15 "Plus Jakarta Sans", "DM Sans", sans-serif;
-      text-align: center;
-    }
-    .exam-matrix-list-motto,
-    .exam-matrix-list-contact {
-      margin: 0.35mm 0 0;
-      color: #334155;
-      font-size: 6.5pt;
-      font-weight: 700;
-      line-height: 1.2;
-      text-align: center;
-    }
-    .exam-matrix-list-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.8mm 2mm;
-      margin: 1.1mm 0 0;
-      padding-top: 1mm;
-      border-top: 0.4pt solid #d5deec;
-      color: #1e293b;
-      font-size: 7pt;
-      font-weight: 700;
-    }
-    .exam-matrix-list-wrap {
-      overflow: visible !important;
-      width: 100%;
-    }
-    .exam-report-analytics .exam-matrix-list-wrap {
-      display: block;
-      width: 100%;
-    }
-    .exam-matrix-list-table {
-      width: 100%;
-      border-collapse: collapse;
-      border-spacing: 0;
-      table-layout: fixed;
-      font-size: 8.5pt;
-      border: 1.1pt solid #1e293b;
-    }
-    .exam-matrix-list-table thead { display: table-header-group; }
-    .exam-matrix-list-table tbody { display: table-row-group; }
-    .exam-matrix-list-table tr {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-    .exam-matrix-list-table th,
-    .exam-matrix-list-table td {
-      padding: 0.75mm 0.5mm;
-      border: 0.55pt solid #64748b;
-      text-align: center;
-      vertical-align: middle;
-      font-size: 7.5pt;
-      font-weight: 700;
-      line-height: 1.15;
-    }
-    .exam-matrix-list-table th.is-left,
-    .exam-matrix-list-table td.is-left { text-align: left; }
-    .exam-matrix-list-table thead th {
-      background: #e8eef8;
-      color: #1e293b;
-      font-size: 7pt;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      border: 0.7pt solid #475569;
-      border-bottom: 1pt solid #1e293b;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .exam-matrix-list-table th.is-left.exam-matrix-learner,
-    .exam-matrix-list-table td.is-left.exam-matrix-learner,
-    .exam-matrix-list-table th.is-left:nth-child(2),
-    .exam-matrix-list-table td.is-left:nth-child(2) {
-      width: 22%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 700;
-    }
-    .exam-matrix-list-table.has-class-col th.is-left.exam-matrix-class,
-    .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class,
-    .exam-matrix-list-table.has-class-col th.is-left:nth-child(3),
-    .exam-matrix-list-table.has-class-col td.is-left:nth-child(3) {
-      width: 6%;
-      white-space: nowrap;
-      font-weight: 700;
-    }
-    .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class.is-tone-a {
-      color: #1b4fd6;
-    }
-    .exam-matrix-list-table.has-class-col td.is-left.exam-matrix-class.is-tone-b {
-      color: #0f172a;
-    }
-    .exam-matrix-list-table th:last-child,
-    .exam-matrix-list-table td:last-child { width: 5.5%; }
-    .exam-matrix-list-table th.exam-matrix-pos-col,
-    .exam-matrix-list-table td.exam-matrix-pos-col {
-      width: 4%;
-      font-weight: 800;
-      color: #10233f;
-    }
-    .exam-matrix-summary-col,
-    .exam-matrix-grade-col,
-    .exam-matrix-avg-col {
-      background: #eef3fb !important;
-      border-left: 0.9pt solid #334155 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-      font-weight: 700;
-    }
-    .exam-matrix-list-table thead th.exam-matrix-summary-col,
-    .exam-matrix-list-table thead th.exam-matrix-grade-col,
-    .exam-matrix-list-table thead th.exam-matrix-avg-col {
-      border-left: 0.9pt solid #1e293b !important;
-    }
-    .exam-matrix-list-table tbody tr:nth-child(even) td {
-      background: #f8fafc;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .exam-matrix-list-table tr.exam-matrix-mean-row th,
-    .exam-matrix-list-table tr.exam-matrix-mean-row td {
-      background: #e2eaf7 !important;
-      font-weight: 700;
-      border-top: 1.1pt solid #1e293b !important;
-      border: 0.7pt solid #475569;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-summary-col,
-    .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-grade-col,
-    .exam-matrix-list-table tr.exam-matrix-mean-row td.exam-matrix-avg-col {
-      background: #dbe7f8 !important;
-      border-left: 0.9pt solid #1e293b !important;
-    }
-    .exam-matrix-mark {
-      white-space: nowrap;
-    }
-    .exam-matrix-mark strong,
-    .exam-matrix-mark em {
-      display: inline;
-      line-height: 1.15;
-      vertical-align: baseline;
-    }
-    .exam-matrix-mark strong { font-size: 8pt; font-weight: 800; color: #10233f; }
-    .exam-matrix-mark em {
-      margin-left: 0.18em;
-      color: #1b4fd6;
-      font-size: 6.5pt;
-      font-style: normal;
-      font-weight: 800;
-    }
-    .exam-matrix-empty { color: #94a3b8; font-weight: 700; }
-    .exam-matrix-absent {
-      color: #9a3412;
-      font-size: 7pt;
-      font-weight: 800;
-    }
-    html[data-export-mode="raw"] .export-grade,
-    html[data-export-mode="raw"] .export-grade-col {
-      display: none !important;
-    }
-    .exam-analytics-code {
-      display: block;
-      color: #475569;
-      font-size: 6.5pt;
-      font-weight: 700;
-    }
-    .exam-analytics-table {
-      width: 100% !important;
-      table-layout: fixed !important;
-      margin: 0;
-      border-collapse: collapse;
-      font-weight: 700;
-    }
-    .exam-analytics-table .exam-analytics-col-pos { width: 7mm; }
-    .exam-analytics-table .exam-analytics-col-class { width: 32mm; }
-    .exam-analytics-table .exam-analytics-col-sat { width: 12mm; }
-    .exam-analytics-table .exam-analytics-col-mark { width: auto; }
-    .exam-analytics-table th,
-    .exam-analytics-table td {
-      padding: 0.7mm 0.4mm;
-      font-size: 7pt;
-      font-weight: 700;
-      text-align: center;
-      vertical-align: middle;
-    }
-    .exam-analytics-table th.is-left.exam-matrix-learner,
-    .exam-analytics-table td.is-left.exam-matrix-learner,
-    .exam-analytics-table th.is-left:nth-child(2),
-    .exam-analytics-table td.is-left:nth-child(2) {
-      width: auto !important;
-      max-width: none !important;
-      text-align: left;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .exam-analytics-table th.exam-matrix-pos-col,
-    .exam-analytics-table td.exam-matrix-pos-col,
-    .exam-analytics-table th.exam-analytics-sat,
-    .exam-analytics-table td.exam-analytics-sat,
-    .exam-analytics-table th.exam-analytics-subject,
-    .exam-analytics-table td.exam-analytics-pair-cell,
-    .exam-analytics-table th.exam-matrix-summary-col,
-    .exam-analytics-table td.exam-matrix-summary-col,
-    .exam-analytics-table th.exam-matrix-grade-col,
-    .exam-analytics-table td.exam-matrix-grade-col,
-    .exam-analytics-table td.exam-analytics-mark,
-    .exam-analytics-table th:last-child,
-    .exam-analytics-table td:last-child {
-      width: auto !important;
-      min-width: 0;
-      max-width: none;
-    }
-    .exam-analytics-table thead th {
-      letter-spacing: 0.01em;
-      white-space: normal;
-      overflow: visible;
-      word-break: break-word;
-      line-height: 1.2;
-    }
-    .exam-analytics-pair {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 6.5mm;
-      gap: 0.2mm;
-      line-height: 1.1;
-    }
-    .exam-analytics-pair strong {
-      font-size: 7.5pt;
-      font-weight: 800;
-    }
-    .exam-analytics-pair em {
-      display: block;
-      min-height: 2.4mm;
-      margin: 0;
-      color: #1b4fd6;
-      font-size: 6.2pt;
-      font-style: normal;
-      font-weight: 800;
-    }
-    .exam-analytics-sat {
-      white-space: nowrap;
-      font-weight: 700;
-    }
-    .exam-analytics-sheet-title {
-      margin: 3mm 0 1.4mm;
-      color: #1b4fd6;
-      font-size: 8pt;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-  `;
-
   const setExportMode = (mode) => {
     const value = mode === "raw" ? "raw" : "graded";
     document.documentElement.setAttribute("data-export-mode", value);
@@ -1943,99 +1608,8 @@
     document.documentElement.removeAttribute("data-export-mode");
   };
 
-  const applyRawModeToClone = (clone, mode) => {
-    if (mode !== "raw") return;
-    clone.querySelectorAll(".export-grade, .export-grade-col").forEach((node) => node.remove());
-    clone.querySelectorAll('td[colspan="3"]').forEach((cell) => {
-      cell.colSpan = 2;
-    });
-  };
-
-  const printMatrixSheets = (mode) => {
-    const source = document.querySelector(".exam-report-matrices");
-    if (!source) return false;
-    const isAnalytics = source.classList.contains("exam-report-analytics");
-    const pageSize = isAnalytics ? "A4 landscape" : "A4 portrait";
-    const pageMargin = isAnalytics ? "6mm" : "8mm";
-    const frameWidth = isAnalytics ? "297mm" : "210mm";
-
-    const clone = source.cloneNode(true);
-    clone.querySelectorAll(".no-print, .exam-matrix-scroll-hint").forEach((node) => {
-      node.remove();
-    });
-    applyRawModeToClone(clone, mode);
-    clone.querySelectorAll("img").forEach((img) => {
-      if (img.getAttribute("src")) {
-        img.setAttribute("src", img.src);
-      }
-    });
-
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    // Match the printed page width so landscape analytics is not stretched.
-    frame.style.cssText =
-      `position:fixed;left:0;top:0;width:${frameWidth};height:100vh;border:0;opacity:0;pointer-events:none;z-index:-1;`;
-    document.body.appendChild(frame);
-
-    const doc = frame.contentDocument || frame.contentWindow.document;
-    doc.open();
-    doc.write(`<!DOCTYPE html><html lang="en" data-export-mode="${mode}"><head><meta charset="utf-8">
-      <title>${isAnalytics ? "Subject analytics" : "Mark sheet"}</title>
-      <style>@page { size: ${pageSize}; margin: ${pageMargin}; }${matrixPrintCss}</style>
-    </head><body></body></html>`);
-    doc.close();
-    doc.body.appendChild(doc.importNode(clone, true));
-
-    let printed = false;
-    const cleanup = () => {
-      frame.remove();
-      clearExportMode();
-    };
-
-    const triggerPrint = () => {
-      if (printed) return;
-      printed = true;
-      try {
-        // Expand the iframe to the full document height so Chromium paginates every row.
-        const fullHeight = Math.max(
-          doc.documentElement.scrollHeight,
-          doc.body.scrollHeight,
-          source.scrollHeight || 0
-        );
-        frame.style.height = `${Math.max(fullHeight, 400)}px`;
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-      } finally {
-        window.setTimeout(cleanup, 1500);
-      }
-    };
-
-    const images = Array.from(doc.images || []);
-    if (!images.length) {
-      window.setTimeout(triggerPrint, 50);
-      return true;
-    }
-    let remaining = images.length;
-    const markDone = () => {
-      remaining -= 1;
-      if (remaining <= 0) triggerPrint();
-    };
-    images.forEach((img) => {
-      if (img.complete) {
-        markDone();
-        return;
-      }
-      img.addEventListener("load", markDone, { once: true });
-      img.addEventListener("error", markDone, { once: true });
-    });
-    window.setTimeout(triggerPrint, 1500);
-    return true;
-  };
-
   const printReport = (mode = "graded") => {
     setExportMode(mode);
-    if (printMatrixSheets(mode)) return;
-
     const previous = document.title;
     document.title = "\u00a0";
     const restore = () => {

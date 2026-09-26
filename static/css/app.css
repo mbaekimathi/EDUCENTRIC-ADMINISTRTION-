@@ -17398,9 +17398,14 @@ body.is-reordering-academic-levels [data-normal-only] {
   html,
   html:has(.workspace-body),
   body,
-  body.workspace-body {
+  body.workspace-body,
+  .app-shell,
+  .register-shell,
+  .workspace,
+  .workspace-main {
     height: auto !important;
     max-height: none !important;
+    min-height: 0 !important;
     overflow: visible !important;
     background: #fff !important;
     color: #000 !important;
@@ -17474,15 +17479,15 @@ body.is-reordering-academic-levels [data-normal-only] {
 
   .student-report-card {
     break-after: page;
-    page-break-after: always;
+    page-break-after: page;
     margin: 0;
     box-shadow: none;
     animation: none;
   }
 
   .student-report-card:last-child {
-    break-after: auto;
-    page-break-after: auto;
+    break-after: avoid;
+    page-break-after: avoid;
   }
 
   .src-sheet {
@@ -17505,7 +17510,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 
   .exam-matrix-sheet + .exam-matrix-sheet {
     break-before: page;
-    page-break-before: always;
+    page-break-before: page;
   }
 
   .src-summary {
@@ -18223,6 +18228,11 @@ body.is-reordering-academic-levels [data-normal-only] {
   }
 
   .exam-matrix-list-table tr {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .exam-matrix-list-table tr.exam-matrix-mean-row {
     break-inside: avoid;
     page-break-inside: avoid;
   }
