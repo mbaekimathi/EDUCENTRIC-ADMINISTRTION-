@@ -30,16 +30,15 @@
   </div>
 </section>
 
-<form class="pending-admit-panel" method="get" action="{% url 'employees:it_support_clearing_students' %}" style="margin-bottom: 1rem;">
+<form class="pending-admit-panel student-conduct-filter clearing-search-panel" method="get" action="{% url 'employees:it_support_clearing_students' %}">
   <label class="visually-hidden" for="clearing-student-search">Search students</label>
-  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+  <div class="student-conduct-filter-row">
     <input
       id="clearing-student-search"
       type="search"
       name="q"
       placeholder="Search by name or admission number"
       value="{{ search_query }}"
-      style="flex:1;min-width:12rem;padding:0.65rem 0.85rem;border:1px solid var(--border, #d0d5dd);border-radius:8px;"
     >
     <button type="submit" class="primary-button">Search</button>
     {% if search_query %}

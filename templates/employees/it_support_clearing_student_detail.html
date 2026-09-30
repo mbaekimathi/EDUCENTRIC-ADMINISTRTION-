@@ -9,7 +9,7 @@
 
 {% block workspace_content %}
 
-<div class="pending-review-page">
+<div class="exam-tool-page pending-review-page">
 {% include "employees/includes/nav/student_management.html" %}
 
 <section class="pending-review-hero">
@@ -78,15 +78,14 @@
     <header class="pending-review-card-head">
       <h3>Clearance reason</h3>
     </header>
-    <form method="post" class="pending-review-list" style="display:grid;gap:1rem;padding:1.25rem;">
+    <form method="post" class="clearance-reason-form">
       {% csrf_token %}
-      <label for="clearance_reason" style="display:grid;gap:0.4rem;">
-        <span style="font-weight:600;">Reason for clearing</span>
+      <label class="field" for="clearance_reason">
+        <span>Reason for clearing</span>
         <select
           id="clearance_reason"
           name="clearance_reason"
           required
-          style="padding:0.7rem 0.85rem;border:1px solid var(--border, #d0d5dd);border-radius:8px;font:inherit;"
         >
           <option value="">Select a reason…</option>
           {% for value, label in clearance_reason_choices %}
@@ -94,11 +93,11 @@
           {% endfor %}
         </select>
       </label>
-      <p style="margin:0;color:var(--muted, #667085);font-size:0.95rem;">
+      <p class="clearance-reason-hint subtle">
         <strong>Transfer to another school</strong> → status becomes Transfer.<br>
         <strong>Completed school</strong> → status becomes Alumnae.
       </p>
-      <div class="pending-review-footer-actions" style="justify-content:flex-start;">
+      <div class="pending-review-footer-actions is-start">
         <a class="ghost-button" href="{% url 'employees:it_support_clearing_students' %}">Cancel</a>
         <button type="submit" class="primary-button">Confirm clearance</button>
       </div>

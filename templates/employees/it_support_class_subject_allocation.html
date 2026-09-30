@@ -53,7 +53,7 @@
         <p class="exam-tool-note">No subjects are linked to this academic level yet.</p>
         {% elif not level.allocation_classes %}
         <div class="settings-table-panel">
-          <table class="settings-table allocation-table">
+          <table class="settings-table allocation-table is-stackable">
             <thead>
               <tr>
                 <th>Subject</th>
@@ -76,7 +76,7 @@
           {% csrf_token %}
           <input type="hidden" name="level_id" value="{{ level.id }}">
           <div class="settings-table-panel">
-            <table class="settings-table allocation-table">
+            <table class="settings-table allocation-table is-stackable">
               <thead>
                 <tr>
                   <th>Subject</th>

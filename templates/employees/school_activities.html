@@ -26,13 +26,15 @@
   {% include "employees/includes/nav/secretary.html" %}
   {% endif %}
 
-  <div class="settings-toolbar school-activity-toolbar">
-    <div class="settings-toolbar-copy">
-      <h2>School activities</h2>
-      <p class="subtle">Register or edit activities. Only published ones appear on dashboards.</p>
+  <div class="teacher-page-bar school-activity-toolbar" aria-label="School activities overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ activities|length }}</strong>
+        <span>Registered</span>
+      </div>
     </div>
-    <div class="settings-toolbar-actions">
-      <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-activity">
+    <div class="teacher-page-bar-actions">
+      <button type="button" class="primary-button" data-open-modal="register-activity">
         Register
       </button>
     </div>

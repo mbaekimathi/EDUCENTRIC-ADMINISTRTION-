@@ -11,29 +11,7 @@
 {% block workspace_content %}
 
 <div class="exam-tool-page employee-mgmt-page">
-  <section class="teacher-dash-actions is-nav-links" aria-label="Human resource tools">
-    <a class="teacher-dash-action" href="{% url 'employees:it_support_employee_management' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">EM</span>
-      <span class="teacher-dash-action-copy">
-        <strong>Employee management</strong>
-        <span>List staff, edit details, suspend access, or remove employees.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:it_support_employee_permissions' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">EP</span>
-      <span class="teacher-dash-action-copy">
-        <strong>Employee permissions</strong>
-        <span>Enable or restrict role module activities for each employee.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
-      <span class="teacher-dash-action-copy">
-        <strong>HR settings</strong>
-        <span>Staff roles, employment defaults, and people policies.</span>
-      </span>
-    </a>
-  </section>
+  {% include "employees/includes/nav/human_resource.html" %}
 
   <div class="teacher-page-bar" aria-label="Employee management overview">
     <div class="teacher-page-bar-stats">

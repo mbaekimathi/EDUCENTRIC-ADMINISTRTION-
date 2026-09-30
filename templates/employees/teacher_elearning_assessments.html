@@ -20,7 +20,7 @@
     </header>
     <form method="post" class="subject-profile-form" data-elearning-assessment-create>
       {% csrf_token %}
-      <div class="lesson-plan-fields lesson-plan-fields-2" style="padding: 0 1rem 1rem;">
+      <div class="lesson-plan-fields lesson-plan-fields-2 lesson-plan-fields-padded">
         <label class="lesson-plan-field">
           <span class="lesson-plan-label">Assessment name</span>
           <input type="text" name="name" maxlength="120" required placeholder="e.g. Mid-term e-learning quiz">
@@ -45,7 +45,7 @@
             {% endfor %}
           </select>
         </label>
-        <div class="lesson-plan-field" style="display:flex;align-items:flex-end;">
+        <div class="lesson-plan-field lesson-plan-field-action">
           <button type="submit" class="primary-button"{% if not academic_years %} disabled{% endif %}>Register assessment</button>
         </div>
       </div>

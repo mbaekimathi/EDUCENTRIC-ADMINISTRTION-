@@ -110,14 +110,14 @@
         <tbody>
           {% for combined in combined_subjects %}
           <tr>
-            <td>
+            <td data-label="Combined subject">
               <strong class="is-uppercase">{{ combined.name }}</strong>
               <span class="subtle">({{ combined.code }})</span>
             </td>
-            <td>{{ combined.component_codes }}</td>
-            <td>{{ combined.out_of_marks }}</td>
-            <td class="subtle">Combined score ÷ {{ combined.out_of_marks }} × 100</td>
-            <td>
+            <td data-label="Components">{{ combined.component_codes }}</td>
+            <td data-label="Total out of">{{ combined.out_of_marks }}</td>
+            <td class="subtle" data-label="Conversion">Combined score ÷ {{ combined.out_of_marks }} × 100</td>
+            <td data-label="Actions">
               <form method="post" action="{% url 'employees:delete_combined_exam_subject' combined.id %}" onsubmit="return confirm('Remove {{ combined.name|escapejs }}?');">
                 {% csrf_token %}
                 <input type="hidden" name="redirect_to" value="combinations">

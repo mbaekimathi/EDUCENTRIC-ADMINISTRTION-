@@ -1,0 +1,20 @@
+<div class="auth-card-school">
+  <span class="auth-card-school-mark {% if school_profile and school_profile.has_logo_file %}has-image{% endif %}">
+    {% if school_profile and school_profile.has_logo_file %}
+    <img
+      src="{{ school_profile.school_logo.url }}"
+      alt=""
+      width="88"
+      height="88"
+      decoding="async"
+      fetchpriority="high"
+    >
+    {% else %}
+    <span aria-hidden="true">{% if school_profile %}{{ school_profile.brand_initials }}{% else %}EC{% endif %}</span>
+    {% endif %}
+  </span>
+  <div class="auth-card-school-copy">
+    <strong>{% if school_profile %}{{ school_profile.brand_name }}{% else %}Edu-Centric{% endif %}</strong>
+    <span>{{ auth_card_subtitle|default:"Sign in" }}</span>
+  </div>
+</div>

@@ -77,7 +77,7 @@
         <p class="exam-tool-note">No subjects are linked to this academic level yet.</p>
         {% elif not level.allocation_classes %}
         <div class="settings-table-panel">
-          <table class="settings-table allocation-table">
+          <table class="settings-table allocation-table is-stackable">
             <thead>
               <tr>
                 <th>Subject</th>
@@ -97,7 +97,7 @@
         <p class="exam-tool-note">Register classes for this level to allocate supervisors to assessment subjects.</p>
         {% else %}
         <div class="settings-table-panel">
-          <table class="settings-table allocation-table allocation-table-supervisors">
+          <table class="settings-table allocation-table allocation-table-supervisors is-stackable">
             <thead>
               <tr>
                 <th>Subject</th>
