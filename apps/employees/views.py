@@ -8,9 +8,10 @@ from types import SimpleNamespace
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import error, success
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Prefetch, Q, Value
+from django.db.models import Case, Count, Max, Min, Prefetch, Q, Value, When
 from django.db.models.functions import Concat
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -109,6 +110,7 @@ from .forms import (
     EmployeePasswordChangeForm,
     EmployeeProfileForm,
     EmployeeRegistrationForm,
+    SchoolActivityForm,
     SchoolProfileAcademicSetupForm,
     SchoolProfileBrandingForm,
     SchoolProfileComplianceForm,
@@ -117,8 +119,30 @@ from .forms import (
     SchoolProfileForm,
     SchoolProfileLeadershipForm,
     SchoolProfileOperationsForm,
+    StudentConductForm,
 )
-from .models import Employee, SchoolProfile
+from .models import (
+    Employee,
+    SchoolActivity,
+    SchoolActivityDay,
+    SchoolProfile,
+    StudentConductRecord,
+)
+from .permissions import (
+    CURRICULUM_SECTION_ACTIVITY,
+    MODULE_SLUG_ACTIVITY,
+    activities_for_role,
+    activity_codes_for_role,
+    employee_has_activity_permission,
+    employee_has_module_action,
+    ensure_employee_role_permissions,
+    expand_module_to_activities,
+    group_activities_by_module,
+    module_action_code,
+    modules_for_role,
+    permission_state_map,
+    set_employee_activity_permission,
+)
 from .phone_countries import PHONE_COUNTRIES, parse_stored_phone
 from .workspace import (
     ACTIVE_WORKSPACE_ROLE_SESSION_KEY,
@@ -334,6 +358,32 @@ IT_SUPPORT_MODULES = (
     },
 )
 
+# Roles that share the full IT Support module set and URL tree.
+FULL_MODULE_WORKSPACE_ROLES = frozenset(
+    {
+        Employee.Role.IT_SUPPORT,
+        Employee.Role.HEAD_OF_INSTITUTION,
+        Employee.Role.DEPUTY_HEAD_OF_INSTITUTION,
+    }
+)
+
+CURRICULUM_COORDINATOR_MODULE_SLUGS = frozenset(
+    {"student-management", "curriculum-management", "reports"}
+)
+CURRICULUM_COORDINATOR_MODULES = tuple(
+    module
+    for module in IT_SUPPORT_MODULES
+    if module["slug"] in CURRICULUM_COORDINATOR_MODULE_SLUGS
+)
+SECRETARY_MODULE_SLUGS = frozenset(
+    {"student-management", "curriculum-management", "reports"}
+)
+SECRETARY_MODULES = tuple(
+    module
+    for module in IT_SUPPORT_MODULES
+    if module["slug"] in SECRETARY_MODULE_SLUGS
+)
+
 IT_SUPPORT_REPORT_SECTIONS = (
     {
         "slug": "curriculum-reports",
@@ -529,17 +579,17 @@ TEACHER_MY_CLASS_PAGES = (
     },
     {
         "slug": "students-class-attendance",
-        "title": "Students class attendance",
-        "icon": "CA",
-        "summary": "Review class attendance analytics by day, period, term, or year.",
-        "copy": "Analyse morning, afternoon, and evening attendance for your class.",
+        "title": "Students subject attendance",
+        "icon": "SA",
+        "summary": "Review subject attendance recorded by teachers in your class.",
+        "copy": "See attendance taken by subject teachers for each learning area.",
     },
     {
         "slug": "students-discipline",
-        "title": "Students discipline",
-        "icon": "SD",
-        "summary": "Track behaviour and discipline notes.",
-        "copy": "Record and review discipline cases for students in your class.",
+        "title": "Student conduct",
+        "icon": "SC",
+        "summary": "Track behaviour and conduct notes.",
+        "copy": "Register and review good or bad conduct for students in your class.",
     },
     {
         "slug": "student-books",
@@ -631,9 +681,166 @@ def _it_support_curriculum_report_page(slug):
 
 
 def _require_it_support(request):
-    if workspace_role(request) != Employee.Role.IT_SUPPORT:
+    """Allow roles that use the full IT Support module tree."""
+    if workspace_role(request) not in FULL_MODULE_WORKSPACE_ROLES:
         return redirect_to_role_dashboard(request)
     return None
+
+
+def _require_curriculum_coordinator(request):
+    if workspace_role(request) != Employee.Role.CURRICULUM_COORDINATOR:
+        return redirect_to_role_dashboard(request)
+    return None
+
+
+def _require_curriculum_ops(request):
+    """Allow full-module roles, Curriculum Coordinator, or Secretary for student/curriculum tools."""
+    if workspace_role(request) not in (
+        *FULL_MODULE_WORKSPACE_ROLES,
+        Employee.Role.CURRICULUM_COORDINATOR,
+        Employee.Role.SECRETARY,
+    ):
+        return redirect_to_role_dashboard(request)
+    return None
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def school_activities(request):
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.school_activities", "view")
+    if denied:
+        return denied
+
+    edit_activity = None
+    edit_id = (request.POST.get("activity_id") or request.GET.get("edit") or "").strip()
+    if edit_id.isdigit():
+        edit_activity = SchoolActivity.objects.filter(pk=int(edit_id)).first()
+
+    form = SchoolActivityForm(
+        request.POST or None,
+        instance=edit_activity,
+    )
+    if request.method == "POST":
+        denied = _require_module_action(
+            request,
+            "module.school_activities",
+            "edit" if edit_activity else "create",
+        )
+        if denied:
+            return denied
+        if form.is_valid():
+            dates = form.cleaned_data["activity_dates"]
+            day_notes = {
+                day: (request.POST.get(f"day_description_{day.isoformat()}") or "").strip()[:255]
+                for day in dates
+            }
+            with transaction.atomic():
+                activity = form.save(commit=False)
+                if not activity.created_by_id:
+                    activity.created_by = request.user
+                activity.save()
+                form.save_m2m()
+                _sync_school_activity_days(activity, dates, day_notes)
+            _invalidate_dashboard_activity_caches()
+            verb = "Updated" if edit_activity else "Registered"
+            status_label = activity.get_status_display().lower()
+            success(
+                request,
+                f"{verb} {activity.title} ({status_label}) for "
+                f"{len(dates)} day{'s' if len(dates) != 1 else ''}.",
+            )
+            return redirect("employees:school_activities")
+        error(request, "Could not save the activity. Check the form and try again.")
+
+    activities = (
+        SchoolActivity.objects.prefetch_related("grades", "days")
+        .select_related("created_by")
+        .all()[:100]
+    )
+    role = workspace_role(request)
+    context = {
+        "active_nav": "dashboard",
+        "active_module": "school-activities",
+        "form": form,
+        "activities": activities,
+        "editing_activity": edit_activity,
+        "open_register_modal": bool(
+            (request.method == "POST" and form.errors)
+            or (request.method == "GET" and edit_activity)
+        ),
+        "initial_day_notes": form.initial_day_notes,
+    }
+    if role in FULL_MODULE_WORKSPACE_ROLES:
+        context["it_support_modules"] = IT_SUPPORT_MODULES
+    elif role == Employee.Role.CURRICULUM_COORDINATOR:
+        context["curriculum_coordinator_modules"] = CURRICULUM_COORDINATOR_MODULES
+    elif role == Employee.Role.SECRETARY:
+        context["secretary_modules"] = SECRETARY_MODULES
+    return render(request, "employees/school_activities.html", context)
+
+
+def _sync_school_activity_days(activity, dates, day_notes):
+    """Replace activity days to match the selected calendar dates and notes."""
+    keep = set(dates)
+    activity.days.exclude(activity_date__in=keep).delete()
+    existing = {
+        day.activity_date: day
+        for day in activity.days.filter(activity_date__in=keep)
+    }
+    to_create = []
+    for day in dates:
+        note = day_notes.get(day, "")
+        current = existing.get(day)
+        if current:
+            if current.day_description != note:
+                current.day_description = note
+                current.save(update_fields=["day_description"])
+        else:
+            to_create.append(
+                SchoolActivityDay(
+                    activity=activity,
+                    activity_date=day,
+                    day_description=note,
+                )
+            )
+    if to_create:
+        SchoolActivityDay.objects.bulk_create(to_create)
+
+
+@login_required
+@require_POST
+def delete_school_activity(request, activity_id):
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.school_activities", "delete")
+    if denied:
+        return denied
+    activity = get_object_or_404(SchoolActivity, pk=activity_id)
+    title = activity.title
+    activity.delete()
+    _invalidate_dashboard_activity_caches()
+    success(request, f"Removed activity {title}.")
+    return redirect("employees:school_activities")
+
+
+def _student_management_module_url_name(role=None):
+    if role == Employee.Role.CURRICULUM_COORDINATOR:
+        return "employees:curriculum_coordinator_module"
+    if role == Employee.Role.SECRETARY:
+        return "employees:secretary_module"
+    return "employees:it_support_module"
+
+
+def _curriculum_management_module_url_name(role=None):
+    if role == Employee.Role.CURRICULUM_COORDINATOR:
+        return "employees:curriculum_coordinator_module"
+    if role == Employee.Role.SECRETARY:
+        return "employees:secretary_module"
+    return "employees:it_support_module"
 
 
 def _it_support_performance_context():
@@ -649,6 +856,9 @@ def _it_support_performance_context():
 @require_http_methods(["GET"])
 def it_support_system_performance(request):
     denied = _require_it_support(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.system_performance", "view")
     if denied:
         return denied
     context = {"active_nav": "system_performance"}
@@ -682,7 +892,11 @@ def _require_secretary(request):
 
 def _require_exam_management(request):
     role = workspace_role(request)
-    if role not in (Employee.Role.IT_SUPPORT, Employee.Role.SECRETARY):
+    if role not in (
+        *FULL_MODULE_WORKSPACE_ROLES,
+        Employee.Role.SECRETARY,
+        Employee.Role.CURRICULUM_COORDINATOR,
+    ):
         return redirect_to_role_dashboard(request), None
     return None, role
 
@@ -704,9 +918,30 @@ def _redirect_exam_page(request, tool):
 
 def _require_curriculum_reports(request):
     role = workspace_role(request)
-    if role not in (Employee.Role.IT_SUPPORT, Employee.Role.SECRETARY):
+    if role not in (
+        *FULL_MODULE_WORKSPACE_ROLES,
+        Employee.Role.SECRETARY,
+        Employee.Role.CURRICULUM_COORDINATOR,
+    ):
         return redirect_to_role_dashboard(request), None
     return None, role
+
+
+def _reports_module_url_name(role=None):
+    if role == Employee.Role.CURRICULUM_COORDINATOR:
+        return "employees:curriculum_coordinator_module"
+    if role == Employee.Role.SECRETARY:
+        return "employees:secretary_module"
+    return "employees:it_support_module"
+
+
+def _redirect_reports_module(request=None):
+    role = workspace_role(request) if request is not None else Employee.Role.IT_SUPPORT
+    url_name = _reports_module_url_name(role)
+    if role == Employee.Role.SECRETARY:
+        # secretary_module handles reports; keep module kwarg consistent
+        return redirect(url_name, module="reports")
+    return redirect(url_name, module="reports")
 
 
 def _curriculum_report_urls(role):
@@ -811,7 +1046,7 @@ def _teacher_class_subjects(employee, academic_class, level):
 
 
 def _teacher_exam_mark_sections(employee, academic_class, level):
-    """Mark-sheet layout: standalone subjects plus combined blocks with all components."""
+    """Mark-sheet layout: one multi-column table for allocated subjects, plus combined blocks."""
     subjects = _teacher_class_subjects(employee, academic_class, level)
     allocated_ids = set(
         ClassSubjectAllocation.objects.filter(
@@ -825,31 +1060,41 @@ def _teacher_exam_mark_sections(employee, academic_class, level):
         subject.exam_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
 
     sections = []
+    standalone_columns = []
+
+    def flush_standalone():
+        if not standalone_columns:
+            return
+        codes = [column["code"] for column in standalone_columns]
+        sections.append(
+            {
+                "kind": "standalone",
+                "code": " · ".join(codes),
+                "name": ", ".join(column["name"] for column in standalone_columns),
+                "component_ids": [],
+                "columns": list(standalone_columns),
+            }
+        )
+        standalone_columns.clear()
+
     for column in _exam_record_display_columns(level):
         if column["kind"] == "subject":
             area = column["subject"]
             if area.id not in allocated_ids:
                 continue
-            sections.append(
+            standalone_columns.append(
                 {
-                    "kind": "standalone",
+                    "kind": "subject",
+                    "subject": area,
                     "code": column["code"],
                     "name": column["name"],
-                    "component_ids": [],
-                    "columns": [
-                        {
-                            "kind": "subject",
-                            "subject": area,
-                            "code": column["code"],
-                            "name": column["name"],
-                            "exam_out_of": out_of_by_subject.get(area.id, area.total_marks),
-                            "editable": True,
-                        }
-                    ],
+                    "exam_out_of": out_of_by_subject.get(area.id, area.total_marks),
+                    "editable": True,
                 }
             )
             continue
 
+        flush_standalone()
         component_ids = list(column["component_ids"])
         if not any(component_id in allocated_ids for component_id in component_ids):
             continue
@@ -889,6 +1134,7 @@ def _teacher_exam_mark_sections(employee, academic_class, level):
                 ],
             }
         )
+    flush_standalone()
     return sections, subjects
 
 
@@ -1049,6 +1295,7 @@ def _teacher_exam_section_means(students, section, section_index):
 
 
 def _teacher_exam_subject_groups(employee, generation):
+    """Group teacher allocations by level, then by class (subjects as columns per class)."""
     exam_level_ids = set(generation.academic_levels.values_list("id", flat=True))
     allocations = (
         ClassSubjectAllocation.objects.filter(teacher=employee)
@@ -1060,10 +1307,10 @@ def _teacher_exam_subject_groups(employee, generation):
         .order_by(
             "academic_class__academic_level__order",
             "academic_class__academic_level__name",
-            "learning_area__display_order",
-            "learning_area__name",
             "academic_class__order",
             "academic_class__name",
+            "learning_area__display_order",
+            "learning_area__name",
         )
     )
     grouped = OrderedDict()
@@ -1076,14 +1323,43 @@ def _teacher_exam_subject_groups(employee, generation):
             continue
         if exam_level_ids and level.id not in exam_level_ids:
             continue
-        group = grouped.setdefault(level.id, {"level": level, "subjects": []})
-        group["subjects"].append(
+        group = grouped.setdefault(level.id, {"level": level, "classes": OrderedDict()})
+        class_entry = group["classes"].setdefault(
+            academic_class.id,
             {
-                "subject": allocation.learning_area,
                 "academic_class": academic_class,
-            }
+                "subjects": [],
+            },
         )
-    return list(grouped.values())
+        class_entry["subjects"].append(allocation.learning_area)
+    result = []
+    for group in grouped.values():
+        class_entries = []
+        for entry in group["classes"].values():
+            subjects = entry["subjects"]
+            entry["subject_codes"] = " · ".join(subject.code for subject in subjects)
+            entry["subject_names"] = ", ".join(subject.name for subject in subjects)
+            class_entries.append(entry)
+        result.append({"level": group["level"], "classes": class_entries})
+    return result
+
+
+def _teacher_exam_subject_allocations(exam_subject_groups):
+    """Flat subject rows used for counts (one entry per allocated subject)."""
+    return [
+        {
+            "subject": subject,
+            "academic_class": entry["academic_class"],
+        }
+        for group in exam_subject_groups
+        for entry in group["classes"]
+        for subject in entry["subjects"]
+    ]
+
+
+def _teacher_exam_class_entries(exam_subject_groups):
+    """Flat class rows for nav/cards (one entry per class, subjects as columns)."""
+    return [entry for group in exam_subject_groups for entry in group["classes"]]
 
 
 def _teacher_exam_class_groups(employee, generation):
@@ -1255,6 +1531,45 @@ def group_employees_by_role(employees):
     return [group for group in grouped.values() if group["employees"]]
 
 
+def _human_resource_directory_context(request=None):
+    """Active staff directory grouped by workspace role (category)."""
+    sort_mode = _resolve_student_sort(request) if request is not None else STUDENT_SORT_NAME
+    employees = list(
+        Employee.objects.filter(is_active=True)
+        .prefetch_related("assigned_roles")
+        .all()
+    )
+    if sort_mode == STUDENT_SORT_ADMISSION:
+        employees.sort(
+            key=lambda employee: (
+                _employee_code_sort_key(employee),
+                (employee.first_name or "").casefold(),
+                (employee.last_name or "").casefold(),
+                (employee.employee_code or "").casefold(),
+            )
+        )
+    else:
+        employees.sort(
+            key=lambda employee: (
+                (employee.first_name or "").casefold(),
+                (employee.last_name or "").casefold(),
+                _employee_code_sort_key(employee),
+            )
+        )
+    role_groups = group_employees_by_role(employees)
+    context = {
+        "employees": employees,
+        "employee_count": len(employees),
+        "role_groups": role_groups,
+        "category_count": len(role_groups),
+        "role_choices": Employee.Role.choices,
+        "active_hr_tool": "",
+    }
+    if request is not None:
+        context.update(_student_sort_template_context(request))
+    return context
+
+
 CLASS_STREAM_RE = re.compile(r"^(\d+)\s*([A-Za-z]+)$")
 
 STUDENT_SORT_NAME = "name"
@@ -1419,11 +1734,14 @@ def _pending_admission_count():
     return _pending_admission_queryset().count()
 
 
-def _student_management_nav_context(*, active_tool="register"):
+def _student_management_nav_context(request=None, *, active_tool="register"):
+    role = workspace_role(request) if request is not None else None
     return {
         "active_module": "student-management",
         "active_student_tool": active_tool,
         "pending_admission_count": _pending_admission_count(),
+        "student_management_module_url": _student_management_module_url_name(role),
+        "curriculum_management_module_url": _curriculum_management_module_url_name(role),
     }
 
 
@@ -1497,7 +1815,7 @@ def _student_management_context(request):
         "academic_level_choices": academic_level_choices,
         "student_edit_level_catalog": edit_catalog,
         "sponsorship_choices": Student.SponsorshipCategory.choices,
-        **_student_management_nav_context(active_tool="register"),
+        **_student_management_nav_context(request, active_tool="register"),
         **_student_sort_template_context(request),
     }
 
@@ -1662,18 +1980,148 @@ def _teacher_led_classes(employee):
     )
 
 
+def _teacher_led_students_queryset(led_classes):
+    student_ids = set()
+    for academic_class in led_classes:
+        student_ids.update(
+            _students_in_academic_level(
+                academic_class.academic_level,
+                academic_class,
+            ).values_list("id", flat=True)
+        )
+    return Student.objects.filter(pk__in=student_ids).order_by("last_name", "first_name")
+
+
+def _full_module_dashboard_counts():
+    """Headcounts for full-module role dashboards (students, teachers, other staff)."""
+    cache_key = "dashboard:full_module_counts_v1"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    teachers = _approved_teacher_queryset(active_only=True).count()
+    other_employees = (
+        Employee.objects.filter(
+            is_active=True,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+        )
+        .exclude(
+            Q(role=Employee.Role.TEACHER) | Q(assigned_roles__role=Employee.Role.TEACHER)
+        )
+        .distinct()
+        .count()
+    )
+    counts = {
+        "students": Student.objects.filter(is_active=True).count(),
+        "teachers": teachers,
+        "other_employees": other_employees,
+    }
+    cache.set(cache_key, counts, 60)
+    return counts
+
+
+def _dashboard_school_activities(limit=12):
+    """Published current and upcoming school activities for dashboard cards."""
+    today = timezone.localdate()
+    cache_key = f"dashboard:school_activities_v1:{today.isoformat()}:{limit}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    activities = list(
+        SchoolActivity.objects.filter(status=SchoolActivity.Status.PUBLISHED)
+        .prefetch_related("grades", "days")
+        .select_related("created_by")
+        .annotate(
+            first_day=Min("days__activity_date"),
+            last_day=Max("days__activity_date"),
+        )
+        .filter(last_day__gte=today)
+        .order_by("first_day", "-created_at")[:limit]
+    )
+    payload = []
+    for activity in activities:
+        days = list(activity.days.all())
+        grades = list(activity.grades.all())
+        first_day = days[0].activity_date if days else None
+        last_day = days[-1].activity_date if days else None
+        is_current = bool(
+            first_day and last_day and first_day <= today <= last_day
+        )
+        payload.append(
+            {
+                "id": activity.id,
+                "title": activity.title,
+                "description": activity.description or "",
+                "grades": [grade.name for grade in grades],
+                "grade_count": len(grades),
+                "days": [
+                    {
+                        "date": day.activity_date.isoformat(),
+                        "label": day.activity_date.strftime("%a, %d %b %Y"),
+                        "description": day.day_description or "",
+                    }
+                    for day in days
+                ],
+                "day_count": len(days),
+                "date_range": (
+                    first_day.strftime("%d %b %Y")
+                    if first_day and first_day == last_day
+                    else (
+                        f"{first_day.strftime('%d %b %Y')} – {last_day.strftime('%d %b %Y')}"
+                        if first_day and last_day
+                        else "No dates"
+                    )
+                ),
+                "is_upcoming": not is_current,
+                "is_current": is_current,
+                "created_by": (
+                    activity.created_by.display_name
+                    if activity.created_by_id
+                    else ""
+                ),
+                "created_at": timezone.localtime(activity.created_at).strftime(
+                    "%d %b %Y · %H:%M"
+                ),
+            }
+        )
+    cache.set(cache_key, payload, 120)
+    return payload
+
+
+def _invalidate_dashboard_activity_caches():
+    """Clear short-lived dashboard activity payloads after create/update/delete."""
+    today = timezone.localdate()
+    for limit in (12, 24, 50):
+        cache.delete(f"dashboard:school_activities_v1:{today.isoformat()}:{limit}")
+    cache.delete("dashboard:full_module_counts_v1")
+
+
 @login_required
 def role_dashboard(request, role):
     current = workspace_role(request)
     if current.lower() != role:
         return redirect_to_role_dashboard(request)
-    if current == Employee.Role.IT_SUPPORT:
-        context = {
-            "active_nav": "dashboard",
-            "it_support_modules": IT_SUPPORT_MODULES,
-        }
-        context.update(_it_support_performance_context())
-        return render(request, "employees/it_support_dashboard.html", context)
+    dashboard_activities = _dashboard_school_activities()
+    if current in FULL_MODULE_WORKSPACE_ROLES:
+        return render(
+            request,
+            "employees/it_support_dashboard.html",
+            {
+                "active_nav": "dashboard",
+                "it_support_modules": IT_SUPPORT_MODULES,
+                "dashboard_counts": _full_module_dashboard_counts(),
+                "dashboard_activities": dashboard_activities,
+            },
+        )
+    if current == Employee.Role.CURRICULUM_COORDINATOR:
+        return render(
+            request,
+            "employees/curriculum_coordinator_dashboard.html",
+            {
+                "active_nav": "dashboard",
+                "curriculum_coordinator_modules": CURRICULUM_COORDINATOR_MODULES,
+                "dashboard_activities": dashboard_activities,
+            },
+        )
     if current == Employee.Role.TEACHER:
         employee = workspace_view_employee(request)
         session_timetable = _teacher_session_timetable(employee)
@@ -1685,18 +2133,26 @@ def role_dashboard(request, role):
                 "active_nav": "dashboard",
                 "session_timetable": session_timetable,
                 "elearning_timetable": elearning_timetable,
+                "dashboard_activities": dashboard_activities,
             },
         )
     if current == Employee.Role.SECRETARY:
         return render(
             request,
             "employees/secretary_dashboard.html",
-            {"active_nav": "dashboard"},
+            {
+                "active_nav": "dashboard",
+                "secretary_modules": SECRETARY_MODULES,
+                "dashboard_activities": dashboard_activities,
+            },
         )
     return render(
         request,
         "employees/role_dashboard.html",
-        {"active_nav": "dashboard"},
+        {
+            "active_nav": "dashboard",
+            "dashboard_activities": dashboard_activities,
+        },
     )
 
 
@@ -1710,7 +2166,7 @@ def secretary_assessment_management(request):
         "employees/it_support_exam.html",
         {
             "active_nav": "dashboard",
-            "active_module": "assessment-management",
+            "active_module": "curriculum-management",
             "section": {
                 "slug": "exam-management",
                 "title": "Assessment management",
@@ -1722,6 +2178,27 @@ def secretary_assessment_management(request):
             "exam_dashboard": _build_exam_management_dashboard(),
         },
     )
+
+
+@login_required
+def secretary_module(request, module):
+    denied = _require_secretary(request)
+    if denied:
+        return denied
+    if module == "reports":
+        return secretary_reports(request)
+    current = _it_support_module(module)
+    if current is None or current["slug"] not in {
+        "student-management",
+        "curriculum-management",
+    }:
+        return redirect_to_role_dashboard(request)
+    activity_code = MODULE_SLUG_ACTIVITY.get(current["slug"])
+    if activity_code:
+        denied = _require_module_action(request, activity_code, "view")
+        if denied:
+            return denied
+    return _render_workspace_module(request, current)
 
 
 @login_required
@@ -1825,6 +2302,15 @@ def teacher_elearning(request):
     if denied:
         return denied
     employee = workspace_view_employee(request)
+    denied = _require_module_action(
+        request,
+        "teacher.elearning",
+        "view",
+        role=Employee.Role.TEACHER,
+        actor=employee,
+    )
+    if denied:
+        return denied
     has_allocation = ELearningSubjectAllocation.objects.filter(teacher=employee).exists()
     if not has_allocation:
         error(request, "E-learning unlocks when you are allocated an e-learning subject.")
@@ -2213,6 +2699,15 @@ def teacher_elearning_learning_materials(request, page=None):
 @require_http_methods(["GET"])
 def teacher_elearning_material_download(request, material_id):
     denied, employee = _require_teacher_elearning_access(request)
+    if denied:
+        return denied
+    denied = _require_module_action(
+        request,
+        "teacher.elearning",
+        "download",
+        role=Employee.Role.TEACHER,
+        actor=employee,
+    )
     if denied:
         return denied
     material = get_object_or_404(
@@ -2783,6 +3278,15 @@ def teacher_my_class(request):
     if denied:
         return denied
     employee = workspace_view_employee(request)
+    denied = _require_module_action(
+        request,
+        "teacher.my_class",
+        "view",
+        role=Employee.Role.TEACHER,
+        actor=employee,
+    )
+    if denied:
+        return denied
     led_classes = _teacher_led_classes(employee)
     if not led_classes:
         error(request, "My class unlocks when you are allocated as a class teacher.")
@@ -2827,9 +3331,23 @@ def teacher_my_class_page(request, tool):
     if current["slug"] == "register-class-attendance":
         return teacher_register_class_attendance(request, employee, led_classes, current)
     if current["slug"] == "students-class-attendance":
-        return teacher_students_class_attendance_analytics(
-            request, employee, led_classes, current
+        selected_class = led_classes[0]
+        raw_class_id = (request.GET.get("class_id") or "").strip()
+        if raw_class_id:
+            try:
+                class_id = int(raw_class_id)
+            except (TypeError, ValueError):
+                class_id = None
+            else:
+                selected_class = next(
+                    (item for item in led_classes if item.id == class_id),
+                    selected_class,
+                )
+        return teacher_class_subject_attendance_overview(
+            request, employee, selected_class, page=current
         )
+    if current["slug"] == "students-discipline":
+        return teacher_student_conduct(request, employee, led_classes, current)
     return render(
         request,
         "employees/teacher_my_class_page.html",
@@ -2842,6 +3360,130 @@ def teacher_my_class_page(request, tool):
             "class_count": len(led_classes),
         },
     )
+
+
+def teacher_student_conduct(request, employee, led_classes, page):
+    students_qs = _teacher_led_students_queryset(led_classes)
+    form = StudentConductForm(request.POST or None, students_queryset=students_qs)
+    if request.method == "POST":
+        if form.is_valid():
+            record = form.save(commit=False)
+            record.recorded_by = employee
+            record.save()
+            success(
+                request,
+                f"Registered {record.get_behaviour_type_display().lower()} conduct "
+                f"for {record.student.display_name}.",
+            )
+            return redirect(
+                "employees:teacher_my_class_page",
+                tool="students-discipline",
+            )
+        error(request, "Could not register the conduct record. Check the form and try again.")
+
+    search_query = (request.GET.get("q") or "").strip()
+    records_qs = StudentConductRecord.objects.filter(
+        student_id__in=students_qs.values("id")
+    ).select_related("student", "recorded_by")
+    if search_query:
+        records_qs = records_qs.annotate(
+            full_name=Concat(
+                "student__first_name",
+                Value(" "),
+                "student__last_name",
+            )
+        ).filter(
+            Q(full_name__icontains=search_query)
+            | Q(student__first_name__icontains=search_query)
+            | Q(student__last_name__icontains=search_query)
+            | Q(student__admission_number__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(witness__icontains=search_query)
+        )
+    records = list(records_qs[:100])
+
+    selected_student = None
+    student_id = form["student"].value() if form.is_bound else None
+    if student_id:
+        selected_student = students_qs.filter(pk=student_id).first()
+
+    conduct_counts = StudentConductRecord.objects.filter(
+        student_id__in=students_qs.values("id")
+    ).aggregate(
+        total=Count("id"),
+        good=Count("id", filter=Q(behaviour_type=StudentConductRecord.BehaviourType.GOOD)),
+        bad=Count("id", filter=Q(behaviour_type=StudentConductRecord.BehaviourType.BAD)),
+    )
+
+    local_students = [
+        {
+            "id": student.pk,
+            "name": student.display_name,
+            "admission_number": student.admission_number or "",
+            "class_group": student.class_group or "",
+            "level_label": student.get_academic_level_display(),
+        }
+        for student in students_qs[:300]
+    ]
+
+    return render(
+        request,
+        "employees/teacher_my_class_student_conduct.html",
+        {
+            "active_nav": "my-class",
+            "active_my_class_tool": "students-discipline",
+            "page": page,
+            "teacher_employee": employee,
+            "led_classes": led_classes,
+            "class_count": len(led_classes),
+            "form": form,
+            "conduct_records": records,
+            "search_query": search_query,
+            "selected_student": selected_student,
+            "conduct_total": conduct_counts["total"] or 0,
+            "conduct_good_count": conduct_counts["good"] or 0,
+            "conduct_bad_count": conduct_counts["bad"] or 0,
+            "conduct_local_students": local_students,
+            "open_register_modal": bool(request.method == "POST" and form.errors),
+            "conduct_list_url": reverse(
+                "employees:teacher_my_class_page",
+                kwargs={"tool": "students-discipline"},
+            ),
+            "conduct_delete_url_name": "employees:teacher_delete_student_conduct",
+        },
+    )
+
+
+@login_required
+@require_POST
+def teacher_delete_student_conduct(request, record_id):
+    denied = _require_teacher_workspace(request)
+    if denied:
+        return denied
+    employee = workspace_view_employee(request)
+    denied = _require_module_action(
+        request,
+        "teacher.my_class",
+        "delete",
+        role=Employee.Role.TEACHER,
+        actor=employee,
+    )
+    if denied:
+        return denied
+    led_classes = _teacher_led_classes(employee)
+    if not led_classes:
+        error(request, "My class unlocks when you are allocated as a class teacher.")
+        return redirect("employees:role_dashboard", role="teacher")
+    students_qs = _teacher_led_students_queryset(led_classes)
+    record = get_object_or_404(
+        StudentConductRecord.objects.select_related("student"),
+        pk=record_id,
+        student_id__in=students_qs.values("id"),
+    )
+    label = f"{record.get_behaviour_type_display()} record for {record.student.display_name}"
+    record.delete()
+    success(request, f"Removed {label}.")
+    return redirect("employees:teacher_my_class_page", tool="students-discipline")
 
 
 def teacher_register_class_attendance(request, employee, led_classes, page):
@@ -2957,179 +3599,6 @@ def teacher_register_class_attendance(request, employee, led_classes, page):
     )
 
 
-def _class_attendance_session_cell(present, recorded, session_total, is_day, day_present=None):
-    if is_day:
-        if day_present is None:
-            return {
-                "is_range": False,
-                "status": None,
-                "status_label": "—",
-                "display": "—",
-                "rate_class": "is-empty",
-                "title": "No class attendance recorded for this day",
-            }
-        label = "Present" if day_present else "Absent"
-        return {
-            "is_range": False,
-            "status": "PRESENT" if day_present else "ABSENT",
-            "status_label": label,
-            "display": label,
-            "rate_class": "status-present" if day_present else "status-absent",
-            "title": label,
-        }
-    if recorded:
-        pct = round((present / recorded) * 100)
-        if pct >= 80:
-            rate_class = "rate-high"
-        elif pct >= 50:
-            rate_class = "rate-mid"
-        else:
-            rate_class = "rate-low"
-        return {
-            "is_range": True,
-            "status": None,
-            "status_label": f"{pct}%",
-            "display": f"{pct}%",
-            "rate_class": rate_class,
-            "title": f"{present} present of {recorded} recorded ({pct}%)",
-            "percent": pct,
-            "present": present,
-            "recorded": recorded,
-        }
-    return {
-        "is_range": True,
-        "status": None,
-        "status_label": "—",
-        "display": "—",
-        "rate_class": "is-empty",
-        "title": (
-            f"{session_total} class day(s) recorded, but not for this student"
-            if session_total
-            else "No class attendance recorded in this range"
-        ),
-    }
-
-
-def teacher_students_class_attendance_analytics(request, employee, led_classes, page):
-    selected_class = led_classes[0]
-    raw_class_id = (request.GET.get("class_id") or "").strip()
-    if raw_class_id:
-        try:
-            class_id = int(raw_class_id)
-        except (TypeError, ValueError):
-            class_id = None
-        else:
-            selected_class = next((item for item in led_classes if item.id == class_id), selected_class)
-
-    filter_ctx = _resolve_subject_attendance_filter(request)
-    if filter_ctx["is_day_scope"]:
-        filter_ctx["filter_subtitle"] = (
-            "One day at a time. See morning, afternoon, and evening status for each student."
-        )
-    else:
-        filter_ctx["filter_subtitle"] = (
-            f"{filter_ctx['range_start'].strftime('%d %b %Y')} – "
-            f"{filter_ctx['range_end'].strftime('%d %b %Y')}. "
-            "Cells show attendance percentage for each session."
-        )
-    sort_mode = _resolve_student_sort(request)
-    students = _sorted_students(
-        list(
-            _students_in_academic_level(
-                selected_class.academic_level,
-                selected_class,
-                sort=sort_mode,
-            )
-        ),
-        sort_mode,
-    )
-    sessions = list(
-        ClassAttendanceSession.objects.filter(
-            academic_class=selected_class,
-            attendance_date__gte=filter_ctx["range_start"],
-            attendance_date__lte=filter_ctx["range_end"],
-        ).prefetch_related("records")
-    )
-    session_total = len(sessions)
-    tallies = {
-        student.id: {
-            "morning_present": 0,
-            "afternoon_present": 0,
-            "evening_present": 0,
-            "recorded": 0,
-            "day_morning": None,
-            "day_afternoon": None,
-            "day_evening": None,
-        }
-        for student in students
-    }
-    for session in sessions:
-        for record in session.records.all():
-            bucket = tallies.get(record.student_id)
-            if bucket is None:
-                continue
-            bucket["recorded"] += 1
-            if record.morning:
-                bucket["morning_present"] += 1
-            if record.afternoon:
-                bucket["afternoon_present"] += 1
-            if record.evening:
-                bucket["evening_present"] += 1
-            if filter_ctx["is_day_scope"]:
-                bucket["day_morning"] = bool(record.morning)
-                bucket["day_afternoon"] = bool(record.afternoon)
-                bucket["day_evening"] = bool(record.evening)
-
-    student_rows = []
-    for student in students:
-        bucket = tallies[student.id]
-        student_rows.append(
-            {
-                "student": student,
-                "morning": _class_attendance_session_cell(
-                    bucket["morning_present"],
-                    bucket["recorded"],
-                    session_total,
-                    not filter_ctx["show_percentages"],
-                    bucket["day_morning"],
-                ),
-                "afternoon": _class_attendance_session_cell(
-                    bucket["afternoon_present"],
-                    bucket["recorded"],
-                    session_total,
-                    not filter_ctx["show_percentages"],
-                    bucket["day_afternoon"],
-                ),
-                "evening": _class_attendance_session_cell(
-                    bucket["evening_present"],
-                    bucket["recorded"],
-                    session_total,
-                    not filter_ctx["show_percentages"],
-                    bucket["day_evening"],
-                ),
-            }
-        )
-
-    return render(
-        request,
-        "employees/teacher_my_class_students_attendance_analytics.html",
-        {
-            "active_nav": "my-class",
-            "active_my_class_tool": "students-class-attendance",
-            "page": page,
-            "teacher_employee": employee,
-            "led_classes": led_classes,
-            "class_count": len(led_classes),
-            "selected_class": selected_class,
-            "students": students,
-            "student_rows": student_rows,
-            "session_total": session_total,
-            **filter_ctx,
-            **_student_sort_template_context(request),
-        },
-    )
-
-
 def _registered_exams_latest():
     generations = list(
         GeneratedExamTimetable.objects.select_related("academic_year", "academic_term")
@@ -3144,6 +3613,16 @@ def _registered_exams_latest():
 @login_required
 def teacher_exam_records(request):
     denied = _require_teacher_workspace(request)
+    if denied:
+        return denied
+    employee = workspace_view_employee(request)
+    denied = _require_module_action(
+        request,
+        "teacher.assessment_records",
+        "view",
+        role=Employee.Role.TEACHER,
+        actor=employee,
+    )
     if denied:
         return denied
     exams, exam_count, current_exam = _registered_exams_latest()
@@ -3171,9 +3650,8 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
     )
     employee = workspace_view_employee(request)
     exam_subject_groups = _teacher_exam_subject_groups(employee, generation)
-    exam_subject_allocations = [
-        item for group in exam_subject_groups for item in group["subjects"]
-    ]
+    exam_class_entries = _teacher_exam_class_entries(exam_subject_groups)
+    exam_subject_allocations = _teacher_exam_subject_allocations(exam_subject_groups)
     exam_class_groups = _teacher_exam_class_groups(employee, generation)
     exam_classes = [academic_class for group in exam_class_groups for academic_class in group["classes"]]
     selected_class = None
@@ -3275,6 +3753,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             ),
             "exam_classes": exam_classes,
             "exam_subject_groups": exam_subject_groups,
+            "exam_class_entries": exam_class_entries,
             "exam_subject_allocations": exam_subject_allocations,
             "selected_class": selected_class,
             "selected_level": selected_level,
@@ -3338,9 +3817,8 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
     exam_classes = _teacher_exam_classes(employee, generation)
     exam_class_groups = _teacher_exam_class_groups(employee, generation)
     exam_subject_groups = _teacher_exam_subject_groups(employee, generation)
-    exam_subject_allocations = [
-        item for group in exam_subject_groups for item in group["subjects"]
-    ]
+    exam_class_entries = _teacher_exam_class_entries(exam_subject_groups)
+    exam_subject_allocations = _teacher_exam_subject_allocations(exam_subject_groups)
     allocated_ids = {item.id for item in exam_classes}
     other_classes = [
         academic_class
@@ -3385,6 +3863,7 @@ def teacher_exam_analytics(request, exam_id, class_id=None, view_all=False):
             ),
             "exam_classes": exam_classes,
             "exam_class_groups": exam_class_groups,
+            "exam_class_entries": exam_class_entries,
             "exam_subject_allocations": exam_subject_allocations,
             "other_classes": other_classes,
             "selected_class": selected_class,
@@ -3499,6 +3978,30 @@ def _teacher_learning_session_allocations(employee):
             "academic_class",
             "academic_class__academic_level",
             "learning_area",
+            "teacher",
+        )
+        .filter(
+            academic_class__status=AcademicClass.Status.ACTIVE,
+            academic_class__academic_level__status=AcademicLevel.Status.ACTIVE,
+        )
+        .order_by(
+            "academic_class__academic_level__order",
+            "academic_class__academic_level__name",
+            "academic_class__order",
+            "academic_class__name",
+            "learning_area__display_order",
+            "learning_area__name",
+        )
+    )
+
+
+def _school_learning_session_allocations():
+    return list(
+        ClassSubjectAllocation.objects.select_related(
+            "academic_class",
+            "academic_class__academic_level",
+            "learning_area",
+            "teacher",
         )
         .filter(
             academic_class__status=AcademicClass.Status.ACTIVE,
@@ -3541,11 +4044,16 @@ def _teacher_learning_report_scope(allocations, level_id=None, class_id=None, su
             levels.append({"id": level.id, "name": level.name})
         if academic_class.id not in seen_classes:
             seen_classes.add(academic_class.id)
+            stream_name = (academic_class.name or "").strip() or academic_class.code
             classes.append(
                 {
                     "id": academic_class.id,
                     "name": academic_class.name,
+                    "code": academic_class.code,
                     "level_id": level.id,
+                    "level_name": level.name,
+                    "stream": stream_name,
+                    "label": academic_class.display_label or f"{level.name} {stream_name}",
                 }
             )
         subject_key = (academic_class.id, subject.id)
@@ -3582,6 +4090,544 @@ def _teacher_learning_report_scope(allocations, level_id=None, class_id=None, su
             "classes": classes,
             "subjects": subjects,
         },
+    }
+
+
+def _build_subject_attendance_rows(allocation_ids, report_date):
+    sessions = list(
+        SubjectAttendanceSession.objects.filter(
+            allocation_id__in=allocation_ids,
+            lesson_date=report_date,
+        )
+        .select_related(
+            "allocation__academic_class",
+            "allocation__academic_class__academic_level",
+            "allocation__learning_area",
+            "allocation__teacher",
+            "taken_by",
+        )
+        .prefetch_related(
+            Prefetch(
+                "records",
+                queryset=SubjectAttendanceRecord.objects.select_related(
+                    "student"
+                ).order_by("student__last_name", "student__first_name"),
+            )
+        )
+        .order_by(
+            "allocation__academic_class__academic_level__order",
+            "allocation__academic_class__order",
+            "allocation__learning_area__name",
+        )
+    )
+    rows = []
+    for session in sessions:
+        counts = {
+            SubjectAttendanceRecord.Status.PRESENT: 0,
+            SubjectAttendanceRecord.Status.ABSENT: 0,
+            SubjectAttendanceRecord.Status.LATE: 0,
+            SubjectAttendanceRecord.Status.EXCUSED: 0,
+        }
+        learners = []
+        for record in session.records.all():
+            if record.status in counts:
+                counts[record.status] += 1
+            learners.append(
+                {
+                    "student": record.student,
+                    "status": record.status,
+                    "status_label": record.get_status_display(),
+                }
+            )
+        recorded = sum(counts.values())
+        present = counts[SubjectAttendanceRecord.Status.PRESENT]
+        rows.append(
+            {
+                "session": session,
+                "allocation": session.allocation,
+                "present": present,
+                "absent": counts[SubjectAttendanceRecord.Status.ABSENT],
+                "late": counts[SubjectAttendanceRecord.Status.LATE],
+                "excused": counts[SubjectAttendanceRecord.Status.EXCUSED],
+                "recorded": recorded,
+                "rate": round((present / recorded) * 100) if recorded else None,
+                "learners": learners,
+            }
+        )
+    return rows
+
+
+def _build_class_attendance_row(academic_class, report_date):
+    session = (
+        ClassAttendanceSession.objects.filter(
+            academic_class=academic_class,
+            attendance_date=report_date,
+        )
+        .prefetch_related(
+            Prefetch(
+                "records",
+                queryset=ClassAttendanceRecord.objects.select_related(
+                    "student"
+                ).order_by("student__last_name", "student__first_name"),
+            )
+        )
+        .first()
+    )
+    if session is None:
+        return {
+            "session": None,
+            "academic_class": academic_class,
+            "has_session": False,
+            "present_morning": 0,
+            "present_afternoon": 0,
+            "present_evening": 0,
+            "recorded": 0,
+            "learners": [],
+        }
+    learners = []
+    present_morning = present_afternoon = present_evening = 0
+    for record in session.records.all():
+        if record.morning:
+            present_morning += 1
+        if record.afternoon:
+            present_afternoon += 1
+        if record.evening:
+            present_evening += 1
+        sessions_on = []
+        if record.morning:
+            sessions_on.append("Morning")
+        if record.afternoon:
+            sessions_on.append("Afternoon")
+        if record.evening:
+            sessions_on.append("Evening")
+        learners.append(
+            {
+                "student": record.student,
+                "morning": record.morning,
+                "afternoon": record.afternoon,
+                "evening": record.evening,
+                "status_label": ", ".join(sessions_on) if sessions_on else "Absent",
+            }
+        )
+    return {
+        "session": session,
+        "academic_class": academic_class,
+        "has_session": True,
+        "present_morning": present_morning,
+        "present_afternoon": present_afternoon,
+        "present_evening": present_evening,
+        "recorded": len(learners),
+        "learners": learners,
+    }
+
+
+def _build_lesson_plan_rows(scoped_allocations):
+    allocation_ids = [item.id for item in scoped_allocations]
+    plans = {
+        plan.allocation_id: plan
+        for plan in ClassSubjectLessonPlan.objects.filter(
+            allocation_id__in=allocation_ids
+        ).select_related("updated_by")
+    }
+    rows = []
+    plan_count = 0
+    for allocation in scoped_allocations:
+        plan = plans.get(allocation.id)
+        has_plan = plan is not None
+        if has_plan:
+            plan_count += 1
+        rows.append(
+            {
+                "allocation": allocation,
+                "plan": plan,
+                "has_plan": has_plan,
+                "strand": (plan.strand if plan else "") or "",
+                "substrand": (plan.substrand if plan else "") or "",
+                "outcomes": (plan.lesson_learning_outcomes if plan else "") or "",
+                "key_inquiry_questions": (plan.key_inquiry_questions if plan else "") or "",
+                "core_competencies": (plan.core_competencies if plan else "") or "",
+                "values": (plan.values if plan else "") or "",
+                "learning_resources": (plan.learning_resources if plan else "") or "",
+                "introduction": (plan.introduction if plan else "") or "",
+                "lesson_development": (plan.lesson_development if plan else "") or "",
+                "updated_at": plan.updated_at if plan else None,
+            }
+        )
+    return rows, plan_count
+
+
+def _build_outcome_rows(scoped_allocations):
+    allocation_ids = [item.id for item in scoped_allocations]
+    outcomes = {
+        item.allocation_id: item
+        for item in ClassSubjectOutcome.objects.filter(
+            allocation_id__in=allocation_ids
+        ).select_related("updated_by")
+    }
+    rows = []
+    outcome_count = 0
+    for allocation in scoped_allocations:
+        outcome = outcomes.get(allocation.id)
+        outcome_text = (outcome.outcome if outcome else "") or ""
+        has_outcome = bool(outcome_text.strip())
+        if has_outcome:
+            outcome_count += 1
+        rows.append(
+            {
+                "allocation": allocation,
+                "outcome": outcome,
+                "has_outcome": has_outcome,
+                "outcome_text": outcome_text,
+                "updated_at": outcome.updated_at if outcome else None,
+            }
+        )
+    return rows, outcome_count
+
+
+LEARNING_REPORT_TYPES = (
+    {
+        "value": "subject_attendance",
+        "label": "Subject attendance",
+        "copy": "Sessions and learner status for the selected subject",
+        "needs_subject": True,
+        "multi_class": False,
+        "needs_date": True,
+    },
+    {
+        "value": "student_attendance",
+        "label": "Student attendance",
+        "copy": "Class attendance by morning, afternoon, and evening",
+        "needs_subject": False,
+        "multi_class": False,
+        "needs_date": True,
+    },
+    {
+        "value": "lesson_plan",
+        "label": "Lesson plan",
+        "copy": "Lesson plan for the selected class subject",
+        "needs_subject": True,
+        "multi_class": False,
+        "needs_date": True,
+    },
+    {
+        "value": "outcome",
+        "label": "Outcome",
+        "copy": "Subject outcome for the selected class subject",
+        "needs_subject": True,
+        "multi_class": False,
+        "needs_date": True,
+    },
+    {
+        "value": "learning_timetable",
+        "label": "Learning timetable",
+        "copy": "Session timetable for one or more classes",
+        "needs_subject": False,
+        "multi_class": True,
+        "needs_date": False,
+    },
+    {
+        "value": "exam_timetable",
+        "label": "Exam timetable",
+        "copy": "Assessment timetable for one or more classes",
+        "needs_subject": False,
+        "multi_class": True,
+        "needs_date": False,
+    },
+)
+LEARNING_REPORT_TYPE_MAP = {item["value"]: item for item in LEARNING_REPORT_TYPES}
+
+
+def _parse_id_list(raw_values):
+    ids = []
+    seen = set()
+    for raw in raw_values or []:
+        for part in str(raw).split(","):
+            value = _parse_optional_int(part)
+            if value is None or value in seen:
+                continue
+            seen.add(value)
+            ids.append(value)
+    return ids
+
+
+def _timetable_teacher_refs(people):
+    refs = []
+    seen = set()
+    for person in people:
+        if person is None or getattr(person, "id", None) in seen:
+            continue
+        person_id = person.id
+        seen.add(person_id)
+        refs.append(
+            {
+                "employment_number": person.employment_number,
+                "name": person.display_name,
+            }
+        )
+    refs.sort(
+        key=lambda item: (
+            item["employment_number"] if item["employment_number"] is not None else 10**9,
+            (item["name"] or "").upper(),
+        )
+    )
+    return refs
+
+
+def _build_learning_timetable_report_sheets(classes):
+    class_ids = [item.id for item in classes]
+    lessons = list(
+        GeneratedLearningLesson.objects.filter(academic_class_id__in=class_ids)
+        .select_related("academic_class", "academic_level", "learning_area", "teacher")
+        .order_by("academic_class__order", "weekday", "start_time")
+    )
+    colliding_ids = _colliding_learning_lesson_ids(lessons)
+    by_class = {}
+    for lesson in lessons:
+        by_class.setdefault(lesson.academic_class_id, []).append(lesson)
+
+    sheets = []
+    for academic_class in classes:
+        class_lessons = by_class.get(academic_class.id, [])
+        grid = _learning_class_timetable_grid(
+            academic_class.academic_level,
+            academic_class,
+            class_lessons,
+            colliding_ids,
+        )
+        sheets.append(
+            {
+                "kind": "learning",
+                "academic_class": academic_class,
+                "title": academic_class.display_label or academic_class.name,
+                "subtitle": f"{len(class_lessons)} lesson{'' if len(class_lessons) == 1 else 's'}",
+                "lesson_count": len(class_lessons),
+                "sitting_count": 0,
+                "has_data": bool(class_lessons),
+                "periods": grid["periods"],
+                "rows": grid["rows"],
+                "teachers": _timetable_teacher_refs(
+                    lesson.teacher for lesson in class_lessons if lesson.teacher_id
+                ),
+            }
+        )
+    return sheets
+
+
+def _build_exam_timetable_report_sheets(classes, generation=None):
+    class_ids = [item.id for item in classes]
+    sittings_query = GeneratedExamSitting.objects.filter(academic_class_id__in=class_ids)
+    if generation is not None:
+        sittings_query = sittings_query.filter(generation=generation)
+    else:
+        current = (
+            GeneratedExamTimetable.objects.filter(is_current=True)
+            .order_by("-created_at")
+            .first()
+        )
+        if current is None:
+            current = GeneratedExamTimetable.objects.order_by("-created_at").first()
+        if current is not None:
+            sittings_query = sittings_query.filter(generation=current)
+            generation = current
+    sittings = list(
+        sittings_query.select_related(
+            "academic_class",
+            "academic_level",
+            "learning_area",
+            "supervisor",
+            "generation",
+            "generation__academic_year",
+            "generation__academic_term",
+        ).order_by("academic_class__order", "exam_date", "weekday", "start_time")
+    )
+    colliding_ids = _colliding_exam_sitting_ids(sittings)
+    by_class = {}
+    for sitting in sittings:
+        by_class.setdefault(sitting.academic_class_id, []).append(sitting)
+
+    sheets = []
+    for academic_class in classes:
+        class_sittings = by_class.get(academic_class.id, [])
+        if not class_sittings:
+            sheets.append(
+                {
+                    "kind": "exam",
+                    "academic_class": academic_class,
+                    "title": academic_class.display_label or academic_class.name,
+                    "subtitle": "No assessment sittings",
+                    "lesson_count": 0,
+                    "sitting_count": 0,
+                    "has_data": False,
+                    "exam_name": generation.display_name if generation else "",
+                    "periods": [],
+                    "rows": [],
+                    "teachers": [],
+                }
+            )
+            continue
+
+        dated = [item for item in class_sittings if item.exam_date]
+        if dated:
+            days = []
+            seen_days = set()
+            periods = []
+            seen_periods = set()
+            for sitting in dated:
+                day_key = sitting.exam_date.isoformat()
+                if day_key not in seen_days:
+                    seen_days.add(day_key)
+                    days.append(
+                        {
+                            "code": day_key,
+                            "label": sitting.exam_date.strftime("%A %d %b %Y"),
+                        }
+                    )
+                period_key = (
+                    to_minutes(sitting.start_time),
+                    to_minutes(sitting.end_time),
+                    sitting.period_name,
+                )
+                if period_key not in seen_periods:
+                    seen_periods.add(period_key)
+                    periods.append(
+                        {
+                            "name": sitting.period_name,
+                            "start": to_minutes(sitting.start_time),
+                            "end": to_minutes(sitting.end_time),
+                            "start_label": sitting.start_time.strftime("%H:%M"),
+                            "end_label": sitting.end_time.strftime("%H:%M"),
+                        }
+                    )
+            periods.sort(key=lambda item: (item["start"], item["end"], item["name"]))
+            lookup = {
+                (sitting.exam_date.isoformat(), to_minutes(sitting.start_time)): sitting
+                for sitting in dated
+            }
+            rows = []
+            for day in days:
+                cells = [
+                    _exam_timetable_cell(lookup.get((day["code"], period["start"])), colliding_ids)
+                    for period in periods
+                ]
+                rows.append({"day_code": day["code"], "day_label": day["label"], "cells": cells})
+        else:
+            days = [day for day in DAY_ORDER if any(item.weekday == day for item in class_sittings)]
+            periods = []
+            seen_periods = set()
+            for sitting in sorted(class_sittings, key=lambda item: item.start_time):
+                period_key = (
+                    to_minutes(sitting.start_time),
+                    to_minutes(sitting.end_time),
+                    sitting.period_name,
+                )
+                if period_key in seen_periods:
+                    continue
+                seen_periods.add(period_key)
+                periods.append(
+                    {
+                        "name": sitting.period_name,
+                        "start": to_minutes(sitting.start_time),
+                        "end": to_minutes(sitting.end_time),
+                        "start_label": sitting.start_time.strftime("%H:%M"),
+                        "end_label": sitting.end_time.strftime("%H:%M"),
+                    }
+                )
+            lookup = {
+                (sitting.weekday, to_minutes(sitting.start_time)): sitting
+                for sitting in class_sittings
+            }
+            rows = []
+            for day in days:
+                cells = [
+                    _exam_timetable_cell(lookup.get((day, period["start"])), colliding_ids)
+                    for period in periods
+                ]
+                rows.append(
+                    {
+                        "day_code": day,
+                        "day_label": WEEKDAY_LABELS.get(day, day),
+                        "cells": cells,
+                    }
+                )
+
+        exam = class_sittings[0].generation
+        sheets.append(
+            {
+                "kind": "exam",
+                "academic_class": academic_class,
+                "title": academic_class.display_label or academic_class.name,
+                "subtitle": (
+                    f"{exam.display_name} · {len(class_sittings)} sitting"
+                    f"{'' if len(class_sittings) == 1 else 's'}"
+                    if exam
+                    else f"{len(class_sittings)} sitting{'' if len(class_sittings) == 1 else 's'}"
+                ),
+                "lesson_count": 0,
+                "sitting_count": len(class_sittings),
+                "has_data": True,
+                "exam_name": exam.display_name if exam else "",
+                "periods": periods,
+                "rows": rows,
+                "teachers": _timetable_teacher_refs(
+                    sitting.supervisor
+                    for sitting in class_sittings
+                    if sitting.supervisor_id
+                ),
+            }
+        )
+    return sheets, generation
+
+
+def _build_learning_report_sections(scoped_allocations, report_date, report_type, academic_class=None):
+    allocation_ids = [item.id for item in scoped_allocations]
+    if academic_class is None and scoped_allocations:
+        academic_class = scoped_allocations[0].academic_class
+
+    attendance_rows = []
+    class_attendance = None
+    lesson_plan_rows = []
+    plan_count = 0
+    outcome_rows = []
+    outcome_count = 0
+
+    if report_type == "subject_attendance":
+        attendance_rows = _build_subject_attendance_rows(allocation_ids, report_date)
+    elif report_type == "student_attendance":
+        class_attendance = (
+            _build_class_attendance_row(academic_class, report_date)
+            if academic_class is not None
+            else None
+        )
+    elif report_type == "lesson_plan":
+        lesson_plan_rows, plan_count = _build_lesson_plan_rows(scoped_allocations)
+    elif report_type == "outcome":
+        outcome_rows, outcome_count = _build_outcome_rows(scoped_allocations)
+
+    if report_type == "student_attendance" and academic_class is not None:
+        scope_label = academic_class.name
+    elif scoped_allocations:
+        scope_label = (
+            f"{scoped_allocations[0].academic_class.name} · "
+            f"{scoped_allocations[0].learning_area.name}"
+        )
+    else:
+        scope_label = academic_class.name if academic_class is not None else ""
+
+    return {
+        "attendance_rows": attendance_rows,
+        "session_total": len(attendance_rows),
+        "class_attendance": class_attendance,
+        "lesson_plan_rows": lesson_plan_rows,
+        "plan_count": plan_count,
+        "outcome_rows": outcome_rows,
+        "outcome_count": outcome_count,
+        "allocation_count": len(scoped_allocations),
+        "selected_scope_label": scope_label,
+        "report_teacher_name": (
+            scoped_allocations[0].teacher.display_name
+            if scoped_allocations and scoped_allocations[0].teacher_id
+            else ""
+        ),
     }
 
 
@@ -3631,19 +4677,58 @@ def teacher_learning_reports(request):
     if denied:
         return denied
     employee = workspace_view_employee(request)
-    allocations = _teacher_learning_session_allocations(employee)
-
-    report_types = (
-        ("attendance", "Attendance"),
-        ("lesson_plan", "Lesson plan"),
-        ("outcome", "Outcome"),
+    denied = _require_module_action(
+        request,
+        "teacher.learning_reports",
+        "view",
+        role=Employee.Role.TEACHER,
+        actor=employee,
     )
-    report_type = (request.GET.get("report_type") or "").strip()
+    if denied:
+        return denied
+    return _render_learning_reports(
+        request,
+        allocations=_teacher_learning_session_allocations(employee),
+        mode="teacher",
+        teacher_employee=employee,
+        empty_message="Ask IT Support to allocate your class subjects, then return here for your reports.",
+        not_allocated_message="That level, class, and subject are not allocated to you.",
+        template_name="employees/teacher_learning_report.html",
+        extra_context={"active_nav": "learning-reports"},
+    )
+
+
+def _render_learning_reports(
+    request,
+    allocations,
+    *,
+    mode,
+    template_name,
+    extra_context,
+    empty_message,
+    not_allocated_message,
+    teacher_employee=None,
+):
     date_raw = (request.GET.get("report_date") or "").strip()
     generate = (request.GET.get("generate") or "").strip() == "1"
+    report_type = (request.GET.get("report_type") or "").strip()
+    if report_type not in LEARNING_REPORT_TYPE_MAP:
+        report_type = "subject_attendance"
+    report_type_meta = LEARNING_REPORT_TYPE_MAP[report_type]
+    needs_subject = bool(report_type_meta["needs_subject"])
+    multi_class = bool(report_type_meta.get("multi_class"))
+    needs_date = bool(report_type_meta.get("needs_date", True))
+
     level_id = _parse_optional_int(request.GET.get("level_id"))
     class_id = _parse_optional_int(request.GET.get("class_id"))
-    subject_id = _parse_optional_int(request.GET.get("subject_id"))
+    class_ids = _parse_id_list(request.GET.getlist("class_ids"))
+    if multi_class:
+        if not class_ids and class_id is not None:
+            class_ids = [class_id]
+        class_id = None
+    subject_id = _parse_optional_int(request.GET.get("subject_id")) if needs_subject else None
+    exam_id = _parse_optional_int(request.GET.get("exam_id")) if report_type == "exam_timetable" else None
+
     report_date = None
     report_error = ""
     if date_raw:
@@ -3651,14 +4736,14 @@ def teacher_learning_reports(request):
             report_date = date.fromisoformat(date_raw)
         except ValueError:
             report_error = "Choose a valid report date."
-    elif not generate:
+    elif not generate or not needs_date:
         report_date = date.today()
 
     scope = _teacher_learning_report_scope(
         allocations,
         level_id=level_id,
         class_id=class_id,
-        subject_id=subject_id,
+        subject_id=subject_id if needs_subject else None,
     )
     valid_level_ids = {item["id"] for item in scope["levels"]}
     valid_class_ids = {
@@ -3674,213 +4759,204 @@ def teacher_learning_reports(request):
     }
     if level_id is not None and level_id not in valid_level_ids:
         level_id = None
+    valid_class_ids = {
+        item["id"]
+        for item in scope["classes"]
+        if level_id is None or item["level_id"] == level_id
+    }
     if class_id is not None and class_id not in valid_class_ids:
         class_id = None
+    valid_subject_ids = {
+        item["id"]
+        for item in scope["subjects"]
+        if (level_id is None or item["level_id"] == level_id)
+        and (class_id is None or item["class_id"] == class_id)
+    }
     if subject_id is not None and subject_id not in valid_subject_ids:
         subject_id = None
+    class_ids = [item for item in class_ids if item in valid_class_ids]
     scope = _teacher_learning_report_scope(
         allocations,
         level_id=level_id,
         class_id=class_id,
-        subject_id=subject_id,
+        subject_id=subject_id if needs_subject else None,
     )
     scoped_allocations = scope["allocations"]
-    allocation_ids = [item.id for item in scoped_allocations]
+    academic_class = None
+    if class_id is not None:
+        academic_class = next(
+            (
+                item.academic_class
+                for item in allocations
+                if item.academic_class_id == class_id
+            ),
+            None,
+        )
+
+    class_lookup = {}
+    for item in allocations:
+        if item.academic_class_id not in class_lookup:
+            class_lookup[item.academic_class_id] = item.academic_class
+    selected_classes = [
+        class_lookup[item_id]
+        for item_id in class_ids
+        if item_id in class_lookup
+    ]
+
+    exam_generations = list(
+        GeneratedExamTimetable.objects.select_related(
+            "academic_year",
+            "academic_term",
+        ).order_by("-is_current", "-created_at")[:24]
+    )
+    selected_exam = None
+    if report_type == "exam_timetable" and exam_id is not None:
+        selected_exam = next(
+            (item for item in exam_generations if item.id == exam_id),
+            None,
+        )
+        if selected_exam is None:
+            selected_exam = (
+                GeneratedExamTimetable.objects.select_related(
+                    "academic_year",
+                    "academic_term",
+                )
+                .filter(pk=exam_id)
+                .first()
+            )
+            if selected_exam is None:
+                exam_id = None
 
     selection = {
         "report_date": report_date.isoformat() if report_date else date_raw,
-        "report_type": report_type if report_type in {item[0] for item in report_types} else "attendance",
+        "report_type": report_type,
         "level_id": level_id or "",
         "class_id": class_id or "",
+        "class_ids": class_ids,
         "subject_id": subject_id or "",
+        "exam_id": exam_id or "",
     }
     context = {
-        "active_nav": "learning-reports",
-        "teacher_employee": employee,
+        "learning_report_mode": mode,
+        "teacher_employee": teacher_employee,
         "school_profile": SchoolProfile.objects.filter(pk=1).first(),
         "allocations": allocations,
         "allocation_count": len(scoped_allocations) if generate else len(allocations),
-        "report_types": report_types,
+        "report_types": LEARNING_REPORT_TYPES,
         "selection": selection,
         "report_error": report_error,
         "has_report": False,
+        "needs_subject": needs_subject,
+        "multi_class": multi_class,
+        "needs_date": needs_date,
+        "exam_generations": exam_generations,
+        "timetable_sheets": [],
         "scope_levels": scope["levels"],
         "scope_classes": scope["classes"],
         "scope_subjects": scope["subjects"],
-        "scope_catalog": scope["catalog"],
+        "scope_catalog": {
+            **scope["catalog"],
+            "report_types": [
+                {
+                    "value": item["value"],
+                    "needs_subject": item["needs_subject"],
+                    "multi_class": item.get("multi_class", False),
+                    "needs_date": item.get("needs_date", True),
+                }
+                for item in LEARNING_REPORT_TYPES
+            ],
+        },
+        "empty_message": empty_message,
+        **extra_context,
     }
 
     if not allocations:
-        return render(request, "employees/teacher_learning_report.html", context)
-
+        return render(request, template_name, context)
     if not generate:
-        return render(request, "employees/teacher_learning_report.html", context)
-
+        return render(request, template_name, context)
     if report_error:
-        return render(request, "employees/teacher_learning_report.html", context)
-    if not report_date:
+        return render(request, template_name, context)
+
+    if multi_class:
+        if not selected_classes:
+            context["report_error"] = "Select one or more classes."
+            return render(request, template_name, context)
+        if report_type == "learning_timetable":
+            sheets = _build_learning_timetable_report_sheets(selected_classes)
+            exam_label = ""
+        else:
+            sheets, selected_exam = _build_exam_timetable_report_sheets(
+                selected_classes,
+                generation=selected_exam,
+            )
+            exam_label = selected_exam.display_name if selected_exam else ""
+        scope_label = ", ".join(
+            item.display_label or item.name for item in selected_classes[:4]
+        )
+        if len(selected_classes) > 4:
+            scope_label = f"{scope_label} +{len(selected_classes) - 4} more"
+        if exam_label:
+            scope_label = f"{exam_label} · {scope_label}"
+        context.update(
+            {
+                "has_report": True,
+                "report_date": report_date or date.today(),
+                "report_type": report_type,
+                "report_type_label": report_type_meta["label"],
+                "generated_at": datetime.now(),
+                "timetable_sheets": sheets,
+                "selected_scope_label": scope_label,
+                "report_teacher_name": (
+                    teacher_employee.display_name if teacher_employee else ""
+                ),
+                "attendance_rows": [],
+                "session_total": 0,
+                "class_attendance": None,
+                "lesson_plan_rows": [],
+                "plan_count": 0,
+                "outcome_rows": [],
+                "outcome_count": 0,
+                "allocation_count": 0,
+            }
+        )
+        return render(request, template_name, context)
+
+    if needs_date and not report_date:
         context["report_error"] = "Select a date for the report."
-        return render(request, "employees/teacher_learning_report.html", context)
-    if selection["report_type"] not in {item[0] for item in report_types}:
-        context["report_error"] = "Choose attendance, lesson plan, or outcome."
-        return render(request, "employees/teacher_learning_report.html", context)
+        return render(request, template_name, context)
     if not level_id:
         context["report_error"] = "Select an academic level."
-        return render(request, "employees/teacher_learning_report.html", context)
+        return render(request, template_name, context)
     if not class_id:
         context["report_error"] = "Select a class."
-        return render(request, "employees/teacher_learning_report.html", context)
-    if not subject_id:
+        return render(request, template_name, context)
+    if needs_subject and not subject_id:
         context["report_error"] = "Select a subject."
-        return render(request, "employees/teacher_learning_report.html", context)
-    if not scoped_allocations:
-        context["report_error"] = "That level, class, and subject are not allocated to you."
-        return render(request, "employees/teacher_learning_report.html", context)
+        return render(request, template_name, context)
+    if needs_subject and not scoped_allocations:
+        context["report_error"] = not_allocated_message
+        return render(request, template_name, context)
+    if report_type == "student_attendance" and academic_class is None:
+        context["report_error"] = "Select a class available in your learning allocations."
+        return render(request, template_name, context)
 
-    report_type_label = dict(report_types)[selection["report_type"]]
-    attendance_rows = []
-    lesson_plan_rows = []
-    outcome_rows = []
-    session_total = 0
-    plan_count = 0
-    outcome_count = 0
-    selected_scope_label = (
-        f"{scoped_allocations[0].academic_class.name} · "
-        f"{scoped_allocations[0].learning_area.name}"
+    sections = _build_learning_report_sections(
+        scoped_allocations,
+        report_date,
+        report_type,
+        academic_class=academic_class,
     )
-
-    if selection["report_type"] == "attendance":
-        sessions = list(
-            SubjectAttendanceSession.objects.filter(
-                allocation_id__in=allocation_ids,
-                lesson_date=report_date,
-            )
-            .select_related(
-                "allocation__academic_class",
-                "allocation__academic_class__academic_level",
-                "allocation__learning_area",
-                "taken_by",
-            )
-            .prefetch_related(
-                Prefetch(
-                    "records",
-                    queryset=SubjectAttendanceRecord.objects.select_related(
-                        "student"
-                    ).order_by("student__last_name", "student__first_name"),
-                )
-            )
-            .order_by(
-                "allocation__academic_class__academic_level__order",
-                "allocation__academic_class__order",
-                "allocation__learning_area__name",
-            )
-        )
-        for session in sessions:
-            counts = {
-                SubjectAttendanceRecord.Status.PRESENT: 0,
-                SubjectAttendanceRecord.Status.ABSENT: 0,
-                SubjectAttendanceRecord.Status.LATE: 0,
-                SubjectAttendanceRecord.Status.EXCUSED: 0,
-            }
-            learners = []
-            for record in session.records.all():
-                if record.status in counts:
-                    counts[record.status] += 1
-                learners.append(
-                    {
-                        "student": record.student,
-                        "status": record.status,
-                        "status_label": record.get_status_display(),
-                    }
-                )
-            recorded = sum(counts.values())
-            present = counts[SubjectAttendanceRecord.Status.PRESENT]
-            attendance_rows.append(
-                {
-                    "session": session,
-                    "allocation": session.allocation,
-                    "present": present,
-                    "absent": counts[SubjectAttendanceRecord.Status.ABSENT],
-                    "late": counts[SubjectAttendanceRecord.Status.LATE],
-                    "excused": counts[SubjectAttendanceRecord.Status.EXCUSED],
-                    "recorded": recorded,
-                    "rate": round((present / recorded) * 100) if recorded else None,
-                    "learners": learners,
-                }
-            )
-        session_total = len(attendance_rows)
-
-    elif selection["report_type"] == "lesson_plan":
-        plans = {
-            plan.allocation_id: plan
-            for plan in ClassSubjectLessonPlan.objects.filter(
-                allocation_id__in=allocation_ids
-            ).select_related("updated_by")
-        }
-        for allocation in scoped_allocations:
-            plan = plans.get(allocation.id)
-            has_plan = plan is not None
-            if has_plan:
-                plan_count += 1
-            lesson_plan_rows.append(
-                {
-                    "allocation": allocation,
-                    "plan": plan,
-                    "has_plan": has_plan,
-                    "strand": (plan.strand if plan else "") or "",
-                    "substrand": (plan.substrand if plan else "") or "",
-                    "outcomes": (plan.lesson_learning_outcomes if plan else "") or "",
-                    "key_inquiry_questions": (plan.key_inquiry_questions if plan else "") or "",
-                    "core_competencies": (plan.core_competencies if plan else "") or "",
-                    "values": (plan.values if plan else "") or "",
-                    "learning_resources": (plan.learning_resources if plan else "") or "",
-                    "introduction": (plan.introduction if plan else "") or "",
-                    "lesson_development": (plan.lesson_development if plan else "") or "",
-                    "updated_at": plan.updated_at if plan else None,
-                }
-            )
-
-    else:
-        outcomes = {
-            item.allocation_id: item
-            for item in ClassSubjectOutcome.objects.filter(
-                allocation_id__in=allocation_ids
-            ).select_related("updated_by")
-        }
-        for allocation in scoped_allocations:
-            outcome = outcomes.get(allocation.id)
-            outcome_text = (outcome.outcome if outcome else "") or ""
-            has_outcome = bool(outcome_text.strip())
-            if has_outcome:
-                outcome_count += 1
-            outcome_rows.append(
-                {
-                    "allocation": allocation,
-                    "outcome": outcome,
-                    "has_outcome": has_outcome,
-                    "outcome_text": outcome_text,
-                    "updated_at": outcome.updated_at if outcome else None,
-                }
-            )
-
     context.update(
         {
             "has_report": True,
             "report_date": report_date,
-            "report_type": selection["report_type"],
-            "report_type_label": report_type_label,
-            "selected_scope_label": selected_scope_label,
+            "report_type": report_type,
+            "report_type_label": report_type_meta["label"],
             "generated_at": datetime.now(),
-            "attendance_rows": attendance_rows,
-            "lesson_plan_rows": lesson_plan_rows,
-            "outcome_rows": outcome_rows,
-            "session_total": session_total,
-            "plan_count": plan_count,
-            "outcome_count": outcome_count,
-            "allocation_count": len(scoped_allocations),
+            **sections,
         }
     )
-    return render(request, "employees/teacher_learning_report.html", context)
+    return render(request, template_name, context)
 
 
 @login_required
@@ -3890,6 +4966,15 @@ def teacher_subject_attendance(request):
     if denied:
         return denied
     employee = workspace_view_employee(request)
+    denied = _require_module_action(
+        request,
+        "teacher.subject_attendance",
+        "view",
+        role=Employee.Role.TEACHER,
+        actor=employee,
+    )
+    if denied:
+        return denied
     level_groups = _teacher_allocated_levels(employee)
     class_count = sum(len(group["classes"]) for group in level_groups)
     return render(
@@ -4154,7 +5239,7 @@ def _resolve_subject_attendance_filter(request):
     }
 
 
-def teacher_class_subject_attendance_overview(request, employee, academic_class):
+def teacher_class_subject_attendance_overview(request, employee, academic_class, page=None):
     filter_ctx = _resolve_subject_attendance_filter(request)
     subjects = list(
         ClassSubjectAllocation.objects.filter(academic_class=academic_class)
@@ -4202,6 +5287,9 @@ def teacher_class_subject_attendance_overview(request, employee, academic_class)
             recorded = recorded_counts.get(key, 0)
             present = present_counts.get(key, 0)
             session_total = len(sessions_by_allocation.get(allocation.id, []))
+            teacher_name = (
+                allocation.teacher.employee_code if allocation.teacher_id else "Unassigned"
+            )
             if filter_ctx["show_percentages"]:
                 if recorded:
                     pct = round((present / recorded) * 100)
@@ -4212,19 +5300,29 @@ def teacher_class_subject_attendance_overview(request, employee, academic_class)
                         rate_class = "rate-mid"
                     else:
                         rate_class = "rate-low"
-                    title = f"{present} present of {recorded} recorded ({pct}%)"
+                    title = (
+                        f"{allocation.learning_area.name} · {teacher_name}: "
+                        f"{present} present of {recorded} recorded ({pct}%)"
+                    )
                 elif session_total:
                     display = "—"
                     rate_class = "is-empty"
-                    title = f"{session_total} subject session(s) recorded, but not for this student"
+                    title = (
+                        f"{allocation.learning_area.name} · {teacher_name}: "
+                        f"{session_total} subject session(s) recorded, but not for this student"
+                    )
                 else:
                     display = "—"
                     rate_class = "is-empty"
-                    title = "No subject attendance recorded in this range"
+                    title = (
+                        f"{allocation.learning_area.name} · {teacher_name}: "
+                        "No subject attendance recorded in this range"
+                    )
                 cells.append(
                     {
                         "allocation": allocation,
                         "subject": allocation.learning_area,
+                        "teacher_name": teacher_name,
                         "status": None,
                         "status_label": display,
                         "has_session": session_total > 0,
@@ -4244,6 +5342,7 @@ def teacher_class_subject_attendance_overview(request, employee, academic_class)
                     {
                         "allocation": allocation,
                         "subject": allocation.learning_area,
+                        "teacher_name": teacher_name,
                         "status": status,
                         "status_label": status_labels.get(status, "—"),
                         "has_session": allocation.id in sessions_by_allocation,
@@ -4253,6 +5352,10 @@ def teacher_class_subject_attendance_overview(request, employee, academic_class)
                         "session_total": session_total,
                         "display": status_labels.get(status, "—") if status else "—",
                         "rate_class": f"status-{(status or 'empty').lower()}",
+                        "title": (
+                            f"{allocation.learning_area.name} · {teacher_name}: "
+                            f"{status_labels.get(status, 'Not recorded')}"
+                        ),
                     }
                 )
         student_rows.append({"student": student, "cells": cells})
@@ -4263,23 +5366,32 @@ def teacher_class_subject_attendance_overview(request, employee, academic_class)
         academic_class.level_name = academic_class.academic_level.name
         allocated_classes = [academic_class, *allocated_classes]
 
+    my_class_home = reverse(
+        "employees:teacher_my_class_page",
+        kwargs={"tool": "students-class-attendance"},
+    )
     context = {
-        "active_nav": "subject-attendance",
+        "active_nav": "my-class" if page else "subject-attendance",
         "selected_class": academic_class,
         "subjects": subjects,
         "student_rows": student_rows,
         "students": students,
         "allocated_classes": allocated_classes,
         "led_classes": led_classes,
+        "class_count": len(led_classes),
         "own_allocation_ids": {
             item.id for item in subjects if item.teacher_id == employee.id
         },
         "is_class_teacher": True,
-        "active_my_class_tool": "subject-attendance-overview",
-        "teacher_subject_home_url": reverse(
-            "employees:teacher_my_class_page",
-            kwargs={"tool": "students-class-attendance"},
-        ),
+        "active_my_class_tool": "students-class-attendance",
+        "page": page
+        or {
+            "slug": "students-class-attendance",
+            "title": "Students subject attendance",
+            "summary": "Review subject attendance recorded by teachers in your class.",
+        },
+        "from_my_class": bool(page),
+        "teacher_subject_home_url": my_class_home,
         **filter_ctx,
     }
     return render(
@@ -4561,26 +5673,60 @@ def switch_workspace_role(request):
     return redirect("employees:role_dashboard", role=role.lower())
 
 
+def _require_activity_permission(request, activity_code, *, role=None, actor=None):
+    """Return a redirect response when the given actor lacks an activity."""
+    current_role = role or workspace_role(request)
+    subject = actor or request.user
+    if employee_has_activity_permission(subject, activity_code, role=current_role):
+        return None
+    error(request, "You do not have permission for this activity.")
+    return redirect_to_role_dashboard(request)
+
+
+def _require_module_action(request, module_code, action="view", *, role=None, actor=None):
+    return _require_activity_permission(
+        request,
+        module_action_code(module_code, action),
+        role=role,
+        actor=actor,
+    )
+
+
 @login_required
 def it_support_module(request, module):
-    denied = _require_it_support(request)
-    if denied:
-        return denied
     current = _it_support_module(module)
     if current is None:
         return redirect_to_role_dashboard(request)
+    if current["slug"] in CURRICULUM_COORDINATOR_MODULE_SLUGS:
+        denied = _require_curriculum_ops(request)
+    else:
+        denied = _require_it_support(request)
+    if denied:
+        return denied
+    activity_code = MODULE_SLUG_ACTIVITY.get(current["slug"])
+    if activity_code:
+        denied = _require_module_action(request, activity_code, "view")
+        if denied:
+            return denied
+    return _render_workspace_module(request, current)
+
+
+def _render_workspace_module(request, current):
     if current["slug"] == "curriculum-management":
         template = "employees/it_support_curriculum.html"
     elif current["slug"] == "student-management":
         template = "employees/it_support_student_management.html"
+    elif current["slug"] == "human-resource-management":
+        template = "employees/it_support_human_resource.html"
     elif current["slug"] == "reports":
         template = "employees/it_support_reports.html"
     else:
         template = "employees/it_support_module.html"
-    students = []
-    student_context = {}
+    extra_context = {}
     if current["slug"] == "student-management":
-        student_context = _student_management_context(request)
+        extra_context = _student_management_context(request)
+    elif current["slug"] == "human-resource-management":
+        extra_context = _human_resource_directory_context(request)
     return render(
         request,
         template,
@@ -4590,24 +5736,49 @@ def it_support_module(request, module):
             "module": current,
             "curriculum_sections": IT_SUPPORT_CURRICULUM_SECTIONS,
             "report_sections": IT_SUPPORT_REPORT_SECTIONS,
-            **student_context,
+            "student_management_module_url": _student_management_module_url_name(
+                workspace_role(request)
+            ),
+            "curriculum_management_module_url": _curriculum_management_module_url_name(
+                workspace_role(request)
+            ),
+            **extra_context,
         },
     )
 
 
 @login_required
+def curriculum_coordinator_module(request, module):
+    denied = _require_curriculum_coordinator(request)
+    if denied:
+        return denied
+    current = _it_support_module(module)
+    if current is None or current["slug"] not in CURRICULUM_COORDINATOR_MODULE_SLUGS:
+        return redirect_to_role_dashboard(request)
+    activity_code = MODULE_SLUG_ACTIVITY.get(current["slug"])
+    if activity_code:
+        denied = _require_module_action(request, activity_code, "view")
+        if denied:
+            return denied
+    return _render_workspace_module(request, current)
+
+
+@login_required
 def it_support_report_section(request, section):
-    denied = _require_it_support(request)
+    role = workspace_role(request)
+    if role not in (*FULL_MODULE_WORKSPACE_ROLES, Employee.Role.CURRICULUM_COORDINATOR):
+        return redirect_to_role_dashboard(request)
+    denied = _require_module_action(request, "module.reports", "view")
     if denied:
         return denied
     current = _it_support_report_section(section)
     if current is None:
-        return redirect("employees:it_support_module", module="reports")
+        return _redirect_reports_module(request)
     if current["slug"] == "curriculum-reports":
         template = "employees/it_support_curriculum_reports.html"
         extra_context = {
             "curriculum_report_pages": IT_SUPPORT_CURRICULUM_REPORT_PAGES,
-            **_curriculum_report_urls(Employee.Role.IT_SUPPORT),
+            **_curriculum_report_urls(role),
         }
     else:
         template = "employees/it_support_report_section.html"
@@ -4617,6 +5788,7 @@ def it_support_report_section(request, section):
         template,
         {
             "active_nav": "dashboard",
+            "active_module": "reports",
             "active_report": current["slug"],
             "section": current,
             "report_sections": IT_SUPPORT_REPORT_SECTIONS,
@@ -4631,6 +5803,23 @@ def _render_curriculum_report_page(request, page, role):
         return _curriculum_reports_redirect(role)
     if current["slug"] == "exam-reports":
         return _render_exam_reports(request, current, role)
+    if current["slug"] == "learning-reports":
+        return _render_learning_reports(
+            request,
+            allocations=_school_learning_session_allocations(),
+            mode="admin",
+            template_name="employees/it_support_learning_report.html",
+            empty_message="Allocate class subjects first, then return here to generate learning reports.",
+            not_allocated_message="That level, class, and subject combination was not found.",
+            extra_context={
+                "active_nav": "dashboard",
+                "active_report": "curriculum-reports",
+                "active_curriculum_report": current["slug"],
+                "page": current,
+                "curriculum_report_pages": IT_SUPPORT_CURRICULUM_REPORT_PAGES,
+                **_curriculum_report_urls(role),
+            },
+        )
     return render(
         request,
         "employees/it_support_curriculum_report_page.html",
@@ -4650,7 +5839,7 @@ def it_support_curriculum_report_page(request, page):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role != Employee.Role.IT_SUPPORT:
+    if role not in FULL_MODULE_WORKSPACE_ROLES:
         return redirect_to_role_dashboard(request)
     return _render_curriculum_report_page(request, page, role)
 
@@ -6389,7 +7578,7 @@ def it_support_exam_reports(request, page):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role != Employee.Role.IT_SUPPORT:
+    if role not in FULL_MODULE_WORKSPACE_ROLES:
         return redirect_to_role_dashboard(request)
     return _render_exam_reports(request, page, role)
 
@@ -6453,7 +7642,10 @@ def it_support_exam_report_export(request):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role != Employee.Role.IT_SUPPORT:
+    denied = _require_module_action(request, "curriculum.exam_management", "download")
+    if denied:
+        return denied
+    if role not in FULL_MODULE_WORKSPACE_ROLES:
         return redirect_to_role_dashboard(request)
     return _exam_report_export_response(request, role)
 
@@ -6463,7 +7655,7 @@ def it_support_exam_report_students(request):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role != Employee.Role.IT_SUPPORT:
+    if role not in FULL_MODULE_WORKSPACE_ROLES:
         return JsonResponse({"students": []}, status=403)
     return _exam_report_students_response(request)
 
@@ -6493,6 +7685,9 @@ def _employee_code_sort_key(employee):
 @login_required
 def it_support_employee_management(request):
     denied = _require_it_support(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.human_resource_management", "view")
     if denied:
         return denied
     sort_mode = _resolve_student_sort(request)
@@ -6559,6 +7754,9 @@ def update_workspace_employee(request, employee_id):
     denied = _require_it_support(request)
     if denied:
         return denied
+    denied = _require_module_action(request, "module.human_resource_management", "edit")
+    if denied:
+        return denied
     employee = get_object_or_404(Employee, pk=employee_id)
     form = EmployeeProfileForm(request.POST, instance=employee)
     if form.is_valid():
@@ -6615,6 +7813,9 @@ def toggle_workspace_employee_status(request, employee_id):
     denied = _require_it_support(request)
     if denied:
         return denied
+    denied = _require_module_action(request, "module.human_resource_management", "suspend")
+    if denied:
+        return denied
     employee = get_object_or_404(Employee, pk=employee_id)
     if employee.pk == request.user.pk:
         error(request, "You cannot suspend your own account.")
@@ -6634,6 +7835,9 @@ def delete_workspace_employee(request, employee_id):
     denied = _require_it_support(request)
     if denied:
         return denied
+    denied = _require_module_action(request, "module.human_resource_management", "delete")
+    if denied:
+        return denied
     employee = get_object_or_404(Employee, pk=employee_id)
     if employee.pk == request.user.pk:
         error(request, "You cannot delete your own account.")
@@ -6644,8 +7848,264 @@ def delete_workspace_employee(request, employee_id):
     return redirect("employees:it_support_employee_management")
 
 
-def _redirect_student_management():
-    return redirect("employees:it_support_module", module="student-management")
+def _employee_permissions_list_context(request=None):
+    sort_mode = _resolve_student_sort(request) if request is not None else STUDENT_SORT_NAME
+    employees = list(
+        Employee.objects.filter(is_active=True)
+        .prefetch_related("assigned_roles")
+        .all()
+    )
+    if sort_mode == STUDENT_SORT_ADMISSION:
+        employees.sort(
+            key=lambda employee: (
+                _employee_code_sort_key(employee),
+                (employee.first_name or "").casefold(),
+                (employee.last_name or "").casefold(),
+                (employee.employee_code or "").casefold(),
+            )
+        )
+    else:
+        employees.sort(
+            key=lambda employee: (
+                (employee.first_name or "").casefold(),
+                (employee.last_name or "").casefold(),
+                _employee_code_sort_key(employee),
+            )
+        )
+    role_labels = dict(Employee.Role.choices)
+    employee_rows = []
+    for employee in employees:
+        roles = employee.role_values()
+        unique_states = {}
+        for role in roles:
+            ensure_employee_role_permissions(employee, role, enabled=True)
+            states = permission_state_map(employee, role)
+            for code, enabled in states.items():
+                # Shared codes across roles count once; enabled only if all roles allow.
+                if code in unique_states:
+                    unique_states[code] = unique_states[code] and enabled
+                else:
+                    unique_states[code] = enabled
+        employee_rows.append(
+            {
+                "employee": employee,
+                "role_labels": [role_labels.get(role, role) for role in roles],
+                "enabled_count": sum(1 for enabled in unique_states.values() if enabled),
+                "activity_count": len(unique_states),
+            }
+        )
+    context = {
+        "employees": employee_rows,
+        "employee_count": len(employee_rows),
+        "role_choices": Employee.Role.choices,
+        "active_hr_tool": "employee-permissions",
+    }
+    if request is not None:
+        context.update(_student_sort_template_context(request))
+    return context
+
+
+def _employee_permission_detail_context(employee):
+    """One combined permissions page for an employee across all assigned roles."""
+    role_labels = dict(Employee.Role.choices)
+    roles = employee.role_values()
+    states_by_role = {}
+    for role in roles:
+        ensure_employee_role_permissions(employee, role, enabled=True)
+        states_by_role[role] = permission_state_map(employee, role)
+
+    modules_by_code = OrderedDict()
+    for role in roles:
+        for module_def in modules_for_role(role):
+            module_code = module_def["code"]
+            entry = modules_by_code.setdefault(
+                module_code,
+                {
+                    "module": module_def["label"],
+                    "module_code": module_code,
+                    "group": module_def["module"],
+                    "roles": [],
+                    "role_labels": [],
+                    "actions": OrderedDict(),
+                },
+            )
+            if role not in entry["roles"]:
+                entry["roles"].append(role)
+                entry["role_labels"].append(role_labels.get(role, role))
+            for activity in expand_module_to_activities(module_def):
+                action = activity["action"]
+                action_entry = entry["actions"].setdefault(
+                    action,
+                    {
+                        **activity,
+                        "roles": [],
+                    },
+                )
+                if role not in action_entry["roles"]:
+                    action_entry["roles"].append(role)
+
+    module_groups = []
+    total_activities = 0
+    enabled_activities = 0
+    for entry in modules_by_code.values():
+        activities = []
+        for activity in entry["actions"].values():
+            activity_enabled = all(
+                states_by_role[role].get(activity["code"], True)
+                for role in activity["roles"]
+            )
+            activities.append(
+                {
+                    **activity,
+                    "enabled": activity_enabled,
+                    "roles_csv": ",".join(activity["roles"]),
+                }
+            )
+            total_activities += 1
+            if activity_enabled:
+                enabled_activities += 1
+        module_groups.append(
+            {
+                "module": entry["module"],
+                "module_code": entry["module_code"],
+                "group": entry["group"],
+                "role_labels": entry["role_labels"],
+                "activities": activities,
+            }
+        )
+
+    # Keep related modules together by section, then label.
+    module_groups.sort(
+        key=lambda item: (
+            (item["group"] or "").casefold(),
+            (item["module"] or "").casefold(),
+        )
+    )
+
+    return {
+        "permission_employee": employee,
+        "employee_roles": [role_labels.get(role, role) for role in roles],
+        "module_groups": module_groups,
+        "enabled_count": enabled_activities,
+        "activity_count": total_activities,
+        "role_choices": Employee.Role.choices,
+        "active_hr_tool": "employee-permissions",
+    }
+
+
+@login_required
+def it_support_employee_permissions(request):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.human_resource_management", "view")
+    if denied:
+        return denied
+    return render(
+        request,
+        "employees/it_support_employee_permissions.html",
+        {
+            "active_nav": "dashboard",
+            **_employee_permissions_list_context(request),
+        },
+    )
+
+
+@login_required
+def it_support_employee_permission_detail(request, employee_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.human_resource_management", "view")
+    if denied:
+        return denied
+    employee = get_object_or_404(
+        Employee.objects.prefetch_related("assigned_roles", "activity_permissions"),
+        pk=employee_id,
+        is_active=True,
+    )
+    return render(
+        request,
+        "employees/it_support_employee_permission_detail.html",
+        {
+            "active_nav": "dashboard",
+            **_employee_permission_detail_context(employee),
+        },
+    )
+
+
+@login_required
+@require_POST
+def toggle_workspace_employee_permission(request, employee_id):
+    denied = _require_it_support(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.human_resource_management", "edit")
+    if denied:
+        return denied
+    employee = get_object_or_404(Employee, pk=employee_id)
+    activity_code = (request.POST.get("activity_code") or "").strip()
+    enabled_raw = (request.POST.get("enabled") or "").strip().lower()
+    enabled = enabled_raw in {"1", "true", "on", "yes"}
+    roles_raw = (request.POST.get("roles") or request.POST.get("role") or "").strip()
+    requested_roles = [
+        part.strip().upper()
+        for part in roles_raw.split(",")
+        if part.strip()
+    ]
+    assigned = set(employee.role_values())
+    target_roles = [
+        role
+        for role in (requested_roles or list(assigned))
+        if role in assigned and activity_code in activity_codes_for_role(role)
+    ]
+    wants_json = "application/json" in (request.headers.get("Accept") or "")
+    detail_url = reverse(
+        "employees:it_support_employee_permission_detail",
+        kwargs={"employee_id": employee.id},
+    )
+    try:
+        if not target_roles:
+            raise ValueError("This employee does not hold a role for that activity.")
+        permission = None
+        for role in target_roles:
+            permission = set_employee_activity_permission(
+                employee, role, activity_code, enabled
+            )
+    except ValueError as exc:
+        if wants_json:
+            return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+        error(request, str(exc))
+        return redirect(detail_url)
+    if wants_json:
+        return JsonResponse(
+            {
+                "ok": True,
+                "employee_id": employee.id,
+                "roles": target_roles,
+                "activity_code": permission.activity_code,
+                "enabled": permission.is_enabled,
+            }
+        )
+    success(
+        request,
+        f"{employee.display_name}: "
+        f"{'enabled' if permission.is_enabled else 'restricted'} "
+        f"{permission.activity_code.replace('.', ' · ')}.",
+    )
+    return redirect(detail_url)
+
+def _redirect_student_management(request=None):
+    role = workspace_role(request) if request is not None else Employee.Role.IT_SUPPORT
+    return redirect(_student_management_module_url_name(role), module="student-management")
+
+
+def _redirect_curriculum_management(request=None):
+    role = workspace_role(request) if request is not None else Employee.Role.IT_SUPPORT
+    return redirect(
+        _curriculum_management_module_url_name(role),
+        module="curriculum-management",
+    )
 
 
 def _redirect_pending_admissions():
@@ -6702,7 +8162,7 @@ def _advance_class_group_value(target_class, source_class_group=""):
 
 @login_required
 def it_support_advance_academic_level(request):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
 
@@ -6742,7 +8202,7 @@ def it_support_advance_academic_level(request):
             "active_nav": "dashboard",
             "level_groups": list(level_groups.values()),
             "class_count": len(classes),
-            **_student_management_nav_context(active_tool="advance-academic-level"),
+            **_student_management_nav_context(request, active_tool="advance-academic-level"),
         },
     )
 
@@ -6750,7 +8210,7 @@ def it_support_advance_academic_level(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def it_support_advance_academic_level_class(request, class_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
 
@@ -6829,14 +8289,14 @@ def it_support_advance_academic_level_class(request, class_id):
             "students": students,
             "student_count": len(students),
             "can_advance": can_advance,
-            **_student_management_nav_context(active_tool="advance-academic-level"),
+            **_student_management_nav_context(request, active_tool="advance-academic-level"),
         },
     )
 
 
 @login_required
 def it_support_pending_admissions(request):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     sort_mode = _resolve_student_sort(request)
@@ -6853,15 +8313,98 @@ def it_support_pending_admissions(request):
             "active_nav": "dashboard",
             "pending_students": students,
             "pending_admission_count": len(students),
-            **_student_management_nav_context(active_tool="pending-admissions"),
+            **_student_management_nav_context(request, active_tool="pending-admissions"),
             **_student_sort_template_context(request),
         },
     )
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+def it_support_student_conduct(request):
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+
+    form = StudentConductForm(request.POST or None)
+    if request.method == "POST":
+        if form.is_valid():
+            record = form.save(commit=False)
+            record.recorded_by = request.user
+            record.save()
+            success(
+                request,
+                f"Registered {record.get_behaviour_type_display().lower()} conduct "
+                f"for {record.student.display_name}.",
+            )
+            return redirect("employees:it_support_student_conduct")
+        error(request, "Could not register the conduct record. Check the form and try again.")
+
+    search_query = (request.GET.get("q") or "").strip()
+    records_qs = StudentConductRecord.objects.select_related("student", "recorded_by")
+    if search_query:
+        records_qs = records_qs.annotate(
+            full_name=Concat(
+                "student__first_name",
+                Value(" "),
+                "student__last_name",
+            )
+        ).filter(
+            Q(full_name__icontains=search_query)
+            | Q(student__first_name__icontains=search_query)
+            | Q(student__last_name__icontains=search_query)
+            | Q(student__admission_number__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(witness__icontains=search_query)
+        )
+    records = list(records_qs[:100])
+
+    selected_student = None
+    student_id = form["student"].value() if form.is_bound else None
+    if student_id:
+        selected_student = Student.objects.filter(pk=student_id).first()
+
+    conduct_counts = StudentConductRecord.objects.aggregate(
+        total=Count("id"),
+        good=Count("id", filter=Q(behaviour_type=StudentConductRecord.BehaviourType.GOOD)),
+        bad=Count("id", filter=Q(behaviour_type=StudentConductRecord.BehaviourType.BAD)),
+    )
+
+    return render(
+        request,
+        "employees/it_support_student_conduct.html",
+        {
+            "active_nav": "dashboard",
+            "form": form,
+            "conduct_records": records,
+            "search_query": search_query,
+            "selected_student": selected_student,
+            "conduct_total": conduct_counts["total"] or 0,
+            "conduct_good_count": conduct_counts["good"] or 0,
+            "conduct_bad_count": conduct_counts["bad"] or 0,
+            # Keep the register modal open only when validation failed.
+            "open_register_modal": bool(request.method == "POST" and form.errors),
+            **_student_management_nav_context(request, active_tool="student-conduct"),
+        },
+    )
+
+
+@login_required
+@require_POST
+def delete_student_conduct(request, record_id):
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    record = get_object_or_404(StudentConductRecord, pk=record_id)
+    label = f"{record.get_behaviour_type_display()} record for {record.student.display_name}"
+    record.delete()
+    success(request, f"Removed {label}.")
+    return redirect("employees:it_support_student_conduct")
+
+
+@login_required
 def it_support_clearing_students(request):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     sort_mode = _resolve_student_sort(request)
@@ -6895,7 +8438,7 @@ def it_support_clearing_students(request):
             "clearable_students": students,
             "clearable_student_count": len(students),
             "search_query": search_query,
-            **_student_management_nav_context(active_tool="clearing-students"),
+            **_student_management_nav_context(request, active_tool="clearing-students"),
             **_student_sort_template_context(request),
         },
     )
@@ -6904,7 +8447,7 @@ def it_support_clearing_students(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def it_support_clearing_student_detail(request, student_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     student = get_object_or_404(
@@ -6954,14 +8497,14 @@ def it_support_clearing_student_detail(request, student_id):
             "active_nav": "dashboard",
             "student": student,
             "clearance_reason_choices": Student.ClearanceReason.choices,
-            **_student_management_nav_context(active_tool="clearing-students"),
+            **_student_management_nav_context(request, active_tool="clearing-students"),
         },
     )
 
 
 @login_required
 def it_support_pending_admission_detail(request, student_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     student = get_object_or_404(
@@ -6974,7 +8517,7 @@ def it_support_pending_admission_detail(request, student_id):
         {
             "active_nav": "dashboard",
             "student": student,
-            **_student_management_nav_context(active_tool="pending-admissions"),
+            **_student_management_nav_context(request, active_tool="pending-admissions"),
         },
     )
 
@@ -6982,7 +8525,10 @@ def it_support_pending_admission_detail(request, student_id):
 @login_required
 @require_POST
 def approve_workspace_student(request, student_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.student_management", "approve")
     if denied:
         return denied
     student = get_object_or_404(
@@ -7018,9 +8564,21 @@ def workspace_student_profile(request, student_id):
         "employees/student_profile.html",
         {
             "active_nav": "dashboard",
-            "active_module": "student-management" if role == Employee.Role.IT_SUPPORT else "",
+            "active_module": "student-management"
+            if role
+            in (
+                *FULL_MODULE_WORKSPACE_ROLES,
+                Employee.Role.CURRICULUM_COORDINATOR,
+                Employee.Role.SECRETARY,
+            )
+            else "",
             "student": student,
-            "can_manage_students": role == Employee.Role.IT_SUPPORT,
+            "can_manage_students": role
+            in (
+                *FULL_MODULE_WORKSPACE_ROLES,
+                Employee.Role.CURRICULUM_COORDINATOR,
+                Employee.Role.SECRETARY,
+            ),
         },
     )
 
@@ -7036,7 +8594,10 @@ def workspace_student_profile_legacy(request, student_id):
 @login_required
 @require_POST
 def update_workspace_student(request, student_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.student_management", "edit")
     if denied:
         return denied
     student = get_object_or_404(Student.objects.select_related("parent_guardian"), pk=student_id)
@@ -7047,13 +8608,16 @@ def update_workspace_student(request, student_id):
     else:
         first_error = next(iter(form.errors.values()))[0]
         error(request, first_error)
-    return _redirect_student_management()
+    return _redirect_student_management(request)
 
 
 @login_required
 @require_POST
 def toggle_workspace_student_status(request, student_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.student_management", "suspend")
     if denied:
         return denied
     student = get_object_or_404(Student, pk=student_id)
@@ -7064,13 +8628,16 @@ def toggle_workspace_student_status(request, student_id):
         request,
         f"{student.display_name} was {'suspended' if student.is_suspended else 'unsuspended'}.",
     )
-    return _redirect_student_management()
+    return _redirect_student_management(request)
 
 
 @login_required
 @require_POST
 def delete_workspace_student(request, student_id):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "module.student_management", "delete")
     if denied:
         return denied
     student = get_object_or_404(Student.objects.select_related("parent_guardian"), pk=student_id)
@@ -7080,7 +8647,7 @@ def delete_workspace_student(request, student_id):
     if parent is not None and not parent.students.exists():
         parent.delete()
     success(request, f"{name} was deleted from the system.")
-    return _redirect_student_management()
+    return _redirect_student_management(request)
 
 
 def _current_exam_record():
@@ -7483,12 +9050,22 @@ def _build_exam_management_dashboard():
 
 @login_required
 def it_support_curriculum_section(request, section):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = _it_support_curriculum_section(section)
     if current is None:
-        return redirect("employees:it_support_module", module="curriculum-management")
+        return _redirect_curriculum_management(request)
+    activity_code = CURRICULUM_SECTION_ACTIVITY.get(current["slug"])
+    if activity_code:
+        denied = _require_module_action(request, activity_code, "view")
+        if denied:
+            return denied
+    if (
+        current["slug"] == "exam-management"
+        and workspace_role(request) == Employee.Role.SECRETARY
+    ):
+        return redirect("employees:secretary_assessment_management")
     if current["slug"] == "learning-management":
         template = "employees/it_support_learning.html"
     elif current["slug"] == "e-learning-management":
@@ -7499,6 +9076,7 @@ def it_support_curriculum_section(request, section):
         template = "employees/it_support_curriculum_section.html"
     context = {
         "active_nav": "dashboard",
+        "active_module": "curriculum-management",
         "section": current,
         "learning_pages": IT_SUPPORT_LEARNING_PAGES,
         "elearning_pages": IT_SUPPORT_ELEARNING_PAGES,
@@ -7512,7 +9090,7 @@ def it_support_curriculum_section(request, section):
 
 @login_required
 def it_support_elearning_page(request, page):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = _it_support_elearning_page(page)
@@ -7561,7 +9139,7 @@ def _elearning_subject_allocation_levels():
 @login_required
 @require_http_methods(["GET", "POST"])
 def elearning_subject_allocation(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_elearning_page("allocate-subjects")
@@ -7824,7 +9402,7 @@ def _generated_elearning_timetables(levels):
 @login_required
 @require_http_methods(["GET", "POST"])
 def elearning_timetable_generation(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_elearning_page("timetable-generation")
@@ -7889,7 +9467,7 @@ def elearning_timetable_generation(request, page=None):
 
 @login_required
 def elearning_attendance(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_elearning_page("attendance")
@@ -7907,7 +9485,7 @@ def elearning_attendance(request, page=None):
 
 @login_required
 def elearning_assessments(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_elearning_page("assessments")
@@ -7925,7 +9503,7 @@ def elearning_assessments(request, page=None):
 
 @login_required
 def elearning_learning_materials(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_elearning_page("learning-materials")
@@ -7943,7 +9521,7 @@ def elearning_learning_materials(request, page=None):
 
 @login_required
 def it_support_learning_page(request, page):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = _it_support_learning_page(page)
@@ -7969,7 +9547,7 @@ def it_support_learning_page(request, page):
 
 @login_required
 def it_support_class_page(request, tool):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = _it_support_class_page(tool)
@@ -8025,7 +9603,7 @@ def _class_teacher_allocation_levels():
 @login_required
 @require_http_methods(["GET", "POST"])
 def class_teacher_allocation(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_learning_page("class-management")
@@ -8115,7 +9693,7 @@ def _class_subject_allocation_levels():
 
 @login_required
 def it_support_timetable_page(request, tool):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     if tool == "manual-allocation":
@@ -8142,7 +9720,7 @@ def it_support_timetable_page(request, tool):
 @login_required
 @require_http_methods(["GET", "POST"])
 def class_subject_allocation(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_timetable_page("class-and-subject-allocation")
@@ -8686,7 +10264,7 @@ def _learning_class_for_id(levels, class_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def timetable_generation(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_timetable_page("timetable-generation")
@@ -8858,7 +10436,7 @@ def _class_to_level_map(levels):
 @login_required
 @require_http_methods(["GET", "POST"])
 def learning_manual_teacher_allocation(request):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     levels, _allocations, _teacher_ids = _timetable_generation_levels()
@@ -9156,6 +10734,9 @@ def update_exam_record(request, exam_id):
     denied, _role = _require_exam_management(request)
     if denied:
         return denied
+    denied = _require_module_action(request, "curriculum.exam_management", "edit")
+    if denied:
+        return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
     exam_name = (request.POST.get("exam_name") or "").strip().upper()
     year_id = (request.POST.get("academic_year_id") or "").strip()
@@ -9343,6 +10924,9 @@ def update_exam_record_deadline(request, exam_id):
 @require_POST
 def delete_exam_record(request, exam_id):
     denied, _role = _require_exam_management(request)
+    if denied:
+        return denied
+    denied = _require_module_action(request, "curriculum.exam_management", "delete")
     if denied:
         return denied
     exam = get_object_or_404(GeneratedExamTimetable, pk=exam_id)
@@ -10718,6 +12302,14 @@ def exam_timetable_generation(request, page=None):
     denied, _role = _require_exam_management(request)
     if denied:
         return denied
+    if request.method == "POST":
+        denied = _require_module_action(request, "curriculum.exam_management", "generate")
+        if denied:
+            return denied
+    else:
+        denied = _require_module_action(request, "curriculum.exam_management", "view")
+        if denied:
+            return denied
     current = page or _it_support_exam_page("exam-timetable-generation")
     levels, allocations, supervisor_ids = _exam_timetable_generation_levels()
     viable_ids = {level.id for level in levels if level.is_viable}
@@ -11155,7 +12747,7 @@ def _timetable_analytics_context():
 
 @login_required
 def timetable_analytics(request, page=None):
-    denied = _require_it_support(request)
+    denied = _require_curriculum_ops(request)
     if denied:
         return denied
     current = page or _it_support_timetable_page("timetable-analytics")
@@ -12357,6 +13949,9 @@ def reset_level_grading(request, level_id):
 @login_required
 @require_POST
 def update_academic_level(request, level_id):
+    denied = _require_module_action(request, "curriculum.learning_management", "edit")
+    if denied:
+        return denied
     level = get_object_or_404(AcademicLevel, pk=level_id)
     form = AcademicLevelForm(request.POST, instance=level)
     class_rows = parse_academic_class_rows(request.POST)
@@ -12377,6 +13972,9 @@ def update_academic_level(request, level_id):
 @login_required
 @require_POST
 def toggle_academic_level_status(request, level_id):
+    denied = _require_module_action(request, "curriculum.learning_management", "suspend")
+    if denied:
+        return denied
     level = get_object_or_404(AcademicLevel, pk=level_id)
     level.status = (
         AcademicLevel.Status.INACTIVE
@@ -12391,6 +13989,9 @@ def toggle_academic_level_status(request, level_id):
 @login_required
 @require_POST
 def delete_academic_level(request, level_id):
+    denied = _require_module_action(request, "curriculum.learning_management", "delete")
+    if denied:
+        return denied
     level = get_object_or_404(AcademicLevel, pk=level_id)
     if level.learning_areas.exists():
         error(request, "This academic level is linked to learning areas and cannot be deleted.")
@@ -12400,7 +14001,6 @@ def delete_academic_level(request, level_id):
         level.delete()
         success(request, "Academic level deleted.")
     return redirect("employees:academic_levels_settings")
-
 
 @login_required
 @require_POST

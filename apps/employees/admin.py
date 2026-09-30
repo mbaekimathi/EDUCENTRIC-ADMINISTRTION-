@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.forms import ModelForm, Select
 
-from .models import Employee, EmployeeRole
+from .models import Employee, EmployeeRole, SchoolActivity, SchoolActivityDay, StudentConductRecord
 
 
 class EmployeeAdminForm(ModelForm):
@@ -127,3 +127,41 @@ class EmployeeAdmin(UserAdmin):
             approval_status=Employee.ApprovalStatus.REJECTED,
             is_active=False,
         )
+
+
+class SchoolActivityDayInline(admin.TabularInline):
+    model = SchoolActivityDay
+    extra = 0
+
+
+@admin.register(SchoolActivity)
+class SchoolActivityAdmin(admin.ModelAdmin):
+    list_display = ("title", "status", "created_by", "created_at")
+    list_filter = ("status",)
+    search_fields = ("title",)
+    filter_horizontal = ("grades",)
+    inlines = (SchoolActivityDayInline,)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(StudentConductRecord)
+class StudentConductRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "student",
+        "behaviour_type",
+        "incident_date",
+        "rating",
+        "witness",
+        "recorded_by",
+        "created_at",
+    )
+    list_filter = ("behaviour_type", "incident_date")
+    search_fields = (
+        "student__first_name",
+        "student__last_name",
+        "student__admission_number",
+        "description",
+        "witness",
+    )
+    readonly_fields = ("created_at", "updated_at")
+    autocomplete_fields = ("student", "recorded_by")

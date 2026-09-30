@@ -461,19 +461,158 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "/workspace/it_support/financial-management/")
         self.assertContains(response, "/workspace/it_support/stock-management/")
         self.assertContains(response, "/workspace/it_support/reports/")
+        self.assertContains(response, "Students")
+        self.assertContains(response, "Teachers")
+        self.assertContains(response, "Other employees")
+        self.assertEqual(response.context["dashboard_counts"]["teachers"], 1)
+        self.assertEqual(response.context["dashboard_counts"]["other_employees"], 1)
+        self.assertEqual(response.context["dashboard_counts"]["students"], 0)
 
-    def test_it_support_dashboard_shows_system_performance_link_and_widget(self):
+    def test_head_and_deputy_have_full_it_support_modules(self):
+        modules = (
+            "human-resource-management",
+            "student-management",
+            "curriculum-management",
+            "financial-management",
+            "stock-management",
+            "reports",
+        )
+        cases = (
+            (
+                Employee.Role.HEAD_OF_INSTITUTION,
+                "head_of_institution",
+                "HOI001",
+                "head@example.com",
+                "+254700000501",
+            ),
+            (
+                Employee.Role.DEPUTY_HEAD_OF_INSTITUTION,
+                "deputy_head_of_institution",
+                "DHOI001",
+                "deputy@example.com",
+                "+254700000502",
+            ),
+        )
+        for role, role_slug, code, email, phone in cases:
+            with self.subTest(role=role):
+                employee = Employee.objects.create_user(
+                    employee_code=code,
+                    password="ReliablePass456",
+                    title=Employee.Title.MR,
+                    first_name="SCHOOL",
+                    last_name="LEADER",
+                    email=email,
+                    phone_number=phone,
+                    role=role,
+                    approval_status=Employee.ApprovalStatus.APPROVED,
+                    is_active=True,
+                )
+                self.client.force_login(employee)
+                dashboard = self.client.get(
+                    reverse("employees:role_dashboard", kwargs={"role": role_slug})
+                )
+                self.assertEqual(dashboard.status_code, 200)
+                self.assertContains(dashboard, "Human resource management")
+                self.assertContains(dashboard, "Student management")
+                self.assertContains(dashboard, "Curriculum management")
+                self.assertContains(dashboard, "Financial management")
+                self.assertContains(dashboard, "Stock management")
+                self.assertContains(dashboard, "Reports")
+                self.assertContains(dashboard, "System performance")
+                self.assertContains(
+                    dashboard, "/workspace/it_support/human-resource-management/"
+                )
+                for slug in modules:
+                    response = self.client.get(
+                        reverse("employees:it_support_module", kwargs={"module": slug})
+                    )
+                    self.assertEqual(response.status_code, 200)
+                performance = self.client.get(
+                    reverse("employees:it_support_system_performance")
+                )
+                self.assertEqual(performance.status_code, 200)
+
+    def test_curriculum_coordinator_dashboard_shows_student_and_curriculum_modules(self):
+        coordinator = Employee.objects.create_user(
+            employee_code="CC1001",
+            password="ReliablePass456",
+            title=Employee.Title.MR,
+            first_name="CHRIS",
+            last_name="COORD",
+            email="coord@example.com",
+            phone_number="+254700000401",
+            role=Employee.Role.CURRICULUM_COORDINATOR,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.client.force_login(coordinator)
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "curriculum_coordinator"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Student management")
+        self.assertContains(response, "Curriculum management")
+        self.assertContains(response, "Reports")
+        self.assertContains(
+            response,
+            "/workspace/curriculum_coordinator/student-management/",
+        )
+        self.assertContains(
+            response,
+            "/workspace/curriculum_coordinator/curriculum-management/",
+        )
+        self.assertContains(
+            response,
+            "/workspace/curriculum_coordinator/reports/",
+        )
+        self.assertNotContains(response, "Human resource management")
+        self.assertNotContains(response, reverse("admissions:admit_student"))
+
+        student_page = self.client.get(
+            reverse(
+                "employees:curriculum_coordinator_module",
+                kwargs={"module": "student-management"},
+            )
+        )
+        self.assertEqual(student_page.status_code, 200)
+        self.assertContains(student_page, reverse("admissions:admit_student"))
+        self.assertContains(student_page, "Admit student")
+
+        curriculum_page = self.client.get(
+            reverse(
+                "employees:curriculum_coordinator_module",
+                kwargs={"module": "curriculum-management"},
+            )
+        )
+        self.assertEqual(curriculum_page.status_code, 200)
+        self.assertContains(curriculum_page, "Learning management")
+        self.assertContains(curriculum_page, "E-learning management")
+        self.assertContains(curriculum_page, "Assessment management")
+
+        reports_page = self.client.get(
+            reverse(
+                "employees:curriculum_coordinator_module",
+                kwargs={"module": "reports"},
+            )
+        )
+        self.assertEqual(reports_page.status_code, 200)
+        self.assertContains(reports_page, "Curriculum reports")
+        self.assertContains(
+            reports_page,
+            reverse("employees:it_support_report_section", kwargs={"section": "curriculum-reports"}),
+        )
+    def test_it_support_dashboard_does_not_embed_system_performance(self):
         response = self.client.get(
             reverse("employees:role_dashboard", kwargs={"role": "it_support"})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "System performance")
         self.assertContains(response, reverse("employees:it_support_system_performance"))
-        self.assertContains(response, reverse("employees:it_support_system_performance_metrics"))
-        self.assertContains(response, "data-system-performance")
-        self.assertContains(response, "Performance trend")
-        self.assertContains(response, "Data volumes")
-        self.assertContains(response, "sys-perf-kpi__trend")
+        self.assertNotContains(response, "data-system-performance")
+        self.assertNotContains(response, "Live analytics")
+        self.assertNotContains(response, "Performance trend")
+        self.assertNotContains(response, "Data volumes")
+        self.assertNotContains(response, "sys-perf-kpi__trend")
+        self.assertNotContains(response, "sys-perf-initial")
 
     def test_it_support_system_performance_page_loads(self):
         response = self.client.get(reverse("employees:it_support_system_performance"))
@@ -579,10 +718,8 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertIn("sessions", event)
         self.assertIn(self.employee.display_name, [row["name"] for row in event["sessions"]["employees"]])
 
-    def test_it_support_dashboard_renders_live_snapshot_values(self):
-        response = self.client.get(
-            reverse("employees:role_dashboard", kwargs={"role": "it_support"})
-        )
+    def test_it_support_system_performance_page_renders_live_snapshot_values(self):
+        response = self.client.get(reverse("employees:it_support_system_performance"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "sys-perf-initial")
         self.assertNotContains(response, "Checking…")
@@ -717,10 +854,23 @@ class ITSupportWorkspaceTests(TestCase):
                 self.assertNotContains(response, "workspace-nav-label")
                 if slug == "learning-reports":
                     self.assertContains(response, "Learning reports")
+                    self.assertContains(response, "Generate learning report")
+                    self.assertContains(response, "Report date")
+                    self.assertContains(response, "Academic level")
+                    self.assertContains(response, "Class")
+                    self.assertContains(response, "Subject")
+                    self.assertContains(response, "Subject attendance")
+                    self.assertContains(response, "Student attendance")
+                    self.assertContains(response, "Lesson plan")
+                    self.assertContains(response, "Outcome")
+                    self.assertContains(response, "Learning timetable")
+                    self.assertContains(response, "Exam timetable")
+                    self.assertContains(response, "Generate report")
                     self.assertNotContains(
                         response,
                         "/workspace/it_support/reports/curriculum-reports/exam-reports/",
                     )
+                    self.assertNotContains(response, "Reports coming soon")
                 if slug == "exam-reports":
                     self.assertContains(response, "Assessment reports")
                     self.assertContains(response, "Generate assessment report")
@@ -1731,6 +1881,21 @@ class ITSupportWorkspaceTests(TestCase):
             response,
             "/workspace/it_support/human-resource-management/employee-management/",
         )
+        self.assertContains(response, "Employee permissions")
+        self.assertContains(
+            response,
+            "/workspace/it_support/human-resource-management/employee-permissions/",
+        )
+        self.assertContains(response, "Active employee")
+        self.assertContains(response, "IT Support")
+        self.assertContains(response, self.employee.display_name)
+        self.assertContains(response, "active employee")
+        self.assertContains(response, "in this category")
+        role_groups = response.context["role_groups"]
+        self.assertTrue(role_groups)
+        self.assertTrue(
+            all(employee.is_active for group in role_groups for employee in group["employees"])
+        )
 
     def test_it_support_dashboard_includes_role_switch(self):
         response = self.client.get(
@@ -2407,6 +2572,159 @@ class EmployeeManagementTests(TestCase):
         self.assertEqual(replacement.employment_number, 4)
 
 
+class EmployeePermissionTests(TestCase):
+    def setUp(self):
+        self.support = Employee.objects.create_user(
+            employee_code="246810",
+            password="ReliablePass456",
+            title=Employee.Title.MS,
+            first_name="KIM",
+            last_name="ITOTE",
+            email="it.support@example.com",
+            phone_number="+254700000111",
+            role=Employee.Role.IT_SUPPORT,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.teacher = Employee.objects.create_user(
+            employee_code="135790",
+            password="ReliablePass456",
+            title=Employee.Title.MR,
+            first_name="ALI",
+            last_name="TEACHER",
+            email="teacher@example.com",
+            phone_number="+254700000222",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.client.force_login(self.support)
+
+    def test_approval_enables_all_role_permissions(self):
+        from apps.employees.models import EmployeeActivityPermission
+        from apps.employees.permissions import activity_codes_for_role
+
+        codes = activity_codes_for_role(Employee.Role.TEACHER)
+        stored = list(
+            EmployeeActivityPermission.objects.filter(
+                employee=self.teacher,
+                role=Employee.Role.TEACHER,
+            ).values_list("activity_code", "is_enabled")
+        )
+        self.assertEqual(len(stored), len(codes))
+        self.assertTrue(all(enabled for _code, enabled in stored))
+        self.assertEqual({code for code, _enabled in stored}, set(codes))
+        self.assertIn("teacher.my_class.view", codes)
+        self.assertIn("teacher.my_class.edit", codes)
+        self.assertIn("teacher.my_class.delete", codes)
+
+    def test_permissions_page_lists_employees(self):
+        response = self.client.get(reverse("employees:it_support_employee_permissions"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Employee permissions")
+        self.assertContains(response, "ALI TEACHER")
+        self.assertContains(response, "Teacher")
+        self.assertContains(response, "IT Support")
+        self.assertContains(
+            response,
+            reverse(
+                "employees:it_support_employee_permission_detail",
+                kwargs={"employee_id": self.teacher.id},
+            ),
+        )
+        self.assertNotContains(response, "Create / register")
+
+    def test_permission_detail_shows_module_action_toggles(self):
+        response = self.client.get(
+            reverse(
+                "employees:it_support_employee_permission_detail",
+                kwargs={"employee_id": self.teacher.id},
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ALI TEACHER")
+        self.assertContains(response, "My class")
+        self.assertContains(response, "View")
+        self.assertContains(response, "Edit")
+        self.assertContains(response, "Delete")
+        self.assertContains(response, "Create / register")
+        self.assertContains(response, "Teacher workspace")
+        self.assertContains(response, "Back to employees")
+        self.assertIn("module_groups", response.context)
+        self.assertNotIn("role_groups", response.context)
+
+    def test_multi_role_employee_permissions_are_merged_on_one_page(self):
+        self.teacher.set_roles(
+            [Employee.Role.TEACHER, Employee.Role.CURRICULUM_COORDINATOR],
+            primary=Employee.Role.TEACHER,
+        )
+        response = self.client.get(
+            reverse(
+                "employees:it_support_employee_permission_detail",
+                kwargs={"employee_id": self.teacher.id},
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Teacher")
+        self.assertContains(response, "Curriculum Coordinator")
+        self.assertContains(response, "My class")
+        self.assertContains(response, "Student management")
+        module_codes = [group["module_code"] for group in response.context["module_groups"]]
+        self.assertEqual(len(module_codes), len(set(module_codes)))
+        self.assertIn("teacher.my_class", module_codes)
+        self.assertIn("module.student_management", module_codes)
+        self.assertEqual(len(response.context["employee_roles"]), 2)
+    def test_can_toggle_employee_activity_permission(self):
+        from apps.employees.models import EmployeeActivityPermission
+        from apps.employees.permissions import employee_has_activity_permission
+
+        response = self.client.post(
+            reverse(
+                "employees:toggle_workspace_employee_permission",
+                kwargs={"employee_id": self.teacher.id},
+            ),
+            {
+                "role": Employee.Role.TEACHER,
+                "activity_code": "teacher.my_class.view",
+                "enabled": "0",
+            },
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["enabled"])
+        row = EmployeeActivityPermission.objects.get(
+            employee=self.teacher,
+            role=Employee.Role.TEACHER,
+            activity_code="teacher.my_class.view",
+        )
+        self.assertFalse(row.is_enabled)
+        self.assertFalse(
+            employee_has_activity_permission(
+                self.teacher,
+                "teacher.my_class.view",
+                role=Employee.Role.TEACHER,
+            )
+        )
+
+    def test_restricted_teacher_activity_is_blocked(self):
+        from apps.employees.permissions import set_employee_activity_permission
+
+        set_employee_activity_permission(
+            self.teacher,
+            Employee.Role.TEACHER,
+            "teacher.my_class.view",
+            False,
+        )
+        self.client.force_login(self.teacher)
+        response = self.client.get(reverse("employees:teacher_my_class"))
+        self.assertRedirects(
+            response,
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"}),
+        )
+
+
 class StudentManagementTests(TestCase):
     def setUp(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -2701,6 +3019,57 @@ class StudentManagementTests(TestCase):
         self.assertEqual(self.student.enrollment_status, Student.EnrollmentStatus.TRANSFER)
         self.assertEqual(self.student.clearance_reason, Student.ClearanceReason.TRANSFER)
         self.assertFalse(self.student.is_active)
+
+    def test_student_conduct_registers_good_and_bad_behaviour(self):
+        from apps.employees.models import StudentConductRecord
+
+        self.student.is_active = True
+        self.student.save(update_fields=["is_active"])
+
+        page = self.client.get(reverse("employees:it_support_student_conduct"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Student conduct")
+        self.assertContains(page, "Register student behaviour")
+
+        good = self.client.post(
+            reverse("employees:it_support_student_conduct"),
+            {
+                "student": self.student.id,
+                "behaviour_type": StudentConductRecord.BehaviourType.GOOD,
+                "description": "Helped a classmate with reading",
+                "incident_date": "2026-09-28",
+                "witness": "class teacher",
+                "consequence_or_reward": "Certificate of recognition",
+                "rating": "4",
+            },
+        )
+        self.assertRedirects(good, reverse("employees:it_support_student_conduct"))
+        record = StudentConductRecord.objects.get(student=self.student)
+        self.assertEqual(record.behaviour_type, StudentConductRecord.BehaviourType.GOOD)
+        self.assertEqual(record.witness, "CLASS TEACHER")
+        self.assertEqual(record.rating, 4)
+        self.assertEqual(record.recorded_by_id, self.support.id)
+
+        bad = self.client.post(
+            reverse("employees:it_support_student_conduct"),
+            {
+                "student": self.student.id,
+                "behaviour_type": StudentConductRecord.BehaviourType.BAD,
+                "description": "Disrupted class during lesson",
+                "incident_date": "2026-09-29",
+                "witness": "deputy principal",
+                "consequence_or_reward": "Warning letter",
+                "rating": "3",
+            },
+        )
+        self.assertRedirects(bad, reverse("employees:it_support_student_conduct"))
+        self.assertEqual(StudentConductRecord.objects.filter(student=self.student).count(), 2)
+
+        delete = self.client.post(
+            reverse("employees:delete_student_conduct", kwargs={"record_id": record.id}),
+        )
+        self.assertRedirects(delete, reverse("employees:it_support_student_conduct"))
+        self.assertFalse(StudentConductRecord.objects.filter(pk=record.id).exists())
 
     def test_advance_academic_level_lists_classes_and_promotes_selected_students(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -5412,9 +5781,12 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(learning_reports, "Academic level")
         self.assertContains(learning_reports, "Class")
         self.assertContains(learning_reports, "Subject")
-        self.assertContains(learning_reports, "Attendance")
+        self.assertContains(learning_reports, "Subject attendance")
+        self.assertContains(learning_reports, "Student attendance")
         self.assertContains(learning_reports, "Lesson plan")
         self.assertContains(learning_reports, "Outcome")
+        self.assertContains(learning_reports, "Learning timetable")
+        self.assertContains(learning_reports, "Exam timetable")
         self.assertContains(learning_reports, "Generate report")
         self.assertContains(learning_reports, self.level.name)
         self.assertNotContains(learning_reports, "Print report")
@@ -5440,6 +5812,7 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(generated, "21 Aug 2026")
         self.assertContains(generated, "elr-plan-card")
         self.assertNotContains(generated, "Open →")
+        self.assertNotContains(generated, 'aria-label="Subject attendance"')
         self.assertNotContains(generated, 'aria-label="Subject outcomes"')
 
         attendance_report = self.client.get(
@@ -5447,15 +5820,29 @@ class TeacherExamRecordsTests(TestCase):
             {
                 "generate": "1",
                 "report_date": "2026-08-21",
-                "report_type": "attendance",
+                "report_type": "subject_attendance",
                 "level_id": str(self.level.id),
                 "class_id": str(self.academic_class.id),
                 "subject_id": str(self.subject.id),
             },
         )
         self.assertEqual(attendance_report.status_code, 200)
-        self.assertContains(attendance_report, "Attendance · 21 Aug 2026")
+        self.assertContains(attendance_report, "Subject attendance · 21 Aug 2026")
         self.assertContains(attendance_report, "Print report")
+
+        student_attendance = self.client.get(
+            reverse("employees:teacher_learning_reports"),
+            {
+                "generate": "1",
+                "report_date": "2026-08-21",
+                "report_type": "student_attendance",
+                "level_id": str(self.level.id),
+                "class_id": str(self.academic_class.id),
+            },
+        )
+        self.assertEqual(student_attendance.status_code, 200)
+        self.assertContains(student_attendance, "Student attendance · 21 Aug 2026")
+        self.assertNotContains(student_attendance, "Lesson plans")
 
         outcome_report = self.client.get(
             reverse("employees:teacher_learning_reports"),
@@ -5471,6 +5858,62 @@ class TeacherExamRecordsTests(TestCase):
         self.assertEqual(outcome_report.status_code, 200)
         self.assertContains(outcome_report, "Subject outcomes")
         self.assertContains(outcome_report, self.subject.name)
+
+        generation = GeneratedLearningTimetable.objects.create()
+        generation.academic_levels.add(self.level)
+        GeneratedLearningLesson.objects.create(
+            generation=generation,
+            academic_level=self.level,
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            teacher=self.teacher,
+            weekday="MON",
+            period_name="Period 1",
+            start_time=time(8, 0),
+            end_time=time(8, 40),
+        )
+        learning_timetable = self.client.get(
+            reverse("employees:teacher_learning_reports"),
+            {
+                "generate": "1",
+                "report_type": "learning_timetable",
+                "class_ids": [str(self.academic_class.id)],
+            },
+        )
+        self.assertEqual(learning_timetable.status_code, 200)
+        self.assertContains(learning_timetable, "Learning timetable")
+        self.assertContains(learning_timetable, self.academic_class.name)
+        self.assertContains(learning_timetable, "MATH")
+        self.assertContains(learning_timetable, "Print report")
+        self.assertNotContains(learning_timetable, "Lesson plans")
+
+        GeneratedExamSitting.objects.create(
+            generation=self.exam,
+            academic_level=self.level,
+            academic_class=self.academic_class,
+            learning_area=self.subject,
+            exam_date=date(2026, 8, 20),
+            weekday="WED",
+            period_name="Paper 1",
+            start_time=time(9, 0),
+            end_time=time(10, 30),
+            supervisor=self.teacher,
+        )
+        exam_timetable = self.client.get(
+            reverse("employees:teacher_learning_reports"),
+            {
+                "generate": "1",
+                "report_type": "exam_timetable",
+                "exam_id": str(self.exam.id),
+                "class_ids": [str(self.academic_class.id)],
+            },
+        )
+        self.assertEqual(exam_timetable.status_code, 200)
+        self.assertContains(exam_timetable, "Exam timetable")
+        self.assertContains(exam_timetable, self.academic_class.name)
+        self.assertContains(exam_timetable, "MATH")
+        self.assertContains(exam_timetable, "Print report")
+        self.assertNotContains(exam_timetable, "Subject outcomes")
 
     def test_my_class_link_unlocks_when_teacher_is_class_teacher(self):
         self.academic_class.class_teacher = self.teacher
@@ -5488,8 +5931,8 @@ class TeacherExamRecordsTests(TestCase):
         self.assertEqual(my_class.status_code, 200)
         self.assertContains(my_class, "Grade 1 East")
         self.assertContains(my_class, "Register class attendance")
-        self.assertContains(my_class, "Students class attendance")
-        self.assertContains(my_class, "Students discipline")
+        self.assertContains(my_class, "Students subject attendance")
+        self.assertContains(my_class, "Student conduct")
         self.assertContains(my_class, "Student books")
         self.assertContains(
             my_class,
@@ -5517,21 +5960,22 @@ class TeacherExamRecordsTests(TestCase):
         )
         self.assertEqual(register.status_code, 200)
         self.assertContains(register, "Register class attendance")
-        self.assertContains(register, "Students class attendance")
-        self.assertContains(register, "Subject attendance")
+        self.assertContains(register, "Students subject attendance")
         self.assertContains(register, "workspace-nav-label")
-        self.assertContains(register, "Morning")
-        self.assertContains(register, "Afternoon")
-        self.assertContains(register, "Evening")
+        self.assertContains(register, "AM")
+        self.assertContains(register, "PM")
+        self.assertContains(register, "Eve")
         self.assertContains(register, 'type="date"')
-        self.assertContains(register, "Select date")
-        self.assertContains(register, "Open calendar")
-        self.assertContains(register, "Attendance day")
+        self.assertContains(register, "Date")
+        self.assertContains(register, "Save")
+        self.assertNotContains(register, "Open calendar")
+        self.assertNotContains(register, "Attendance day")
+        self.assertNotContains(register, "data-day-today")
         self.assertContains(
             register,
             reverse(
-                "employees:teacher_subject_attendance_class",
-                kwargs={"class_id": self.academic_class.id},
+                "employees:teacher_my_class_page",
+                kwargs={"tool": "students-class-attendance"},
             ),
         )
         self.assertNotContains(
@@ -5556,13 +6000,14 @@ class TeacherExamRecordsTests(TestCase):
             )
         )
         self.assertEqual(analytics.status_code, 200)
-        self.assertContains(analytics, "Students class attendance")
+        self.assertContains(analytics, "Students subject attendance")
         self.assertContains(analytics, "Attendance filter")
         self.assertContains(analytics, "Filter by")
-        self.assertContains(analytics, "Morning")
-        self.assertContains(analytics, "Afternoon")
-        self.assertContains(analytics, "Evening")
-        self.assertContains(analytics, "Register attendance")
+        self.assertContains(analytics, "MATH")
+        self.assertNotContains(analytics, ">Morning<")
+        self.assertNotContains(analytics, ">Afternoon<")
+        self.assertNotContains(analytics, ">Evening<")
+        self.assertNotContains(analytics, "Register attendance")
 
     def test_class_teacher_can_save_morning_afternoon_evening_attendance(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -5688,6 +6133,19 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(response, "Term")
         self.assertContains(response, "Academic year")
         self.assertNotContains(response, "Your subjects")
+
+        my_class_overview = self.client.get(
+            reverse(
+                "employees:teacher_my_class_page",
+                kwargs={"tool": "students-class-attendance"},
+            )
+            + "?date=2026-08-21"
+        )
+        self.assertEqual(my_class_overview.status_code, 200)
+        self.assertContains(my_class_overview, "Students subject attendance")
+        self.assertContains(my_class_overview, "CARA LEARNER")
+        self.assertContains(my_class_overview, "MATH")
+        self.assertContains(my_class_overview, "Present")
 
         term_view = self.client.get(
             reverse(
@@ -6249,7 +6707,7 @@ class TeacherExamRecordsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your subjects to teach")
-        self.assertContains(response, "Subjects to teach")
+        self.assertNotContains(response, "Classes to mark")
         self.assertContains(response, "Mathematics")
         self.assertContains(response, "MATH")
         self.assertContains(response, "All classes analytics")
@@ -6269,6 +6727,63 @@ class TeacherExamRecordsTests(TestCase):
         self.assertNotContains(response, "ENG2")
         self.assertNotContains(response, "Select a class from the sidebar")
 
+    def test_multiple_subjects_in_one_class_share_one_card_and_mark_columns(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        science = LearningArea.objects.create(name="Science", code="SCI")
+        science.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=science,
+            teacher=self.teacher,
+        )
+        parent = ParentGuardian.objects.create(
+            full_name="PAT MULTI",
+            relationship_to_student="MOTHER",
+            phone_number="+254700001111",
+            email="pat.multi@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1111",
+            class_group="G1E",
+            assessment_number="A1111",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+
+        overview = self.client.get(
+            reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": self.exam.id})
+        )
+        self.assertEqual(overview.status_code, 200)
+        html = overview.content.decode()
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+        self.assertContains(overview, "MATH")
+        self.assertContains(overview, "SCI")
+        self.assertContains(overview, "Mathematics, Science")
+        self.assertContains(overview, "Grade 1 East · MATH · SCI")
+        self.assertEqual(html.count("teacher-exam-subject-card"), 1)
+        self.assertIn(class_url, html)
+
+        marks = self.client.get(class_url)
+        self.assertEqual(marks.status_code, 200)
+        self.assertContains(marks, "MATH")
+        self.assertContains(marks, "SCI")
+        self.assertContains(marks, f"mark_{student.id}_{self.subject.id}")
+        self.assertContains(marks, f"mark_{student.id}_{science.id}")
+        self.assertContains(marks, "data-teacher-marks")
+        # One marks table for both standalone subjects (not a separate table each).
+        self.assertEqual(marks.content.decode().count("marks-card-table"), 1)
     def test_teacher_exam_analytics_lists_allocated_classes_for_selection(self):
         other_stream = AcademicClass.objects.create(
             academic_level=self.level,

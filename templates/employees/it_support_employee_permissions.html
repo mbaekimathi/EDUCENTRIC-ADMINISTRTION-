@@ -1,0 +1,140 @@
+{% extends "layouts/workspace.html" %}
+{% load static %}
+{% block title %}Employee permissions | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Human resource management{% endblock %}
+{% block header_title %}Employee permissions{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/human_resource_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page employee-mgmt-page employee-permissions-page">
+  {% include "employees/includes/nav/human_resource.html" %}
+
+  <div class="teacher-page-bar" aria-label="Employee permissions overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ employee_count }}</strong>
+        <span>Active employee{{ employee_count|pluralize }}</span>
+      </div>
+    </div>
+    <div class="teacher-page-bar-actions">
+      {% include "employees/includes/student_sort_toggle.html" with sort_code_label="Employee code" %}
+    </div>
+  </div>
+
+  <p class="employee-permissions-lead">
+    Select an employee to manage activity permissions for their assigned roles.
+    Approving an employee enables every permission for those roles.
+  </p>
+
+  {% if employees %}
+  <div class="employee-mgmt-controls" data-employee-controls>
+    <label class="employee-mgmt-search">
+      <span class="sr-only">Search employees</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm7.03 10.47 3.5 3.5-1.06 1.06-3.5-3.5 1.06-1.06z"/></svg>
+      <input type="search" placeholder="Search by name, employment number, employee code, or role" data-employee-search autocomplete="off">
+    </label>
+  </div>
+
+  <div class="employee-directory" data-employee-directory data-student-sortable>
+    <article class="employee-role-card">
+      <div class="employee-table-wrap">
+        <table class="employee-table employee-table-directory employee-table-permission-list">
+          <colgroup>
+            <col class="col-employee">
+            <col class="col-code">
+            <col class="col-roles">
+            <col class="col-access">
+            <col class="col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Employee code</th>
+              <th>Roles</th>
+              <th>Permissions</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody data-student-sort-body>
+            {% for row in employees %}
+            <tr
+              data-employee-row
+              data-student-row
+              data-sort-name="{{ row.employee.first_name }} {{ row.employee.last_name }}"
+              data-sort-code="{{ row.employee.employment_number }}"
+              data-search="{{ row.employee.display_name }} {{ row.employee.employee_code }} {{ row.employee.employment_number }} {% for label in row.role_labels %}{{ label }} {% endfor %}"
+            >
+              <td data-label="Employee">
+                <a class="employee-permission-open" href="{% url 'employees:it_support_employee_permission_detail' row.employee.id %}">
+                  <div class="employee-name-cell">
+                    {% if row.employee.profile_image %}
+                    <img class="employee-avatar employee-avatar-photo" src="{{ row.employee.profile_image.url }}" alt="">
+                    {% else %}
+                    <span class="employee-avatar" aria-hidden="true">{{ row.employee.first_name|slice:":1" }}{{ row.employee.last_name|slice:":1" }}</span>
+                    {% endif %}
+                    <div class="employee-name-copy">
+                      <strong class="is-uppercase">{{ row.employee.display_name }}</strong>
+                      <span>{{ row.employee.email }}</span>
+                    </div>
+                  </div>
+                </a>
+              </td>
+              <td data-label="Employee code"><code class="employee-code">{{ row.employee.employment_number }}</code></td>
+              <td data-label="Roles">
+                <span class="employee-role-chips">
+                  {% for label in row.role_labels %}
+                  <span class="employee-role-chip">{{ label }}</span>
+                  {% endfor %}
+                </span>
+              </td>
+              <td data-label="Permissions">
+                <span class="status-pill is-uppercase {% if row.enabled_count == row.activity_count %}is-active{% elif row.enabled_count %}is-warn{% else %}is-inactive{% endif %}">
+                  {{ row.enabled_count }}/{{ row.activity_count }} on
+                </span>
+              </td>
+              <td data-label="Open">
+                <a class="record-action" href="{% url 'employees:it_support_employee_permission_detail' row.employee.id %}">Manage</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+    <p class="employee-mgmt-empty" data-employee-empty hidden>No employees match your search.</p>
+  </div>
+  {% else %}
+  <div class="employee-mgmt-blank">
+    <strong>No active employees</strong>
+    <p>Approve staff to manage their role activity permissions here.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
+<script>
+(() => {
+  const searchInput = document.querySelector("[data-employee-search]");
+  const directory = document.querySelector("[data-employee-directory]");
+  const emptyState = document.querySelector("[data-employee-empty]");
+  if (!searchInput || !directory) return;
+  const rows = Array.from(directory.querySelectorAll("[data-employee-row]"));
+  searchInput.addEventListener("input", () => {
+    const query = (searchInput.value || "").trim().toLowerCase();
+    let visible = 0;
+    rows.forEach((row) => {
+      const haystack = (row.getAttribute("data-search") || "").toLowerCase();
+      const match = !query || haystack.includes(query);
+      row.hidden = !match;
+      if (match) visible += 1;
+    });
+    if (emptyState) emptyState.hidden = visible > 0;
+  });
+})();
+</script>
+{% endblock %}

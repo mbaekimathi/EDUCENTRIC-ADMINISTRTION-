@@ -1,0 +1,259 @@
+{% extends "layouts/workspace.html" %}
+{% load static %}
+{% block title %}Student conduct | Edu-Centric{% endblock %}
+{% block header_eyebrow %}My class{% endblock %}
+{% block header_title %}Student conduct{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/teacher_my_class_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{{ conduct_local_students|json_script:"conduct-local-students" }}
+<div class="exam-tool-page student-conduct-page" data-conduct-local-search>
+  {% include "employees/includes/nav/teacher_my_class.html" %}
+
+  <section class="pending-admit-hero student-conduct-hero" aria-label="Student conduct overview">
+    <div class="pending-admit-hero-copy">
+      <p class="pending-admit-kicker">My class · Behaviour register</p>
+      <h2>Track good and bad conduct</h2>
+      <p>Register behaviour for students in your class with a witness, date, rating, and reward or repercussion.</p>
+    </div>
+    <div class="pending-admit-hero-aside">
+      <div class="pending-admit-stat" aria-label="{{ conduct_total }} total records">
+        <strong>{{ conduct_total }}</strong>
+        <span>Total</span>
+      </div>
+      <div class="pending-admit-stat is-good" aria-label="{{ conduct_good_count }} good records">
+        <strong>{{ conduct_good_count }}</strong>
+        <span>Good</span>
+      </div>
+      <div class="pending-admit-stat is-bad" aria-label="{{ conduct_bad_count }} bad records">
+        <strong>{{ conduct_bad_count }}</strong>
+        <span>Bad</span>
+      </div>
+      <div class="pending-admit-hero-actions">
+        <button type="button" class="primary-button" data-open-modal="register-conduct">
+          Register conduct
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="pending-admit-panel student-conduct-panel" aria-label="Registered conduct records">
+    <header class="pending-admit-panel-head">
+      <div>
+        <h3>Class conduct records</h3>
+        <p>
+          {% if search_query %}
+          Showing matches for “{{ search_query }}”
+          {% else %}
+          {{ conduct_records|length }} recent record{{ conduct_records|length|pluralize }} for your class{{ class_count|pluralize }}
+          {% endif %}
+        </p>
+      </div>
+    </header>
+
+    <form class="student-conduct-filter" method="get" action="{{ conduct_list_url }}">
+      <label class="visually-hidden" for="conduct-record-search">Search records</label>
+      <div class="student-conduct-filter-row">
+        <input
+          id="conduct-record-search"
+          type="search"
+          name="q"
+          placeholder="Search by student, admission, witness, or description"
+          value="{{ search_query }}"
+        >
+        <button type="submit" class="primary-button">Search</button>
+        {% if search_query %}
+        <a class="ghost-button" href="{{ conduct_list_url }}">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if conduct_records %}
+    <div class="student-conduct-cards">
+      {% for record in conduct_records %}
+      <article class="student-conduct-card is-{{ record.behaviour_type|lower }}">
+        <div class="student-conduct-card-identity">
+          {% if record.student.profile_image %}
+          <img class="pending-admit-avatar" src="{{ record.student.profile_image.url }}" alt="" loading="lazy" decoding="async">
+          {% else %}
+          <span class="pending-admit-avatar is-fallback" aria-hidden="true">{{ record.student.first_name|slice:":1" }}{{ record.student.last_name|slice:":1" }}</span>
+          {% endif %}
+          <div class="student-conduct-card-copy">
+            <div class="student-conduct-card-top">
+              <h4 class="is-uppercase">{{ record.student.display_name }}</h4>
+              <span class="status-pill is-uppercase {% if record.behaviour_type == 'GOOD' %}is-active{% else %}is-danger{% endif %}">
+                {{ record.get_behaviour_type_display }}
+              </span>
+            </div>
+            <p class="student-conduct-placement">
+              {{ record.student.get_academic_level_display }}{% if record.student.class_group %} · {{ record.student.class_group }}{% endif %}
+              {% if record.student.admission_number %} · Adm {{ record.student.admission_number }}{% endif %}
+            </p>
+          </div>
+        </div>
+
+        <p class="student-conduct-description">{{ record.description }}</p>
+
+        <div class="student-conduct-meta">
+          <span><em>Date</em>{{ record.incident_date|date:"j M Y" }}</span>
+          <span><em>Witness</em>{{ record.witness }}</span>
+          <span><em>{{ record.outcome_label }}</em>{{ record.consequence_or_reward }}</span>
+          {% if record.recorded_by %}
+          <span><em>Recorded by</em>{{ record.recorded_by.get_full_name|default:record.recorded_by.employee_code }}</span>
+          {% endif %}
+        </div>
+
+        <div class="student-conduct-card-foot">
+          <div class="student-conduct-score" aria-label="{{ record.rating_label }} {{ record.rating }} out of 5">
+            <span class="student-conduct-score-label">{{ record.rating_label }}</span>
+            <div class="student-conduct-score-bars" aria-hidden="true">
+              {% for n in "12345" %}
+              <span class="student-conduct-score-bar{% if forloop.counter <= record.rating %} is-filled{% endif %}"></span>
+              {% endfor %}
+            </div>
+            <strong>{{ record.rating }}/5</strong>
+          </div>
+          <form method="post" action="{% url conduct_delete_url_name record.id %}" onsubmit="return confirm('Remove this conduct record for {{ record.student.display_name|escapejs }}?');">
+            {% csrf_token %}
+            <button type="submit" class="ghost-button is-danger">Remove</button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="student-conduct-empty">
+      <span class="student-conduct-empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM5 17l.8 2.2L8 20l-2.2.8L5 23l-.8-2.2L2 20l2.2-.8L5 17zM18.5 14l.7 1.8L21 16.5l-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <h3>{% if search_query %}No matches{% else %}No conduct records yet{% endif %}</h3>
+      <p>
+        {% if search_query %}
+        Nothing matched “{{ search_query }}”. Try another name, admission number, or witness.
+        {% else %}
+        Use <strong>Register conduct</strong> to log behaviour for a student in your class.
+        {% endif %}
+      </p>
+      {% if not search_query %}
+      <button type="button" class="primary-button" data-open-modal="register-conduct">Register conduct</button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<div
+  class="app-modal{% if open_register_modal %} is-open{% endif %}"
+  id="register-conduct-modal"
+  data-modal="register-conduct"
+  {% if not open_register_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog app-modal-dialog-wide student-conduct-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="register-conduct-title"
+  >
+    <div class="app-modal-header">
+      <div>
+        <p class="student-conduct-modal-kicker">My class · Behaviour register</p>
+        <h2 id="register-conduct-title">Register student behaviour</h2>
+      </div>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+
+    <form method="post" class="app-modal-form student-conduct-form" data-student-conduct-form novalidate>
+      {% csrf_token %}
+      {{ form.student }}
+
+      <div class="school-activity-form-body">
+        <section class="schedule-form-section">
+          <h3>1. Student</h3>
+          <div class="field">
+            <label for="conduct-student-search">Find student in your class <span class="required">*</span></label>
+            <input
+              id="conduct-student-search"
+              type="search"
+              class="student-conduct-search-input"
+              placeholder="Search your class by name or admission number"
+              autocomplete="off"
+              data-conduct-student-search
+              value="{% if selected_student %}{{ selected_student.display_name }}{% endif %}"
+            >
+            <div class="student-conduct-search-results" data-conduct-student-results hidden role="listbox"></div>
+            <div class="student-conduct-selected" data-conduct-student-selected {% if not selected_student %}hidden{% endif %}>
+              <strong data-conduct-student-name>{% if selected_student %}{{ selected_student.display_name }}{% endif %}</strong>
+              <span data-conduct-student-meta>
+                {% if selected_student %}
+                  {% if selected_student.admission_number %}Adm {{ selected_student.admission_number }} · {% endif %}
+                  {{ selected_student.get_academic_level_display }}{% if selected_student.class_group %} · {{ selected_student.class_group }}{% endif %}
+                {% endif %}
+              </span>
+              <button type="button" class="ghost-button" data-conduct-student-clear>Change</button>
+            </div>
+            {% for error in form.student.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>2. Behaviour type</h3>
+          <div class="field">
+            <span class="field-label">Good or bad <span class="required">*</span></span>
+            <div class="choice-chips is-pills student-conduct-type">{{ form.behaviour_type }}</div>
+            {% for error in form.behaviour_type.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>3. Incident details</h3>
+          <div class="form-grid form-grid-2">
+            <div class="field span-two">
+              <label for="{{ form.description.id_for_label }}">Description <span class="required">*</span></label>
+              {{ form.description }}
+              {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field">
+              <label for="{{ form.incident_date.id_for_label }}">Date when happened <span class="required">*</span></label>
+              {{ form.incident_date }}
+              {% for error in form.incident_date.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field">
+              <label for="{{ form.witness.id_for_label }}">Witness <span class="required">*</span></label>
+              {{ form.witness }}
+              {% for error in form.witness.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field span-two">
+              <label for="{{ form.consequence_or_reward.id_for_label }}" data-conduct-outcome-label>Repercussion or reward <span class="required">*</span></label>
+              {{ form.consequence_or_reward }}
+              {% for error in form.consequence_or_reward.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>4. Rating</h3>
+          <div class="field">
+            <span class="field-label" data-conduct-rating-label>Severity / merit (1–5) <span class="required">*</span></span>
+            <div class="choice-chips is-pills student-conduct-rating">{{ form.rating }}</div>
+            {% for error in form.rating.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            <p class="school-activity-hint" data-conduct-rating-hint>For bad behaviour rate severity. For good behaviour rate merit.</p>
+          </div>
+        </section>
+      </div>
+
+      <div class="app-modal-actions school-activity-form-foot">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">Register conduct</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/student-conduct.js' %}?v=20260930sc4" defer></script>
+{% endblock %}

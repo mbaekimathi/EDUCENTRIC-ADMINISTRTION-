@@ -288,21 +288,22 @@
     {% for sheet in report.matrix_sheets %}
     <article class="student-report-card exam-matrix-sheet" aria-label="{{ sheet.exam_title }}">
       <div class="src-sheet">
-        <header class="src-dual-head" aria-label="Mark sheet letterhead">
-          <section class="src-dual-school" aria-label="School letterhead">
-            {% if report.school_profile and report.school_profile.school_logo %}
-            <img class="src-dual-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
-            {% else %}
-            <span class="src-dual-logo src-dual-logo-mark" aria-hidden="true">
-              {% if report.school_profile %}
-                {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+        <header class="src-dual-head exam-matrix-letterhead" aria-label="Mark sheet letterhead">
+          <section class="src-dual-school exam-matrix-list-brand" aria-label="School letterhead">
+            <div class="exam-matrix-list-logo-wrap">
+              {% if report.school_profile and report.school_profile.school_logo %}
+              <img class="src-dual-logo exam-matrix-list-logo" src="{{ report.school_profile.school_logo.url }}" alt="">
               {% else %}
-                E
+              <span class="src-dual-logo src-dual-logo-mark exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
+                {% if report.school_profile %}
+                  {{ report.school_profile.display_name|default:report.school_profile.official_name|slice:":1"|upper }}
+                {% else %}
+                  E
+                {% endif %}
+              </span>
               {% endif %}
-            </span>
-            {% endif %}
-            <div class="src-dual-copy">
-              <p class="src-dual-kicker">Academic level mark sheet</p>
+            </div>
+            <div class="src-dual-copy exam-matrix-list-titles">
               <h1 class="is-uppercase">
                 {% if report.school_profile %}
                   {{ report.school_profile.official_name|default:report.school_profile.display_name }}
@@ -311,24 +312,32 @@
                 {% endif %}
               </h1>
               {% if report.school_profile and report.school_profile.motto %}
-              <p class="src-dual-motto">&ldquo;{{ report.school_profile.motto }}&rdquo;</p>
+              <p class="src-dual-motto exam-matrix-list-motto">&ldquo;{{ report.school_profile.motto }}&rdquo;</p>
               {% endif %}
               {% if report.school_profile %}
                 {% if report.school_profile.physical_address or report.school_profile.main_phone or report.school_profile.general_email %}
-                <p class="src-dual-contact">
+                <p class="src-dual-contact exam-matrix-list-contact">
                   {% if report.school_profile.physical_address %}{{ report.school_profile.physical_address }}{% endif %}
                   {% if report.school_profile.main_phone %}{% if report.school_profile.physical_address %} &middot; {% endif %}{{ report.school_profile.main_phone }}{% endif %}
                   {% if report.school_profile.general_email %}{% if report.school_profile.physical_address or report.school_profile.main_phone %} &middot; {% endif %}{{ report.school_profile.general_email }}{% endif %}
                 </p>
                 {% endif %}
               {% endif %}
-              <p class="src-dual-school-meta">
-                <span>{{ sheet.exam_title }}{% if sheet.academic_term %} &middot; {{ sheet.academic_term.name }}{% endif %}</span>
-                <span>{% if sheet.scope_label %}{{ sheet.scope_label }}{% elif sheet.level_name %}{{ sheet.level_name }} &middot; whole grade{% elif report.level %}{{ report.level.name }}{% if report.selected_class %} &middot; {{ report.selected_class.display_label }}{% else %} &middot; whole grade{% endif %}{% else %}All academic levels{% endif %}</span>
-                <span>{{ sheet.student_count }} student{{ sheet.student_count|pluralize }} &middot; {{ sheet.subject_count }} subject{{ sheet.subject_count|pluralize }}</span>
-              </p>
             </div>
+            <div class="exam-matrix-list-brand-spacer" aria-hidden="true"></div>
           </section>
+          <p class="src-dual-school-meta exam-matrix-list-meta">
+            <span>{{ sheet.exam_title|default:report.exam_title }}</span>
+            <span>
+              {% if sheet.scope_label %}
+                {{ sheet.scope_label }}
+              {% elif report.selected_class %}
+                {{ report.selected_class.display_label }}
+              {% elif report.scope_label %}
+                {{ report.scope_label }}
+              {% endif %}
+            </span>
+          </p>
         </header>
         <section class="src-results" aria-label="Assessment results">
           <p class="src-section-label">Assessment results</p>
@@ -385,9 +394,13 @@
         </div>
         <p class="exam-matrix-list-meta">
           <span>{{ report.exam_title }}</span>
-          <span>{{ report.scope_label }}</span>
-          <span>{{ report.student_count }} student{{ report.student_count|pluralize }}</span>
-          <span>{{ report.subject_count }} subject{{ report.subject_count|pluralize }}</span>
+          <span>
+            {% if report.scope_label %}
+              {{ report.scope_label }}
+            {% elif report.selected_class %}
+              {{ report.selected_class.display_label }}
+            {% endif %}
+          </span>
         </p>
       </header>
       {% for sheet in report.analytics_sheets %}
@@ -421,7 +434,7 @@
               {% for subject in sheet.subjects %}
               <th class="exam-analytics-subject" title="{% if subject.component_codes %}{{ subject.name }} ({{ subject.component_codes }}) Â· mean and grade{% else %}{{ subject.name }} Â· mean and grade{% endif %}">{{ subject.code }}</th>
               {% endfor %}
-              <th class="exam-matrix-summary-col" title="Total score">Total</th>
+              <th class="exam-matrix-summary-col exam-matrix-sticky-total" title="Total score">Total</th>
               <th class="exam-matrix-summary-col" title="Mean score">Mean</th>
               <th class="exam-matrix-summary-col exam-matrix-grade-col" title="Overall grade">Grade</th>
             </tr>
@@ -453,7 +466,7 @@
                 </span>
               </td>
               {% endfor %}
-              <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-sticky-total exam-analytics-mark">
                 {% if row.total_score != None %}<strong>{{ row.total_score }}</strong>{% else %}<span class="exam-matrix-empty">&mdash;</span>{% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
@@ -488,7 +501,7 @@
                 </span>
               </td>
               {% endfor %}
-              <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
+              <td class="exam-matrix-mark exam-matrix-summary-col exam-matrix-sticky-total exam-analytics-mark">
                 {% if sheet.overall_total != None %}<strong>{{ sheet.overall_total }}</strong>{% else %}<span class="exam-matrix-empty">&mdash;</span>{% endif %}
               </td>
               <td class="exam-matrix-mark exam-matrix-summary-col exam-analytics-mark">
@@ -1487,7 +1500,7 @@
   if (!printButtons.length && !exportPrintButtons.length) return;
 
   const printStylesheetUrl = new URL(
-    "{% static 'css/exam-report-print.css' %}?v=20260926i",
+    "{% static 'css/exam-report-print.css' %}?v=20260930e",
     window.location.href
   ).href;
   const printFontStylesheet =
@@ -1545,7 +1558,7 @@
 
     const doc = frame.contentDocument || frame.contentWindow.document;
     const fallbackCss =
-      "@page{size:A4 landscape;margin:6mm;}" +
+      "@page{size:A4 portrait;margin:6mm;}" +
       "table{width:100%;table-layout:fixed;border-collapse:collapse;border:1pt solid #1e293b;}" +
       "th,td{border:0.55pt solid #64748b;padding:0.75mm;font-size:8pt;vertical-align:middle;overflow:hidden;}" +
       "thead th{background:#e8eef8;font-weight:800;}" +

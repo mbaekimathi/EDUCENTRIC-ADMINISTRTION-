@@ -1,0 +1,18 @@
+<section class="teacher-dash-actions is-nav-links" aria-label="Curriculum Coordinator modules">
+  {% for module in curriculum_coordinator_modules %}
+  <a class="teacher-dash-action" href="{% url 'employees:curriculum_coordinator_module' module.slug %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ module.icon }}</span>
+    <span class="teacher-dash-action-copy">
+      <strong>{{ module.title }}</strong>
+      <span>{{ module.summary }}</span>
+    </span>
+  </a>
+  {% endfor %}
+  <a class="teacher-dash-action" href="{% url 'employees:school_activities' %}">
+    <span class="teacher-dash-action-icon" aria-hidden="true">SA</span>
+    <span class="teacher-dash-action-copy">
+      <strong>School activities</strong>
+      <span>Register activities, grades, and dates</span>
+    </span>
+  </a>
+</section>

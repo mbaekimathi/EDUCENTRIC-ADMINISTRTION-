@@ -9,6 +9,9 @@ from django.utils import timezone
 
 LIVE_SESSION_ACTIVITY_KEY = "edu_last_activity"
 LIVE_SESSION_WINDOW = timedelta(minutes=15)
+# Avoid rewriting django_session on every request — concurrent session saves
+# cause connection resets and "Session data corrupted" under load.
+LIVE_SESSION_TOUCH_INTERVAL = timedelta(seconds=60)
 
 
 def touch_live_session(session, request):
@@ -25,7 +28,12 @@ def touch_live_session(session, request):
     if not is_live:
         return False
 
-    session[LIVE_SESSION_ACTIVITY_KEY] = timezone.now().isoformat()
+    now = timezone.now()
+    last = parse_activity_at(session.get(LIVE_SESSION_ACTIVITY_KEY))
+    if last is not None and (now - last) < LIVE_SESSION_TOUCH_INTERVAL:
+        return False
+
+    session[LIVE_SESSION_ACTIVITY_KEY] = now.isoformat()
     session.modified = True
     return True
 

@@ -1,7 +1,7 @@
 <p class="workspace-nav-label">Student management</p>
 <a
   class="workspace-nav-link {% if active_student_tool == 'register' %}is-active{% endif %}"
-  href="{% url 'employees:it_support_module' 'student-management' %}"
+  href="{% url student_management_module_url|default:'employees:it_support_module' 'student-management' %}"
   {% if active_student_tool == 'register' %}aria-current="page"{% endif %}
 >
   <span class="workspace-nav-icon" aria-hidden="true">
@@ -42,20 +42,13 @@
   </span>
   Clearing students
 </a>
-
-{% if student_level_filters %}
-<p class="workspace-nav-label">Grades</p>
-{% for level in student_level_filters %}
 <a
-  class="workspace-nav-link student-level-sidebar-link{% if level.is_active %} is-active{% endif %}"
-  href="?level={{ level.value }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}"
-  {% if level.is_active %}aria-current="page"{% endif %}
+  class="workspace-nav-link {% if active_student_tool == 'student-conduct' %}is-active{% endif %}"
+  href="{% url 'employees:it_support_student_conduct' %}"
+  {% if active_student_tool == 'student-conduct' %}aria-current="page"{% endif %}
 >
-  <span class="student-level-sidebar-copy">
-    <strong>{{ level.label }}</strong>
-    <span>{{ level.count }} student{{ level.count|pluralize }}</span>
+  <span class="workspace-nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM5 17l.8 2.2L8 20l-2.2.8L5 23l-.8-2.2L2 20l2.2-.8L5 17zM18.5 14l.7 1.8L21 16.5l-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </span>
-  <span class="workspace-nav-badge">{{ level.count }}</span>
+  Student conduct
 </a>
-{% endfor %}
-{% endif %}

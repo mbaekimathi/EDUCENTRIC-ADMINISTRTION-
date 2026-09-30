@@ -1,0 +1,190 @@
+{% extends "layouts/workspace.html" %}
+{% load static %}
+{% block title %}School activities | Edu-Centric{% endblock %}
+{% block header_eyebrow %}{{ workspace_role_label }}{% endblock %}
+{% block header_title %}School activities{% endblock %}
+
+{% block sidebar_modules %}
+{% if workspace_role == "IT_SUPPORT" or workspace_role == "HEAD_OF_INSTITUTION" or workspace_role == "DEPUTY_HEAD_OF_INSTITUTION" %}
+{% include "employees/includes/it_support_sidebar.html" %}
+{% elif workspace_role == "CURRICULUM_COORDINATOR" %}
+{% include "employees/includes/curriculum_coordinator_sidebar.html" %}
+{% elif workspace_role == "SECRETARY" %}
+{% include "employees/includes/secretary_sidebar.html" %}
+{% else %}
+{% include "employees/includes/workspace_role_sidebar.html" %}
+{% endif %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page school-activities-page">
+  {% if workspace_role == "IT_SUPPORT" or workspace_role == "HEAD_OF_INSTITUTION" or workspace_role == "DEPUTY_HEAD_OF_INSTITUTION" %}
+  {% include "employees/includes/nav/it_support.html" %}
+  {% elif workspace_role == "CURRICULUM_COORDINATOR" %}
+  {% include "employees/includes/nav/curriculum_coordinator.html" %}
+  {% elif workspace_role == "SECRETARY" %}
+  {% include "employees/includes/nav/secretary.html" %}
+  {% endif %}
+
+  <div class="settings-toolbar school-activity-toolbar">
+    <div class="settings-toolbar-copy">
+      <h2>School activities</h2>
+      <p class="subtle">Register or edit activities. Only published ones appear on dashboards.</p>
+    </div>
+    <div class="settings-toolbar-actions">
+      <button type="button" class="primary-button settings-toolbar-action" data-open-modal="register-activity">
+        Register
+      </button>
+    </div>
+  </div>
+
+  <section class="exam-tool-panel school-activity-list" aria-label="Registered school activities">
+    <header class="exam-tool-panel-head">
+      <div>
+        <h3>Registered activities</h3>
+        <p>Drafts stay private until published to dashboards.</p>
+      </div>
+      <span class="exam-tool-panel-count">{{ activities|length }}</span>
+    </header>
+
+    {% if activities %}
+    <div class="school-activity-cards">
+      {% for activity in activities %}
+      <article class="school-activity-card">
+        <div class="school-activity-card-main">
+          <div class="school-activity-card-title-row">
+            <h4 class="is-uppercase">{{ activity.title }}</h4>
+            <span class="school-activity-status is-{{ activity.status|lower }}">{{ activity.get_status_display }}</span>
+          </div>
+          {% if activity.description %}
+          <p>{{ activity.description }}</p>
+          {% endif %}
+          <div class="school-activity-card-meta">
+            <span>
+              <em>Grades</em>
+              {% for grade in activity.grades.all %}{{ grade.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+            </span>
+            <span>
+              <em>Dates</em>
+              {% for day in activity.days.all %}
+              {{ day.activity_date|date:"j M Y" }}{% if day.day_description %} ({{ day.day_description }}){% endif %}{% if not forloop.last %}; {% endif %}
+              {% empty %}—{% endfor %}
+            </span>
+          </div>
+        </div>
+        <div class="school-activity-card-actions">
+          <a class="ghost-button" href="{% url 'employees:school_activities' %}?edit={{ activity.id }}">Edit</a>
+          <form method="post" action="{% url 'employees:delete_school_activity' activity.id %}" onsubmit="return confirm('Remove {{ activity.title|escapejs }}?');">
+            {% csrf_token %}
+            <button type="submit" class="ghost-button is-danger">Remove</button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="schedule-empty-hint">No school activities registered yet. Use <strong>Register</strong> to add one.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div
+  class="app-modal{% if open_register_modal %} is-open{% endif %}"
+  id="register-activity-modal"
+  data-modal="register-activity"
+  {% if not open_register_modal %}hidden{% endif %}
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog app-modal-dialog-wide school-activity-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="register-activity-title"
+  >
+    <div class="app-modal-header">
+      <h2 id="register-activity-title">{% if editing_activity %}Edit activity{% else %}Register activity{% endif %}</h2>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+
+    <form method="post" class="app-modal-form school-activity-form" data-school-activity-form novalidate>
+      {% csrf_token %}
+      {% if editing_activity %}
+      <input type="hidden" name="activity_id" value="{{ editing_activity.id }}">
+      {% endif %}
+      <div class="school-activity-form-body">
+        <section class="schedule-form-section">
+          <h3>1. Activity details</h3>
+          <div class="form-grid form-grid-2">
+            <div class="field span-two">
+              <label for="{{ form.title.id_for_label }}">Activity title <span class="required">*</span></label>
+              {{ form.title }}
+              {% for error in form.title.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field span-two">
+              <label for="{{ form.description.id_for_label }}">Overall description</label>
+              {{ form.description }}
+              {% for error in form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+            <div class="field span-two">
+              <span class="field-label">Visibility <span class="required">*</span></span>
+              <div class="choice-chips is-pills school-activity-status-choices">{{ form.status }}</div>
+              <small class="subtle">Published activities appear on dashboards. Drafts stay on this page only.</small>
+              {% for error in form.status.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+            </div>
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>2. Grades undertaking</h3>
+          <div class="field">
+            <span class="field-label">Select grades <span class="required">*</span></span>
+            <div class="choice-chips is-uppercase is-pills">{{ form.grades }}</div>
+            {% for error in form.grades.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+          </div>
+        </section>
+
+        <section class="schedule-form-section">
+          <h3>3. Activity dates</h3>
+          <p class="school-activity-hint">Click days on the calendar to select them. Selected days stay highlighted.</p>
+          {{ form.activity_dates }}
+          {% for error in form.activity_dates.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+
+          <div class="school-activity-calendar" data-activity-calendar>
+            <div class="school-activity-calendar-toolbar">
+              <button type="button" class="ghost-button" data-cal-prev aria-label="Previous month">‹</button>
+              <p class="school-activity-calendar-label" data-cal-label></p>
+              <button type="button" class="ghost-button" data-cal-next aria-label="Next month">›</button>
+            </div>
+            <div class="school-activity-calendar-weekdays" aria-hidden="true">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+            <div class="school-activity-calendar-grid" data-cal-grid role="grid" aria-label="Activity calendar"></div>
+          </div>
+
+          <div class="school-activity-selected" data-selected-summary hidden>
+            <p class="school-activity-selected-label">Selected days</p>
+            <div class="school-activity-selected-chips" data-selected-chips></div>
+          </div>
+
+          <div class="school-activity-day-notes" data-day-notes hidden>
+            <p class="school-activity-day-notes-label">Day descriptions</p>
+            <p class="school-activity-hint">Add a short note for each day when the activity spans multiple dates.</p>
+            <div class="school-activity-day-notes-list" data-day-notes-list></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="app-modal-actions school-activity-form-foot">
+        <button type="button" class="ghost-button" data-modal-close>Cancel</button>
+        <button type="submit" class="primary-button">{% if editing_activity %}Save changes{% else %}Register activity{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{ initial_day_notes|json_script:"school-activity-day-notes" }}
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/school-activities.js' %}?v=20260930sa3" defer></script>
+{% endblock %}

@@ -11,14 +11,15 @@
   href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}"
 >
   <span class="workspace-nav-icon" aria-hidden="true">CA</span>
-  Students class attendance
+  Students subject attendance
 </a>
 <a
   class="workspace-nav-link {% if active_my_class_tool == 'students-discipline' %}is-active{% endif %}"
   href="{% url 'employees:teacher_my_class_page' 'students-discipline' %}"
+  {% if active_my_class_tool == 'students-discipline' %}aria-current="page"{% endif %}
 >
-  <span class="workspace-nav-icon" aria-hidden="true">SD</span>
-  Students discipline
+  <span class="workspace-nav-icon" aria-hidden="true">SC</span>
+  Student conduct
 </a>
 <a
   class="workspace-nav-link {% if active_my_class_tool == 'student-books' %}is-active{% endif %}"

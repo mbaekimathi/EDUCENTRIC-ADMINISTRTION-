@@ -11,36 +11,18 @@
 {% block workspace_content %}
 
 {% include "employees/includes/nav/teacher_my_class_attendance.html" %}
-<div class="sa-hub-page class-attendance-page" data-student-sortable>
-  <div class="teacher-page-bar" aria-label="Attendance summary">
-    <div class="teacher-page-bar-stats">
-      <div class="teacher-page-bar-stat">
-        <strong>{{ students|length }}</strong>
-        <span>Student{{ students|length|pluralize }}</span>
-      </div>
-      <div class="teacher-page-bar-stat">
-        <strong>{{ present_morning }}</strong>
-        <span>Morning</span>
-      </div>
-      <div class="teacher-page-bar-stat">
-        <strong>{{ present_afternoon }}</strong>
-        <span>Afternoon</span>
-      </div>
-      <div class="teacher-page-bar-stat">
-        <strong>{{ present_evening }}</strong>
-        <span>Evening</span>
-      </div>
-    </div>
-  </div>
+<div class="sa-hub-page class-attendance-page is-simple" data-student-sortable>
+  <form method="post" class="class-attendance-form" data-class-attendance-form>
+    {% csrf_token %}
+    <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-attendance-class-id>
+    <input type="hidden" name="attendance_date" value="{{ attendance_date|date:'Y-m-d' }}" data-attendance-date-value>
+    {% if student_sort_is_admission %}
+    <input type="hidden" name="sort" value="admission" data-student-sort-field>
+    {% else %}
+    <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
+    {% endif %}
 
-  <section class="class-attendance-day-filter" aria-label="Filter attendance by day">
-    <div class="class-attendance-day-copy">
-      <p class="class-attendance-day-label">Attendance day</p>
-      <strong class="class-attendance-day-title">{{ attendance_date|date:"l, j F Y" }}</strong>
-      <p class="subtle">Showing attendance for this single day only. Choose another date from the calendar to switch days.</p>
-    </div>
-    <div class="class-attendance-day-controls">
-      {% include "employees/includes/student_sort_toggle.html" %}
+    <div class="class-attendance-toolbar" aria-label="Attendance controls">
       {% if led_classes|length > 1 %}
       <label class="attendance-control">
         <span>Class</span>
@@ -53,46 +35,27 @@
         </select>
       </label>
       {% endif %}
+
       <label class="attendance-control class-attendance-calendar-control">
-        <span>Select date</span>
+        <span>Date</span>
         <input
           type="date"
           value="{{ attendance_date|date:'Y-m-d' }}"
           required
           data-attendance-date
-          aria-label="Select attendance date from calendar"
+          aria-label="Attendance date"
         >
       </label>
-      <div class="class-attendance-day-actions">
-        <button type="button" class="ghost-button" data-day-step="-1" aria-label="Previous day">← Day</button>
-        <button type="button" class="ghost-button" data-day-today>Today</button>
-        <button type="button" class="ghost-button" data-day-step="1" aria-label="Next day">Day →</button>
-        <button type="button" class="primary-button" data-open-calendar>Open calendar</button>
+
+      {% include "employees/includes/student_sort_toggle.html" %}
+
+      <div class="attendance-quick-actions">
+        <button type="button" class="ghost-button" data-mark-session="morning">All AM</button>
+        <button type="button" class="ghost-button" data-mark-session="afternoon">All PM</button>
+        <button type="button" class="ghost-button" data-mark-session="evening">All Eve</button>
+        <button type="button" class="ghost-button" data-clear-session>Clear</button>
+        <button type="submit" class="primary-button">Save</button>
       </div>
-    </div>
-  </section>
-
-  <form method="post" class="class-attendance-form" data-class-attendance-form>
-    {% csrf_token %}
-    <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-attendance-class-id>
-    <input type="hidden" name="attendance_date" value="{{ attendance_date|date:'Y-m-d' }}" data-attendance-date-value>
-    {% if student_sort_is_admission %}
-    <input type="hidden" name="sort" value="admission" data-student-sort-field>
-    {% else %}
-    <input type="hidden" name="sort" value="admission" data-student-sort-field disabled>
-    {% endif %}
-
-    <label class="attendance-control is-wide attendance-notes-control">
-      <span>Notes for {{ attendance_date|date:"j M Y" }}</span>
-      <input type="text" name="attendance_notes" value="{% if attendance_session %}{{ attendance_session.notes }}{% endif %}" placeholder="Optional notes for this day…">
-    </label>
-
-    <div class="attendance-quick-actions">
-      <button type="button" class="ghost-button" data-mark-session="morning">All morning</button>
-      <button type="button" class="ghost-button" data-mark-session="afternoon">All afternoon</button>
-      <button type="button" class="ghost-button" data-mark-session="evening">All evening</button>
-      <button type="button" class="ghost-button" data-clear-session>Clear all</button>
-      <button type="submit" class="primary-button">Save attendance for {{ attendance_date|date:"j M Y" }}</button>
     </div>
 
     {% if students %}
@@ -101,10 +64,9 @@
         <thead>
           <tr>
             <th>Student</th>
-            <th>Admission no.</th>
-            <th class="attendance-check-col">Morning</th>
-            <th class="attendance-check-col">Afternoon</th>
-            <th class="attendance-check-col">Evening</th>
+            <th class="attendance-check-col">AM</th>
+            <th class="attendance-check-col">PM</th>
+            <th class="attendance-check-col">Eve</th>
           </tr>
         </thead>
         <tbody data-student-sort-body>
@@ -121,20 +83,19 @@
                 <span class="exam-student-last">{{ student.last_name }}</span>
               </strong>
             </td>
-            <td data-label="Admission no."><code>{{ student.admission_number }}</code></td>
-            <td data-label="Morning" class="attendance-check-col">
+            <td data-label="AM" class="attendance-check-col">
               <label class="attendance-check">
                 <input type="checkbox" name="morning_{{ student.id }}" {% if student.morning %}checked{% endif %} data-session="morning">
                 <span class="sr-only">Morning present</span>
               </label>
             </td>
-            <td data-label="Afternoon" class="attendance-check-col">
+            <td data-label="PM" class="attendance-check-col">
               <label class="attendance-check">
                 <input type="checkbox" name="afternoon_{{ student.id }}" {% if student.afternoon %}checked{% endif %} data-session="afternoon">
                 <span class="sr-only">Afternoon present</span>
               </label>
             </td>
-            <td data-label="Evening" class="attendance-check-col">
+            <td data-label="Eve" class="attendance-check-col">
               <label class="attendance-check">
                 <input type="checkbox" name="evening_{{ student.id }}" {% if student.evening %}checked{% endif %} data-session="evening">
                 <span class="sr-only">Evening present</span>
@@ -145,13 +106,18 @@
         </tbody>
       </table>
     </div>
-    <div class="allocation-actions">
-      <button type="submit" class="primary-button">Save attendance for {{ attendance_date|date:"j M Y" }}</button>
-      {% if attendance_session %}
-      <span class="subtle">Last saved {{ attendance_session.updated_at|date:"j M Y, H:i" }}</span>
-      {% else %}
-      <span class="subtle">No attendance saved for this day yet</span>
-      {% endif %}
+
+    <div class="class-attendance-footer">
+      <label class="attendance-control is-wide attendance-notes-control">
+        <span>Notes <span class="subtle">(optional)</span></span>
+        <input
+          type="text"
+          name="attendance_notes"
+          value="{% if attendance_session %}{{ attendance_session.notes }}{% endif %}"
+          placeholder="Optional note for this day"
+        >
+      </label>
+      <button type="submit" class="primary-button">Save</button>
     </div>
     {% else %}
     <section class="sa-hub-empty">
@@ -173,8 +139,6 @@
   const dateInput = root.querySelector("[data-attendance-date]");
   const classSelect = root.querySelector("[data-attendance-class]");
   const classIdInput = root.querySelector("[data-attendance-class-id]");
-  const dateValueInput = root.querySelector("[data-attendance-date-value]");
-  const openCalendarBtn = root.querySelector("[data-open-calendar]");
 
   function selectedClassId() {
     if (classSelect) return classSelect.value;
@@ -190,25 +154,6 @@
     window.location.href = url.toString();
   }
 
-  function shiftDate(iso, days) {
-    const parts = String(iso || "").split("-").map(Number);
-    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return iso;
-    const next = new Date(parts[0], parts[1] - 1, parts[2]);
-    next.setDate(next.getDate() + days);
-    const yyyy = next.getFullYear();
-    const mm = String(next.getMonth() + 1).padStart(2, "0");
-    const dd = String(next.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  function todayIso() {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
   if (dateInput) {
     dateInput.addEventListener("change", () => {
       if (!dateInput.value) return;
@@ -221,29 +166,6 @@
         class_id: classSelect.value,
         date: dateInput && dateInput.value ? dateInput.value : "",
       });
-    });
-  }
-  if (openCalendarBtn && dateInput) {
-    openCalendarBtn.addEventListener("click", () => {
-      if (typeof dateInput.showPicker === "function") {
-        dateInput.showPicker();
-      } else {
-        dateInput.focus();
-        dateInput.click();
-      }
-    });
-  }
-  root.querySelectorAll("[data-day-step]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const step = Number(button.getAttribute("data-day-step") || "0");
-      const current = (dateInput && dateInput.value) || (dateValueInput && dateValueInput.value) || todayIso();
-      reloadWith({ date: shiftDate(current, step), class_id: selectedClassId() });
-    });
-  });
-  const todayBtn = root.querySelector("[data-day-today]");
-  if (todayBtn) {
-    todayBtn.addEventListener("click", () => {
-      reloadWith({ date: todayIso(), class_id: selectedClassId() });
     });
   }
 

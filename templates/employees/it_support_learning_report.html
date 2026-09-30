@@ -1,0 +1,13 @@
+{% extends "layouts/workspace.html" %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Curriculum reports{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/curriculum_reports_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% include "employees/includes/nav/curriculum_reports.html" %}
+{% include "employees/includes/learning_report_content.html" %}
+{% endblock %}

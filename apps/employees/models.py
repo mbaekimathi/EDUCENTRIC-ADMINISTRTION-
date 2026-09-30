@@ -306,6 +306,11 @@ class Employee(AbstractUser):
             type(self).objects.filter(pk=self.pk).update(role=primary)
             self.role = primary
         self._cached_role_values = cleaned
+        if self.approval_status == self.ApprovalStatus.APPROVED:
+            from .permissions import ensure_employee_role_permissions
+
+            for role in cleaned:
+                ensure_employee_role_permissions(self, role, enabled=True)
 
     def _ensure_primary_role_assignment(self):
         if not self.pk or not self.role:
@@ -341,6 +346,14 @@ class Employee(AbstractUser):
 
     def save(self, *args, **kwargs):
         assigned_number = self.employment_number in (None, "")
+        previous_approval = None
+        if self.pk:
+            previous_approval = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values_list("approval_status", flat=True)
+                .first()
+            )
         # Keep login access in sync with approval and suspension.
         if self.approval_status == self.ApprovalStatus.APPROVED and not self.is_suspended:
             self.is_active = True
@@ -352,6 +365,11 @@ class Employee(AbstractUser):
             if assigned_number:
                 extras.add("employment_number")
             kwargs["update_fields"] = list(set(update_fields) | extras)
+
+        became_approved = (
+            self.approval_status == self.ApprovalStatus.APPROVED
+            and previous_approval != self.ApprovalStatus.APPROVED
+        )
 
         for _ in range(8):
             try:
@@ -366,6 +384,13 @@ class Employee(AbstractUser):
                     self._claim_employment_number()
                     super().save(*args, **kwargs)
                     self._ensure_primary_role_assignment()
+                    if became_approved or (
+                        self.approval_status == self.ApprovalStatus.APPROVED
+                        and previous_approval is None
+                    ):
+                        from .permissions import grant_all_permissions_for_employee
+
+                        grant_all_permissions_for_employee(self)
                 return
             except IntegrityError:
                 if not assigned_number:
@@ -400,4 +425,163 @@ class EmployeeRole(models.Model):
 
     def __str__(self):
         return f"{self.employee.employee_code}: {self.get_role_display()}"
+
+
+class EmployeeActivityPermission(models.Model):
+    """Per-employee on/off access to an activity within a workspace role."""
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="activity_permissions",
+    )
+    role = models.CharField(max_length=32, choices=Employee.Role.choices)
+    activity_code = models.CharField(max_length=80)
+    is_enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["role", "activity_code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "role", "activity_code"],
+                name="unique_employee_role_activity_permission",
+            ),
+        ]
+        verbose_name = "employee activity permission"
+        verbose_name_plural = "employee activity permissions"
+
+    def __str__(self):
+        state = "on" if self.is_enabled else "off"
+        return f"{self.employee.employee_code} · {self.role} · {self.activity_code} ({state})"
+
+
+class StudentConductRecord(models.Model):
+    """A registered student behaviour incident (good or bad)."""
+
+    class BehaviourType(models.TextChoices):
+        GOOD = "GOOD", "Good"
+        BAD = "BAD", "Bad"
+
+    student = models.ForeignKey(
+        "admissions.Student",
+        on_delete=models.CASCADE,
+        related_name="conduct_records",
+    )
+    behaviour_type = models.CharField(max_length=10, choices=BehaviourType.choices)
+    description = models.TextField()
+    incident_date = models.DateField("date when happened")
+    witness = models.CharField(max_length=200)
+    consequence_or_reward = models.TextField(
+        "repercussion or reward",
+        help_text="Repercussion for bad behaviour, or reward for good behaviour.",
+    )
+    rating = models.PositiveSmallIntegerField(
+        help_text="Severity (1–5) for bad behaviour, or merit (1–5) for good behaviour.",
+    )
+    recorded_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_conduct_records",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-incident_date", "-created_at"]
+        verbose_name = "student conduct record"
+        verbose_name_plural = "student conduct records"
+
+    def __str__(self):
+        return (
+            f"{self.get_behaviour_type_display()} · "
+            f"{self.student} · {self.incident_date}"
+        )
+
+    @property
+    def rating_label(self):
+        if self.behaviour_type == self.BehaviourType.BAD:
+            return "Severity"
+        return "Merit"
+
+    @property
+    def outcome_label(self):
+        if self.behaviour_type == self.BehaviourType.BAD:
+            return "Repercussion"
+        return "Reward"
+
+
+class SchoolActivity(models.Model):
+    """A registered school activity spanning one or more dates and grades."""
+
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        PUBLISHED = "PUBLISHED", "Published"
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    grades = models.ManyToManyField(
+        "curriculum.AcademicLevel",
+        related_name="school_activities",
+        blank=False,
+    )
+    created_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_school_activities",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "title"]
+        verbose_name = "school activity"
+        verbose_name_plural = "school activities"
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_published(self):
+        return self.status == self.Status.PUBLISHED
+
+
+class SchoolActivityDay(models.Model):
+    """One calendar day within a school activity, with an optional day note."""
+
+    activity = models.ForeignKey(
+        SchoolActivity,
+        on_delete=models.CASCADE,
+        related_name="days",
+    )
+    activity_date = models.DateField()
+    day_description = models.CharField(
+        "day description",
+        max_length=255,
+        blank=True,
+        help_text="Short note for what happens on this day when the activity spans multiple days.",
+    )
+
+    class Meta:
+        ordering = ["activity_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["activity", "activity_date"],
+                name="unique_school_activity_day",
+            ),
+        ]
+        verbose_name = "school activity day"
+        verbose_name_plural = "school activity days"
+
+    def __str__(self):
+        return f"{self.activity.title} · {self.activity_date}"
 

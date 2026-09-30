@@ -1,0 +1,9 @@
+<footer class="elr-report-footer">
+  <p>
+    End of {{ report_type_label|lower }} report
+    {% if page_scope_label %} · {{ page_scope_label }}{% elif selected_scope_label %} · {{ selected_scope_label }}{% endif %}
+    {% if report_teacher_name %} · {{ report_teacher_name }}{% elif teacher_employee %} · {{ teacher_employee.display_name }}{% endif %}
+    {% if needs_date %} · {{ report_date|date:"d M Y" }}{% endif %}
+    {% if page_index and page_total %} · Page {{ page_index }}/{{ page_total }}{% endif %}
+  </p>
+</footer>

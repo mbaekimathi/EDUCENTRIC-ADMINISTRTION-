@@ -1,7 +1,7 @@
 {% extends "layouts/workspace.html" %}
-{% block title %}{{ selected_class.display_label }} subject attendance | Edu-Centric{% endblock %}
-{% block header_eyebrow %}Subject attendance{% endblock %}
-{% block header_title %}{{ selected_class.display_label }}{% endblock %}
+{% block title %}{{ page.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}{% if from_my_class %}My class{% else %}Subject attendance{% endif %}{% endblock %}
+{% block header_title %}{{ page.title }}{% endblock %}
 
 {% block sidebar_modules %}
 {% include "employees/includes/teacher_my_class_attendance_sidebar.html" %}
@@ -11,7 +11,7 @@
 
 {% include "employees/includes/nav/teacher_my_class_attendance.html" %}
 <div class="sa-hub-page class-subject-attendance-overview">
-  <div class="teacher-page-bar" aria-label="Class attendance overview">
+  <div class="teacher-page-bar" aria-label="Subject attendance overview">
     <div class="teacher-page-bar-stats">
       <div class="teacher-page-bar-stat">
         <strong>{{ students|length }}</strong>
@@ -31,7 +31,23 @@
       <p class="subtle">{{ filter_subtitle }}</p>
     </div>
     <form class="sa-scope-form" method="get" data-scope-form>
+      {% if from_my_class and led_classes|length > 1 %}
+      <input type="hidden" name="class_id" value="{{ selected_class.id }}" data-keep-class>
+      {% endif %}
       <div class="class-attendance-day-controls sa-scope-controls">
+        {% if led_classes|length > 1 %}
+        <label class="attendance-control">
+          <span>Class</span>
+          <select data-overview-class aria-label="Select class">
+            {% for academic_class in led_classes %}
+            <option value="{{ academic_class.id }}" {% if academic_class.id == selected_class.id %}selected{% endif %}>
+              {{ academic_class.display_label }}
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+
         <label class="attendance-control">
           <span>Filter by</span>
           <select name="scope" data-scope-select aria-label="Filter attendance by">
@@ -114,13 +130,16 @@
           <th>Student</th>
           <th>Admission no.</th>
           {% for allocation in subjects %}
-          <th class="subject-attendance-col" title="{{ allocation.learning_area.name }}{% if allocation.teacher %} · {{ allocation.teacher.display_name }}{% endif %}">
+          <th class="subject-attendance-col" title="{{ allocation.learning_area.name }}{% if allocation.teacher %} · {{ allocation.teacher.employee_code }}{% endif %}">
             {% if allocation.id in own_allocation_ids %}
             <a href="{% url 'employees:teacher_subject_attendance_profile' selected_class.id allocation.learning_area_id %}">
               {{ allocation.learning_area.code }}
             </a>
             {% else %}
             {{ allocation.learning_area.code }}
+            {% endif %}
+            {% if allocation.teacher %}
+            <span class="subtle subject-attendance-teacher">{{ allocation.teacher.employee_code }}</span>
             {% endif %}
           </th>
           {% endfor %}
@@ -142,9 +161,9 @@
             {% if show_percentages or cell.is_range %}
             <span class="sa-status-pill {{ cell.rate_class }}" title="{{ cell.title }}">{{ cell.display }}</span>
             {% elif cell.status %}
-            <span class="sa-status-pill status-{{ cell.status|lower }}">{{ cell.status_label }}</span>
+            <span class="sa-status-pill status-{{ cell.status|lower }}" title="{{ cell.title }}">{{ cell.status_label }}</span>
             {% else %}
-            <span class="sa-status-pill is-empty">—</span>
+            <span class="sa-status-pill is-empty" title="{{ cell.title }}">—</span>
             {% endif %}
           </td>
           {% endfor %}
@@ -180,8 +199,12 @@
   const yearSelect = root.querySelector("[data-scope-year]");
   const termSelect = root.querySelector("[data-scope-term]");
   const periodSelect = root.querySelector("[data-scope-period]");
+  const classSelect = root.querySelector("[data-overview-class]");
+  const classHidden = root.querySelector("[data-keep-class]");
   const calendarNode = document.getElementById("sa-calendar-options");
   const calendarOptions = calendarNode ? JSON.parse(calendarNode.textContent) : {};
+  const fromMyClass = {{ from_my_class|yesno:"true,false" }};
+  const subjectClassBase = "{% url 'employees:teacher_subject_attendance' %}".replace(/\/?$/, "/classes/");
 
   function fieldsForScope(scope) {
     if (scope === "day") return ["day", "day-actions", "apply"];
@@ -336,6 +359,20 @@
     });
   }
 
+  if (classSelect) {
+    classSelect.addEventListener("change", () => {
+      const classId = classSelect.value;
+      if (fromMyClass) {
+        if (classHidden) classHidden.value = classId;
+        reloadWith({ class_id: classId });
+        return;
+      }
+      const url = new URL(window.location.href);
+      const params = url.searchParams.toString();
+      window.location.href = `${subjectClassBase}${classId}/${params ? `?${params}` : ""}`;
+    });
+  }
+
   if (dateInput) {
     dateInput.addEventListener("change", () => {
       if (!dateInput.disabled && dateInput.value && form) form.requestSubmit();
@@ -354,11 +391,19 @@
     button.addEventListener("click", () => {
       const step = Number(button.getAttribute("data-day-step") || "0");
       const current = (dateInput && dateInput.value) || todayIso();
-      reloadWith({ scope: "day", date: shiftDate(current, step) });
+      const params = { scope: "day", date: shiftDate(current, step) };
+      if (fromMyClass && classSelect) params.class_id = classSelect.value;
+      reloadWith(params);
     });
   });
   const todayBtn = root.querySelector("[data-day-today]");
-  if (todayBtn) todayBtn.addEventListener("click", () => reloadWith({ scope: "day", date: todayIso() }));
+  if (todayBtn) {
+    todayBtn.addEventListener("click", () => {
+      const params = { scope: "day", date: todayIso() };
+      if (fromMyClass && classSelect) params.class_id = classSelect.value;
+      reloadWith(params);
+    });
+  }
 
   syncFilterFields();
 

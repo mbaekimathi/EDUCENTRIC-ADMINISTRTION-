@@ -1,5 +1,7 @@
-{% if workspace_role == "IT_SUPPORT" %}
+{% if workspace_role == "IT_SUPPORT" or workspace_role == "HEAD_OF_INSTITUTION" or workspace_role == "DEPUTY_HEAD_OF_INSTITUTION" %}
 {% include "employees/includes/it_support_sidebar.html" %}
+{% elif workspace_role == "CURRICULUM_COORDINATOR" %}
+{% include "employees/includes/curriculum_coordinator_sidebar.html" %}
 {% elif workspace_role == "TEACHER" %}
 {% include "employees/includes/teacher_sidebar.html" %}
 {% elif workspace_role == "SECRETARY" %}

@@ -1,0 +1,53 @@
+<header class="exam-matrix-list-head" aria-label="Report letterhead">
+  <div class="exam-matrix-list-brand">
+    <div class="exam-matrix-list-logo-wrap">
+      {% if school_profile and school_profile.school_logo %}
+      <img class="exam-matrix-list-logo" src="{{ school_profile.school_logo.url }}" alt="">
+      {% else %}
+      <span class="exam-matrix-list-logo exam-matrix-list-logo-mark" aria-hidden="true">
+        {% if school_profile %}
+          {{ school_profile.display_name|default:school_profile.official_name|slice:":1"|upper }}
+        {% else %}
+          E
+        {% endif %}
+      </span>
+      {% endif %}
+    </div>
+    <div class="exam-matrix-list-titles">
+      <h2 class="is-uppercase">
+        {% if school_profile %}
+          {{ school_profile.official_name|default:school_profile.display_name }}
+        {% else %}
+          Edu-Centric School
+        {% endif %}
+      </h2>
+      {% if school_profile and school_profile.motto %}
+      <p class="exam-matrix-list-motto">“{{ school_profile.motto }}”</p>
+      {% endif %}
+      {% if school_profile %}
+        {% if school_profile.physical_address or school_profile.main_phone or school_profile.general_email %}
+        <p class="exam-matrix-list-contact">
+          {% if school_profile.physical_address %}{{ school_profile.physical_address }}{% endif %}
+          {% if school_profile.main_phone %}{% if school_profile.physical_address %} · {% endif %}{{ school_profile.main_phone }}{% endif %}
+          {% if school_profile.general_email %}{% if school_profile.physical_address or school_profile.main_phone %} · {% endif %}{{ school_profile.general_email }}{% endif %}
+        </p>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="exam-matrix-list-brand-spacer" aria-hidden="true"></div>
+  </div>
+  <p class="exam-matrix-list-meta">
+    {% if report_teacher_name %}
+    <span>Teacher: {{ report_teacher_name }}</span>
+    {% elif teacher_employee %}
+    <span>Teacher: {{ teacher_employee.display_name }}</span>
+    {% endif %}
+    <span>{{ report_type_label }}</span>
+    {% if needs_date %}<span>Date: {{ report_date|date:"d M Y" }}</span>{% endif %}
+    <span>{% if page_scope_label %}{{ page_scope_label }}{% else %}{{ selected_scope_label }}{% endif %}</span>
+    {% if page_index and page_total %}
+    <span>Page {{ page_index }} of {{ page_total }}</span>
+    {% endif %}
+    <span>Generated {{ generated_at|date:"d M Y, H:i" }}</span>
+  </p>
+</header>

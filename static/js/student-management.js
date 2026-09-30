@@ -166,6 +166,15 @@
 
   function highlightFromHash() {
     const hash = window.location.hash || "";
+    if (hash === "#student-directory") {
+      const target = document.getElementById("student-directory");
+      if (target) {
+        window.requestAnimationFrame(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      return;
+    }
     if (!hash.startsWith("#student-")) return;
     const row = document.querySelector(hash);
     if (!row) return;

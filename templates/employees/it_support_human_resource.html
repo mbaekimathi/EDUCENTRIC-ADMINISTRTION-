@@ -1,0 +1,172 @@
+{% extends "layouts/workspace.html" %}
+{% load static %}
+{% block title %}{{ module.title }} | Edu-Centric{% endblock %}
+{% block header_eyebrow %}{{ workspace_role_label }}{% endblock %}
+{% block header_title %}{{ module.title }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/human_resource_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="exam-tool-page employee-mgmt-page">
+  {% include "employees/includes/nav/human_resource.html" %}
+
+  <div class="teacher-page-bar" aria-label="Human resource overview">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ employee_count }}</strong>
+        <span>Active employee{{ employee_count|pluralize }}</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ category_count }}</strong>
+        <span>Categor{{ category_count|pluralize:"y,ies" }}</span>
+      </div>
+    </div>
+    <div class="teacher-page-bar-actions">
+      {% include "employees/includes/student_sort_toggle.html" with sort_code_label="Employee code" %}
+    </div>
+  </div>
+
+  {% if role_groups %}
+  <div class="employee-mgmt-controls" data-employee-controls>
+    <label class="employee-mgmt-search">
+      <span class="sr-only">Search active employees</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm7.03 10.47 3.5 3.5-1.06 1.06-3.5-3.5 1.06-1.06z"/></svg>
+      <input type="search" placeholder="Search by name, employment number, employee code, email, phone, or category" data-employee-search autocomplete="off">
+    </label>
+    <nav class="employee-role-nav" aria-label="Jump to category">
+      {% for group in role_groups %}
+      <a class="employee-role-nav-chip" href="#role-{{ group.role|slugify }}">
+        {{ group.label }}
+        <em>{{ group.employees|length }}</em>
+      </a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="employee-directory" data-employee-directory data-student-sortable>
+    {% for group in role_groups %}
+    <section class="employee-role-block" id="role-{{ group.role|slugify }}" data-employee-role-block data-role-label="{{ group.label }}">
+      <header class="employee-role-header">
+        <div>
+          <h2>{{ group.label }}</h2>
+          <p>{{ group.employees|length }} active employee{{ group.employees|length|pluralize }} in this category</p>
+        </div>
+        <span class="student-count-chip">{{ group.employees|length }}</span>
+      </header>
+      <article class="employee-role-card">
+        <div class="employee-table-wrap">
+          <table class="employee-table employee-table-directory">
+            <colgroup>
+              <col class="col-employee">
+              <col class="col-code">
+              <col class="col-employment">
+              <col class="col-contact">
+              <col class="col-roles">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Employee code</th>
+                <th>Employment number</th>
+                <th>Contact</th>
+                <th>Categories</th>
+              </tr>
+            </thead>
+            <tbody data-student-sort-body>
+              {% for employee in group.employees %}
+              <tr
+                data-employee-row
+                data-student-row
+                data-sort-name="{{ employee.first_name }} {{ employee.last_name }}"
+                data-sort-code="{{ employee.employment_number }}"
+                data-search="{{ employee.display_name }} {{ employee.employee_code }} {{ employee.employment_number }} {{ employee.email }} {{ employee.phone_number }} {{ group.label }} {% for value in employee.role_values %}{% for choice_value, choice_label in role_choices %}{% if choice_value == value %}{{ choice_label }} {% endif %}{% endfor %}{% endfor %}"
+              >
+                <td data-label="Employee">
+                  <div class="employee-name-cell">
+                    {% if employee.profile_image %}
+                    <img class="employee-avatar employee-avatar-photo" src="{{ employee.profile_image.url }}" alt="">
+                    {% else %}
+                    <span class="employee-avatar" aria-hidden="true">{{ employee.first_name|slice:":1" }}{{ employee.last_name|slice:":1" }}</span>
+                    {% endif %}
+                    <div class="employee-name-copy">
+                      <strong class="is-uppercase">{{ employee.display_name }}</strong>
+                    </div>
+                  </div>
+                </td>
+                <td data-label="Employee code"><code class="employee-code">{{ employee.employment_number }}</code></td>
+                <td data-label="Employment number"><code class="employee-code is-uppercase">{{ employee.employee_code }}</code></td>
+                <td data-label="Contact">
+                  <div class="employee-contact-cell">
+                    <span>{{ employee.email }}</span>
+                    <small>{{ employee.phone_number }}</small>
+                  </div>
+                </td>
+                <td data-label="Categories">
+                  <span class="employee-role-chips">
+                    {% for value in employee.role_values %}
+                    <span class="employee-role-chip{% if value == employee.role %} is-primary{% endif %}{% if value == group.role %} is-current{% endif %}">
+                      {% for choice_value, choice_label in role_choices %}{% if choice_value == value %}{{ choice_label }}{% endif %}{% endfor %}
+                    </span>
+                    {% endfor %}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+    {% endfor %}
+    <p class="employee-mgmt-empty" data-employee-empty hidden>No active employees match your search.</p>
+  </div>
+  {% else %}
+  <div class="employee-mgmt-blank">
+    <strong>No active employees</strong>
+    <p>Approved staff with active access will appear here by category.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
+<script>
+(() => {
+  const searchInput = document.querySelector("[data-employee-search]");
+  const directory = document.querySelector("[data-employee-directory]");
+  const emptyState = document.querySelector("[data-employee-empty]");
+  if (!searchInput || !directory) return;
+
+  const blocks = Array.from(directory.querySelectorAll("[data-employee-role-block]"));
+  const navChips = Array.from(document.querySelectorAll(".employee-role-nav-chip"));
+
+  const applySearch = () => {
+    const query = (searchInput.value || "").trim().toLowerCase();
+    let visibleRows = 0;
+    blocks.forEach((block) => {
+      const rows = Array.from(block.querySelectorAll("[data-employee-row]"));
+      let blockVisible = 0;
+      rows.forEach((row) => {
+        const haystack = (row.getAttribute("data-search") || "").toLowerCase();
+        const match = !query || haystack.includes(query);
+        row.hidden = !match;
+        if (match) blockVisible += 1;
+      });
+      block.hidden = blockVisible === 0;
+      visibleRows += blockVisible;
+    });
+    if (emptyState) emptyState.hidden = visibleRows > 0;
+    navChips.forEach((chip) => {
+      const href = chip.getAttribute("href") || "";
+      const target = href.startsWith("#") ? directory.querySelector(href) : null;
+      chip.hidden = Boolean(target && target.hidden);
+    });
+  };
+
+  searchInput.addEventListener("input", applySearch);
+})();
+</script>
+{% endblock %}

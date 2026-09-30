@@ -1,0 +1,173 @@
+{% extends "layouts/workspace.html" %}
+{% load static %}
+{% block title %}{{ permission_employee.display_name }} permissions | Edu-Centric{% endblock %}
+{% block header_eyebrow %}Employee permissions{% endblock %}
+{% block header_title %}{{ permission_employee.display_name }}{% endblock %}
+
+{% block sidebar_modules %}
+{% include "employees/includes/human_resource_sidebar.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+{% csrf_token %}
+<div class="exam-tool-page employee-mgmt-page employee-permissions-page">
+  {% include "employees/includes/nav/human_resource.html" %}
+
+  <div class="teacher-page-bar" aria-label="Employee permission summary">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ enabled_count }}</strong>
+        <span>Enabled</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ activity_count }}</strong>
+        <span>Actions</span>
+      </div>
+      <div class="teacher-page-bar-stat">
+        <strong>{{ module_groups|length }}</strong>
+        <span>Module{{ module_groups|length|pluralize }}</span>
+      </div>
+    </div>
+    <div class="teacher-page-bar-actions">
+      <a class="record-action" href="{% url 'employees:it_support_employee_permissions' %}">Back to employees</a>
+    </div>
+  </div>
+
+  <article class="employee-permission-card employee-permission-profile" data-permission-employee="{{ permission_employee.id }}">
+    <header class="employee-permission-card-header">
+      <div class="employee-name-cell">
+        {% if permission_employee.profile_image %}
+        <img class="employee-avatar employee-avatar-photo" src="{{ permission_employee.profile_image.url }}" alt="">
+        {% else %}
+        <span class="employee-avatar" aria-hidden="true">{{ permission_employee.first_name|slice:":1" }}{{ permission_employee.last_name|slice:":1" }}</span>
+        {% endif %}
+        <div class="employee-name-copy">
+          <strong class="is-uppercase">{{ permission_employee.display_name }}</strong>
+          <span>{{ permission_employee.email }} · code {{ permission_employee.employment_number }}</span>
+          {% if employee_roles %}
+          <span class="employee-role-chips">
+            {% for label in employee_roles %}
+            <span class="employee-role-chip{% if forloop.first %} is-primary{% endif %}">{{ label }}</span>
+            {% endfor %}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <span class="status-pill is-uppercase {% if enabled_count == activity_count %}is-active{% elif enabled_count %}is-warn{% else %}is-inactive{% endif %}" data-permission-summary>
+        {{ enabled_count }}/{{ activity_count }} on
+      </span>
+    </header>
+  </article>
+
+  <p class="employee-permissions-lead">
+    All modules from this employee’s assigned roles appear here once.
+    Turn each supported action on or off for this person.
+  </p>
+
+  {% if module_groups %}
+  <div class="employee-directory employee-permissions-directory">
+    <div class="employee-permission-module-stack">
+      {% for module_group in module_groups %}
+      <article class="employee-permission-card">
+        <header class="employee-permission-module-head">
+          <div>
+            <h3>{{ module_group.module }}</h3>
+            <p>
+              {{ module_group.group }}
+              {% if module_group.role_labels %}
+              · {% for label in module_group.role_labels %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              {% endif %}
+            </p>
+          </div>
+          <span class="student-count-chip is-quiet">{{ module_group.activities|length }}</span>
+        </header>
+        <div class="employee-permission-toggles employee-permission-actions">
+          {% for activity in module_group.activities %}
+          <label class="exam-manage-toggle employee-permission-toggle">
+            <input
+              type="checkbox"
+              data-permission-toggle
+              data-employee-id="{{ permission_employee.id }}"
+              data-roles="{{ activity.roles_csv }}"
+              data-activity-code="{{ activity.code }}"
+              data-toggle-url="{% url 'employees:toggle_workspace_employee_permission' permission_employee.id %}"
+              {% if activity.enabled %}checked{% endif %}
+            >
+            <span class="exam-manage-toggle-track" aria-hidden="true"></span>
+            <span class="exam-manage-toggle-copy">
+              <strong>{{ activity.label }}</strong>
+              <span>{% if activity.enabled %}Allowed{% else %}Restricted{% endif %}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="employee-mgmt-blank">
+    <strong>No role activities</strong>
+    <p>Assign a workspace role to this employee before managing permissions.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script>
+(() => {
+  const tokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
+  const csrftoken = tokenInput?.value
+    || document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1];
+  const summary = document.querySelector("[data-permission-summary]");
+
+  const refreshSummary = () => {
+    const toggles = Array.from(document.querySelectorAll("[data-permission-toggle]"));
+    if (!summary || !toggles.length) return;
+    const enabledCount = toggles.filter((item) => item.checked).length;
+    summary.textContent = `${enabledCount}/${toggles.length} on`;
+    summary.classList.toggle("is-active", enabledCount === toggles.length);
+    summary.classList.toggle("is-warn", enabledCount > 0 && enabledCount < toggles.length);
+    summary.classList.toggle("is-inactive", enabledCount === 0);
+  };
+
+  document.querySelectorAll("[data-permission-toggle]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const url = input.getAttribute("data-toggle-url");
+      const body = new URLSearchParams({
+        roles: input.getAttribute("data-roles") || "",
+        activity_code: input.getAttribute("data-activity-code") || "",
+        enabled: input.checked ? "1" : "0",
+      });
+      const status = input.closest("label")?.querySelector(".exam-manage-toggle-copy span");
+      input.disabled = true;
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+            "X-CSRFToken": decodeURIComponent(csrftoken || ""),
+          },
+          body,
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          input.checked = !input.checked;
+          if (status) status.textContent = "Update failed";
+          return;
+        }
+        if (status) status.textContent = payload.enabled ? "Allowed" : "Restricted";
+        refreshSummary();
+      } catch (_error) {
+        input.checked = !input.checked;
+        if (status) status.textContent = "Update failed";
+      } finally {
+        input.disabled = false;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

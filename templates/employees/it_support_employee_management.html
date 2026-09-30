@@ -19,6 +19,13 @@
         <span>List staff, edit details, suspend access, or remove employees.</span>
       </span>
     </a>
+    <a class="teacher-dash-action" href="{% url 'employees:it_support_employee_permissions' %}">
+      <span class="teacher-dash-action-icon" aria-hidden="true">EP</span>
+      <span class="teacher-dash-action-copy">
+        <strong>Employee permissions</strong>
+        <span>Enable or restrict role module activities for each employee.</span>
+      </span>
+    </a>
     <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
       <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
       <span class="teacher-dash-action-copy">

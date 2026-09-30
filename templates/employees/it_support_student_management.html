@@ -1,7 +1,7 @@
 {% extends "layouts/workspace.html" %}
 {% load static %}
 {% block title %}{{ module.title }} | Edu-Centric{% endblock %}
-{% block header_eyebrow %}IT Support{% endblock %}
+{% block header_eyebrow %}{{ workspace_role_label }}{% endblock %}
 {% block header_title %}{{ module.title }}{% endblock %}
 
 {% block sidebar_modules %}
@@ -40,6 +40,8 @@
   </div>
 </div>
 
+{% include "employees/includes/nav/student_management_levels.html" %}
+
 <div
   class="student-register-search"
   data-student-register-search
@@ -70,10 +72,8 @@
   </div>
 </div>
 
-{% include "employees/includes/nav/student_management_levels.html" %}
-
 {% if student_groups %}
-<div class="student-directory" data-student-directory data-student-sortable>
+<div id="student-directory" class="student-directory" data-student-directory data-student-sortable>
   {% for level in student_groups %}
   <section class="student-level-block">
     <header class="student-level-header">
@@ -434,6 +434,6 @@
 
 {% block workspace_scripts %}
 {% include "employees/includes/student_edit_modal_script.html" %}
-<script src="{% static 'js/student-management.js' %}?v=20260904editrewrite" defer></script>
+<script src="{% static 'js/student-management.js' %}?v=20260930scroll-grade" defer></script>
 <script src="{% static 'js/student-sort.js' %}?v=20260903sort-dd" defer></script>
 {% endblock %}

@@ -298,29 +298,39 @@
     <header class="exam-detail-levels-head">
       <div>
         <h3>Your subjects to teach</h3>
-        <p>Open a subject to enter or review student marks for that class.</p>
+        <p>Open a class to enter or review marks for all your subjects in that class.</p>
       </div>
-      <span class="exam-detail-levels-count">{{ exam_subject_allocations|length }} subject{{ exam_subject_allocations|length|pluralize }}</span>
+      <span class="exam-detail-levels-count">
+        {{ exam_class_entries|length }} class{{ exam_class_entries|length|pluralize }}
+        · {{ exam_subject_allocations|length }} subject{{ exam_subject_allocations|length|pluralize }}
+      </span>
     </header>
     {% for group in exam_subject_groups %}
     <section class="sa-level-block teacher-exam-level-block" aria-label="{{ group.level.name }}">
       <header class="sa-level-head teacher-exam-level-head">
         <div>
           <h3 class="is-uppercase">{{ group.level.name }}</h3>
-          <p class="subtle">{{ group.level.code }} · {{ group.subjects|length }} subject{{ group.subjects|length|pluralize }}</p>
+          <p class="subtle">
+            {{ group.level.code }}
+            · {{ group.classes|length }} class{{ group.classes|length|pluralize }}
+          </p>
         </div>
       </header>
       <div class="exam-hub-grid teacher-exam-subject-grid">
-        {% for item in group.subjects %}
+        {% for entry in group.classes %}
         <a
           class="exam-hub-card teacher-exam-subject-card"
-          href="{% url 'employees:teacher_exam_record_class' exam.id item.academic_class.id %}"
+          href="{% url 'employees:teacher_exam_record_class' exam.id entry.academic_class.id %}"
         >
-          <span class="exam-hub-card-icon" aria-hidden="true">{{ item.subject.code|slice:":2" }}</span>
+          <span class="exam-hub-card-icon" aria-hidden="true">{{ entry.academic_class.code|slice:":2" }}</span>
           <span class="exam-hub-card-copy">
-            <strong class="is-uppercase">{{ item.subject.name }}</strong>
-            <span>{{ item.subject.code }}</span>
-            <span class="teacher-exam-class-chip">{{ item.academic_class.display_label }}</span>
+            <strong class="is-uppercase">{{ entry.academic_class.display_label }}</strong>
+            <span class="teacher-exam-subject-columns" aria-label="Subjects">
+              {% for subject in entry.subjects %}
+              <span class="teacher-exam-subject-col" title="{{ subject.name }}">{{ subject.code }}</span>
+              {% endfor %}
+            </span>
+            <span class="teacher-exam-subject-names">{{ entry.subject_names }}</span>
           </span>
           <span class="exam-hub-card-go">Open marks →</span>
         </a>

@@ -7,17 +7,21 @@
     </span>
   </a>
   <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}">
-    <span class="teacher-dash-action-icon" aria-hidden="true">CA</span>
+    <span class="teacher-dash-action-icon" aria-hidden="true">SA</span>
     <span class="teacher-dash-action-copy">
-      <strong>Students class attendance</strong>
-      <span>Students class attendance</span>
+      <strong>Students subject attendance</strong>
+      <span>Students subject attendance</span>
     </span>
   </a>
-  <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'students-discipline' %}">
-    <span class="teacher-dash-action-icon" aria-hidden="true">SD</span>
+  <a
+    class="teacher-dash-action{% if active_my_class_tool == 'students-discipline' %} is-active{% endif %}"
+    href="{% url 'employees:teacher_my_class_page' 'students-discipline' %}"
+    {% if active_my_class_tool == 'students-discipline' %}aria-current="page"{% endif %}
+  >
+    <span class="teacher-dash-action-icon" aria-hidden="true">SC</span>
     <span class="teacher-dash-action-copy">
-      <strong>Students discipline</strong>
-      <span>Students discipline</span>
+      <strong>Student conduct</strong>
+      <span>Student conduct</span>
     </span>
   </a>
   <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'student-books' %}">

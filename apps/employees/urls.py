@@ -90,6 +90,21 @@ urlpatterns = [
         name="it_support_employee_management",
     ),
     path(
+        "workspace/it_support/human-resource-management/employee-permissions/",
+        views.it_support_employee_permissions,
+        name="it_support_employee_permissions",
+    ),
+    path(
+        "workspace/it_support/human-resource-management/employee-permissions/<int:employee_id>/",
+        views.it_support_employee_permission_detail,
+        name="it_support_employee_permission_detail",
+    ),
+    path(
+        "workspace/it_support/human-resource-management/employee-permissions/<int:employee_id>/toggle/",
+        views.toggle_workspace_employee_permission,
+        name="toggle_workspace_employee_permission",
+    ),
+    path(
         "workspace/it_support/human-resource-management/employee-management/<int:employee_id>/update/",
         views.update_workspace_employee,
         name="update_workspace_employee",
@@ -123,6 +138,16 @@ urlpatterns = [
         "workspace/it_support/student-management/clearing-students/",
         views.it_support_clearing_students,
         name="it_support_clearing_students",
+    ),
+    path(
+        "workspace/it_support/student-management/student-conduct/",
+        views.it_support_student_conduct,
+        name="it_support_student_conduct",
+    ),
+    path(
+        "workspace/it_support/student-management/student-conduct/<int:record_id>/delete/",
+        views.delete_student_conduct,
+        name="delete_student_conduct",
     ),
     path(
         "workspace/it_support/student-management/clearing-students/<int:student_id>/",
@@ -190,6 +215,16 @@ urlpatterns = [
         name="it_support_system_performance",
     ),
     path(
+        "workspace/school-activities/",
+        views.school_activities,
+        name="school_activities",
+    ),
+    path(
+        "workspace/school-activities/<int:activity_id>/delete/",
+        views.delete_school_activity,
+        name="delete_school_activity",
+    ),
+    path(
         "workspace/it_support/<slug:module>/",
         views.it_support_module,
         name="it_support_module",
@@ -245,6 +280,11 @@ urlpatterns = [
         "workspace/teacher/my-class/<slug:tool>/",
         views.teacher_my_class_page,
         name="teacher_my_class_page",
+    ),
+    path(
+        "workspace/teacher/my-class/students-discipline/<int:record_id>/delete/",
+        views.teacher_delete_student_conduct,
+        name="teacher_delete_student_conduct",
     ),
     path("workspace/teacher/my-class/", views.teacher_my_class, name="teacher_my_class"),
     path(
@@ -354,6 +394,16 @@ urlpatterns = [
         name="secretary_report_section",
     ),
     path("workspace/secretary/reports/", views.secretary_reports, name="secretary_reports"),
+    path(
+        "workspace/secretary/<slug:module>/",
+        views.secretary_module,
+        name="secretary_module",
+    ),
+    path(
+        "workspace/curriculum_coordinator/<slug:module>/",
+        views.curriculum_coordinator_module,
+        name="curriculum_coordinator_module",
+    ),
     path("workspace/switch-role/", views.switch_workspace_role, name="switch_workspace_role"),
     path(
         "workspace/switch-role/employees/",

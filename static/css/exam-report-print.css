@@ -1,6 +1,6 @@
 /* Isolated stylesheet for exam mark sheets / analytics iframe print (no sticky rules). */
 @page {
-  size: A4 landscape;
+  size: A4 portrait;
   margin: 6mm;
 }
 
@@ -62,11 +62,40 @@ body {
   border-bottom: 1.1pt solid #1b4fd6;
 }
 
+.src-dual-head.exam-matrix-letterhead {
+  display: block;
+}
+
 .src-dual-school {
   display: grid;
   grid-template-columns: 14mm minmax(0, 1fr);
   gap: 2mm;
   align-items: start;
+}
+
+.src-dual-head.exam-matrix-letterhead .src-dual-school.exam-matrix-list-brand {
+  display: grid;
+  grid-template-columns: 14mm minmax(0, 1fr) 14mm;
+  gap: 2mm;
+  align-items: center;
+}
+
+.src-dual-head.exam-matrix-letterhead .src-dual-copy,
+.src-dual-head.exam-matrix-letterhead .src-dual-copy h1,
+.src-dual-head.exam-matrix-letterhead .src-dual-motto,
+.src-dual-head.exam-matrix-letterhead .src-dual-contact {
+  text-align: center;
+}
+
+.src-dual-head.exam-matrix-letterhead .src-dual-school-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8mm 2mm;
+  margin: 1.1mm 0 0;
+  padding-top: 1mm;
+  border-top: 0.4pt solid #d5deec;
+  text-align: center;
 }
 
 .src-dual-logo,
@@ -262,11 +291,11 @@ table.src-table-matrix td {
 }
 
 .exam-matrix-print-col-learner {
-  width: 15%;
+  width: 26%;
 }
 
 table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
-  width: 12%;
+  width: 24%;
 }
 
 .exam-matrix-print-col-class {
@@ -274,16 +303,16 @@ table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
 }
 
 .exam-matrix-print-col-summary {
-  width: 3.25%;
+  width: 3%;
 }
 
-/* Remaining width split evenly so every subject column prints on one landscape page. */
+/* Remaining width split evenly so every subject column prints on one portrait page. */
 table.src-table-matrix:not(.has-class-col) {
-  --exam-matrix-fixed-pct: 30.75%;
+  --exam-matrix-fixed-pct: 38%;
 }
 
 table.src-table-matrix.has-class-col {
-  --exam-matrix-fixed-pct: 34.25%;
+  --exam-matrix-fixed-pct: 40%;
 }
 
 .exam-matrix-print-col-subject {
@@ -303,10 +332,14 @@ table.src-table-matrix th.exam-matrix-learner,
 table.src-table-matrix td.exam-matrix-learner,
 .exam-matrix-list-table th.exam-matrix-learner,
 .exam-matrix-list-table td.exam-matrix-learner {
-  white-space: nowrap !important;
-  text-overflow: ellipsis;
-  word-wrap: normal !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip;
+  word-wrap: break-word !important;
   word-break: normal !important;
+  hyphens: manual;
+  line-height: 1.2;
+  text-align: left;
 }
 
 .exam-matrix-list-table th.exam-matrix-pos-col,
@@ -342,6 +375,50 @@ table.src-table-matrix thead th {
   box-shadow: inset 0.9pt 0 0 #334155;
 }
 
+.src-avg-col.export-grade-col,
+.src-avg-col.exam-matrix-sticky-grade,
+.exam-matrix-grade-col {
+  background: #e4ecff;
+  box-shadow: inset 0.9pt 0 0 #1b4fd6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.src-avg-col.exam-matrix-sticky-total {
+  background: #e4ecff;
+  box-shadow: inset 0.9pt 0 0 #1b4fd6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.src-avg-col.export-grade-col strong,
+.src-avg-col.exam-matrix-sticky-grade strong,
+.exam-matrix-grade-col strong,
+.src-avg-col.exam-matrix-sticky-total strong {
+  color: #1b4fd6;
+  font-weight: 800;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+table.src-table-matrix thead th.export-grade-col,
+table.src-table-matrix thead th.exam-matrix-sticky-grade,
+.exam-matrix-list-table thead th.exam-matrix-grade-col,
+table.src-table-matrix thead th.exam-matrix-sticky-total {
+  color: #1b4fd6;
+  background: #dbe6ff;
+}
+
+.src-table tbody tr:nth-child(even) td.export-grade-col,
+.src-table tbody tr:nth-child(even) td.exam-matrix-sticky-grade,
+table.src-table-matrix tbody tr:nth-child(even) td.export-grade-col,
+table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-sticky-grade,
+.exam-matrix-list-table tbody tr:nth-child(even) td.exam-matrix-grade-col,
+.src-table tbody tr:nth-child(even) td.exam-matrix-sticky-total,
+table.src-table-matrix tbody tr:nth-child(even) td.exam-matrix-sticky-total {
+  background: #dce7ff;
+}
+
 .src-table tbody tr:nth-child(even) td,
 table.src-table-matrix tbody tr:nth-child(even) td {
   background: #f8fafc;
@@ -361,9 +438,11 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 .src-mark em {
   display: inline;
   line-height: 1.15;
+  vertical-align: baseline;
 }
 
 .src-mark strong {
+  color: #10233f;
   font-size: 7.5pt;
   font-weight: 800;
 }
@@ -381,24 +460,27 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 }
 
 .exam-matrix-mark-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
   justify-content: center;
-  gap: 0.15mm;
-  line-height: 1.05;
+  gap: 0.2mm;
+  line-height: 1.1;
   max-width: 100%;
+  white-space: nowrap;
 }
 
 .exam-matrix-mark-stack .exam-matrix-mark-score,
 .exam-matrix-mark-stack .exam-matrix-mark-grade {
-  display: block;
-  line-height: 1.05;
-  max-width: 100%;
-  overflow: hidden;
+  display: inline;
+  line-height: 1.1;
+  max-width: none;
+  overflow: visible;
 }
 
 .exam-matrix-mark-stack .exam-matrix-mark-score {
+  color: #10233f;
   font-size: 7.5pt;
   font-weight: 800;
 }
@@ -413,17 +495,19 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 
 .exam-matrix-mark strong,
 .exam-matrix-mark em {
-  display: block;
-  line-height: 1.05;
+  display: inline;
+  line-height: 1.1;
+  vertical-align: baseline;
 }
 
 .exam-matrix-mark strong {
+  color: #10233f;
   font-size: 7.5pt;
   font-weight: 800;
 }
 
 .exam-matrix-mark em {
-  margin: 0;
+  margin-left: 0.18em;
   color: #1b4fd6;
   font-size: 6pt;
   font-style: normal;
@@ -462,18 +546,23 @@ html[data-export-mode="raw"] .export-grade-col {
 }
 
 .exam-analytics-pair {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
   justify-content: center;
+  gap: 0.2mm;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .exam-analytics-pair strong {
+  color: #10233f;
   font-size: 7.5pt;
 }
 
 .exam-analytics-pair em {
+  margin: 0;
   color: #1b4fd6;
   font-size: 6.2pt;
   font-style: normal;

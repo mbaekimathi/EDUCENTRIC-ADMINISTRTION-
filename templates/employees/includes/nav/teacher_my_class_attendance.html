@@ -7,21 +7,10 @@
     </span>
   </a>
   <a class="teacher-dash-action" href="{% url 'employees:teacher_my_class_page' 'students-class-attendance' %}">
-    <span class="teacher-dash-action-icon" aria-hidden="true">CA</span>
+    <span class="teacher-dash-action-icon" aria-hidden="true">SA</span>
     <span class="teacher-dash-action-copy">
-      <strong>Students class attendance</strong>
-      <span>Attendance analytics</span>
+      <strong>Students subject attendance</strong>
+      <span>Review teacher subject registers</span>
     </span>
   </a>
-  {% if led_classes %}
-  {% for academic_class in led_classes %}
-  <a class="teacher-dash-action" href="{% url 'employees:teacher_subject_attendance_class' academic_class.id %}">
-    <span class="teacher-dash-action-icon" aria-hidden="true">{{ academic_class.display_label|slice:":2" }}</span>
-    <span class="teacher-dash-action-copy">
-      <strong class="is-uppercase">{{ academic_class.display_label }}</strong>
-      <span>Subject attendance</span>
-    </span>
-  </a>
-  {% endfor %}
-  {% endif %}
 </section>

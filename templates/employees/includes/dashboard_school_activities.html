@@ -1,0 +1,95 @@
+{% load static %}
+<section class="dash-activities" aria-label="School activities" data-dash-activities>
+  <header class="dash-activities-head">
+    <div>
+      <p class="dash-activities-kicker">School calendar</p>
+      <h2>School activities</h2>
+      <p class="subtle">Tap an activity to view full details</p>
+    </div>
+    {% if dashboard_activities %}
+    <span class="dash-activities-count">{{ dashboard_activities|length }}</span>
+    {% endif %}
+  </header>
+
+  {% if dashboard_activities %}
+  <div class="dash-activities-track" role="list">
+    {% for activity in dashboard_activities %}
+    <button
+      type="button"
+      class="dash-activity-card{% if activity.is_current %} is-current{% else %} is-upcoming{% endif %}"
+      role="listitem"
+      data-open-activity="{{ activity.id }}"
+      aria-haspopup="dialog"
+    >
+      <span class="dash-activity-badge">{% if activity.is_current %}Current{% else %}Upcoming{% endif %}</span>
+      <strong class="dash-activity-title is-uppercase">{{ activity.title }}</strong>
+      <span class="dash-activity-range">{{ activity.date_range }}</span>
+      <span class="dash-activity-meta">
+        {{ activity.grade_count }} grade{{ activity.grade_count|pluralize }}
+        · {{ activity.day_count }} day{{ activity.day_count|pluralize }}
+      </span>
+    </button>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="dash-activities-empty">No school activities registered yet.</p>
+  {% endif %}
+</section>
+
+{{ dashboard_activities|json_script:"dashboard-activities-data" }}
+
+<div
+  class="app-modal dash-activity-modal"
+  id="dash-activity-modal"
+  data-modal="dash-activity"
+  hidden
+>
+  <div class="app-modal-backdrop" data-modal-close></div>
+  <div
+    class="app-modal-dialog dash-activity-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="dash-activity-title"
+  >
+    <div class="dash-activity-dialog-hero">
+      <div class="dash-activity-dialog-hero-copy">
+        <p class="dash-activity-dialog-kicker" data-activity-badge>Activity</p>
+        <h2 id="dash-activity-title" data-activity-title>Activity</h2>
+        <p class="dash-activity-dialog-range" data-activity-range></p>
+      </div>
+      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+    </div>
+
+    <div class="dash-activity-dialog-body">
+      <section class="dash-activity-block" data-activity-description-block hidden>
+        <h3>Overview</h3>
+        <p data-activity-description></p>
+      </section>
+
+      <section class="dash-activity-block">
+        <h3>Grades undertaking</h3>
+        <div class="dash-activity-grades" data-activity-grades></div>
+      </section>
+
+      <section class="dash-activity-block">
+        <h3>Schedule</h3>
+        <div class="dash-activity-days" data-activity-days></div>
+      </section>
+
+      <section class="dash-activity-block dash-activity-meta-block">
+        <div>
+          <span>Registered by</span>
+          <strong data-activity-created-by>—</strong>
+        </div>
+        <div>
+          <span>Registered on</span>
+          <strong data-activity-created-at>—</strong>
+        </div>
+      </section>
+    </div>
+
+    <div class="app-modal-actions dash-activity-dialog-actions">
+      <button type="button" class="primary-button" data-modal-close>Close</button>
+    </div>
+  </div>
+</div>

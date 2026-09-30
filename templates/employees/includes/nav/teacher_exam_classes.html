@@ -13,15 +13,16 @@
       <span>All classes analytics</span>
     </span>
   </a>
-  {% for item in exam_subject_allocations %}
+  {% for entry in exam_class_entries %}
   <a
     class="teacher-dash-action"
-    href="{% url 'employees:teacher_exam_record_class' exam.id item.academic_class.id %}"
+    href="{% url 'employees:teacher_exam_record_class' exam.id entry.academic_class.id %}"
+    title="{{ entry.subject_names }}"
   >
-    <span class="teacher-dash-action-icon" aria-hidden="true">{{ item.subject.code|slice:":2" }}</span>
+    <span class="teacher-dash-action-icon" aria-hidden="true">{{ entry.academic_class.code|slice:":2" }}</span>
     <span class="teacher-dash-action-copy">
-      <strong class="is-uppercase">{{ item.subject.name }}</strong>
-      <span>{{ item.academic_class.display_label }}</span>
+      <strong class="is-uppercase">{{ entry.academic_class.display_label }}</strong>
+      <span>{{ entry.subject_codes }}</span>
     </span>
   </a>
   {% endfor %}

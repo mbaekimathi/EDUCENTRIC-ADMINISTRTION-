@@ -94,6 +94,20 @@ def workspace(request):
         "is_role_preview": is_workspace_preview(request),
         "admissions_enabled": _admissions_enabled(),
         **exam_management_url_names(role),
+        "student_management_module_url": (
+            "employees:curriculum_coordinator_module"
+            if role == Employee.Role.CURRICULUM_COORDINATOR
+            else "employees:secretary_module"
+            if role == Employee.Role.SECRETARY
+            else "employees:it_support_module"
+        ),
+        "curriculum_management_module_url": (
+            "employees:curriculum_coordinator_module"
+            if role == Employee.Role.CURRICULUM_COORDINATOR
+            else "employees:secretary_module"
+            if role == Employee.Role.SECRETARY
+            else "employees:it_support_module"
+        ),
     }
 
 

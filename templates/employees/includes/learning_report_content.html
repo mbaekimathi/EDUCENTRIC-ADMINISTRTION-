@@ -1,0 +1,907 @@
+<script>
+(function () {
+  const nav = performance.getEntriesByType("navigation")[0];
+  const isReload = nav
+    ? nav.type === "reload"
+    : typeof performance.navigation !== "undefined" && performance.navigation.type === 1;
+  if (!isReload || !window.location.search) return;
+  window.location.replace(window.location.pathname);
+})();
+</script>
+<div class="exam-tool-page elr-report-page exam-report-builder-page{% if has_report %} has-report{% endif %}">
+
+  {% if has_report %}
+  <div class="teacher-page-bar no-print" aria-label="Report summary">
+    <div class="teacher-page-bar-stats">
+      <div class="teacher-page-bar-stat">
+        <strong>{{ report_type_label }}</strong>
+        <span>Report type</span>
+      </div>
+      {% if needs_date %}
+      <div class="teacher-page-bar-stat">
+        <strong>{{ report_date|date:"d M Y" }}</strong>
+        <span>Report date</span>
+      </div>
+      {% else %}
+      <div class="teacher-page-bar-stat">
+        <strong>{{ timetable_sheets|length }}</strong>
+        <span>Class{{ timetable_sheets|length|pluralize }}</span>
+      </div>
+      {% endif %}
+      <div class="teacher-page-bar-stat">
+        <strong>{{ selected_scope_label }}</strong>
+        <span>Scope</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if report_error %}{% include "partials/notify_trigger.html" with type="error" message=report_error %}{% endif %}
+
+  {% if not allocations %}
+  <section class="exam-tool-empty no-print">
+    <span class="exam-tool-empty-icon" aria-hidden="true">LR</span>
+    <strong>No learning subjects allocated</strong>
+    <p>{{ empty_message }}</p>
+  </section>
+  {% else %}
+
+  <details class="exam-report-builder-details lr-builder no-print"{% if not has_report %} open{% endif %}>
+    <summary class="exam-report-builder-summary">
+      <span class="lr-builder-summary-lead">
+        <span class="lr-builder-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 6h11M8 12h11M8 18h11"/>
+            <path d="M4 6h.01M4 12h.01M4 18h.01"/>
+          </svg>
+        </span>
+        <span>
+          <strong>Generate learning report</strong>
+          <small>Pick the report type first, then set the matching scope</small>
+        </span>
+      </span>
+      <span class="exam-report-builder-summary-action" aria-hidden="true">
+        <span class="lr-builder-summary-closed">Edit options</span>
+        <span class="lr-builder-summary-open">Collapse</span>
+      </span>
+    </summary>
+    <section class="exam-tool-panel exam-report-builder" aria-label="Learning report options">
+      <form method="get" class="exam-report-form elr-report-form lr-builder-form" data-learning-report-builder>
+        {{ scope_catalog|json_script:"learning-report-catalog" }}
+        <input type="hidden" name="generate" value="1">
+
+        <div class="lr-builder-section">
+          <div class="lr-builder-section-head">
+            <h3 id="lr-report-type-label">Report type</h3>
+            <p>Choose what the printable report should cover. Scope fields update to match.</p>
+          </div>
+          <div class="exam-report-kind exam-report-kind-4" role="radiogroup" aria-labelledby="lr-report-type-label">
+            {% for item in report_types %}
+            <label
+              class="exam-report-choice lr-builder-choice"
+              data-kind="{{ item.value }}"
+              data-needs-subject="{% if item.needs_subject %}1{% else %}0{% endif %}"
+              data-multi-class="{% if item.multi_class %}1{% else %}0{% endif %}"
+              data-needs-date="{% if item.needs_date %}1{% else %}0{% endif %}"
+            >
+              <input
+                type="radio"
+                name="report_type"
+                value="{{ item.value }}"
+                {% if selection.report_type == item.value %}checked{% endif %}
+                required
+              >
+              <span class="lr-builder-choice-copy">
+                <strong>{{ item.label }}</strong>
+                <small>{{ item.copy }}</small>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="lr-builder-section">
+          <div class="lr-builder-section-head">
+            <h3>Scope</h3>
+            <p data-lr-scope-hint>Choose the class and subject the report should cover.</p>
+          </div>
+          <div class="exam-report-steps lr-builder-fields">
+            <div class="field exam-report-step" data-lr-date-field{% if not needs_date %} hidden{% endif %}>
+              <label for="lr-report-date">Report date</label>
+              <input
+                id="lr-report-date"
+                type="date"
+                name="report_date"
+                class="uppercase-input"
+                value="{{ selection.report_date }}"
+                {% if needs_date %}required{% endif %}
+              >
+            </div>
+
+            <div class="field exam-report-step" data-lr-exam-field{% if selection.report_type != "exam_timetable" %} hidden{% endif %}>
+              <label for="lr-report-exam">Assessment</label>
+              <select id="lr-report-exam" name="exam_id" class="uppercase-input">
+                <option value="">Current assessment</option>
+                {% for exam in exam_generations %}
+                <option value="{{ exam.id }}" {% if selection.exam_id == exam.id %}selected{% endif %}>
+                  {{ exam.display_name }}{% if exam.is_current %} · current{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="field exam-report-step" data-lr-level-field>
+              <label for="lr-report-level">Academic level</label>
+              <select id="lr-report-level" name="level_id" class="uppercase-input"{% if not multi_class %} required{% endif %}>
+                <option value="">{% if multi_class %}All levels{% else %}Select academic level{% endif %}</option>
+                {% for level in scope_levels %}
+                <option value="{{ level.id }}" {% if selection.level_id == level.id %}selected{% endif %}>
+                  {{ level.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="field exam-report-step" data-lr-class-field{% if multi_class %} hidden{% endif %}>
+              <label for="lr-report-class">Class</label>
+              <select id="lr-report-class" name="class_id" class="uppercase-input"{% if not multi_class %} required{% endif %}>
+                <option value="">Select class</option>
+              </select>
+            </div>
+
+            <div class="field exam-report-step" data-lr-subject-field{% if not needs_subject %} hidden{% endif %}>
+              <label for="lr-report-subject">Subject</label>
+              <select id="lr-report-subject" name="subject_id" class="uppercase-input"{% if needs_subject %} required{% endif %}>
+                <option value="">Select subject</option>
+              </select>
+            </div>
+
+            <div class="field exam-report-step exam-report-step-span" data-lr-classes-field{% if not multi_class %} hidden{% endif %}>
+              <div class="lr-class-multi-head">
+                <label>
+                  Classes
+                  <span class="lr-class-multi-count" data-lr-class-count></span>
+                </label>
+                <div class="lr-class-multi-actions">
+                  <button type="button" class="ghost-button" data-lr-select-all-classes>Select all</button>
+                  <button type="button" class="ghost-button" data-lr-clear-classes>Clear</button>
+                </div>
+              </div>
+              <div class="lr-class-multi-list" data-lr-class-list>
+                <p class="lr-class-multi-empty">Select an academic level to list classes, or leave level blank to show all.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="exam-report-actions lr-builder-actions">
+          <p class="lr-builder-actions-hint" data-lr-actions-hint>Ready when type and scope are set</p>
+          <button type="submit" class="primary-button">Generate report</button>
+        </div>
+      </form>
+    </section>
+  </details>
+
+  {% if has_report %}
+  <div class="exam-report-toolbar no-print">
+    <div class="exam-report-toolbar-copy">
+      <strong>{{ report_type_label }} report ready</strong>
+      <p>
+        {% if needs_date %}{{ report_date|date:"d M Y" }} · {% endif %}{{ selected_scope_label }}
+        {% if report_type == "subject_attendance" %}· {{ session_total }} session{{ session_total|pluralize }}{% endif %}
+        {% if report_type == "lesson_plan" %}· {{ plan_count }} plan{{ plan_count|pluralize }} saved{% endif %}
+        {% if report_type == "outcome" %}· {{ outcome_count }} outcome{{ outcome_count|pluralize }} saved{% endif %}
+        {% if report_type == "learning_timetable" or report_type == "exam_timetable" %}· {{ timetable_sheets|length }} class{{ timetable_sheets|length|pluralize }}{% endif %}
+      </p>
+    </div>
+    <div class="exam-report-toolbar-actions">
+      <button type="button" class="primary-button" data-print-learning-report>Print report</button>
+    </div>
+  </div>
+  <p class="exam-report-print-hint no-print">
+    {% if report_type == "learning_timetable" or report_type == "exam_timetable" %}
+    Timetable reports print in landscape. Turn on Background graphics in print settings to keep the colours, and turn off Headers and footers.
+    {% else %}
+    To hide the date and page URL when printing: open More settings and turn off Headers and footers.
+    {% endif %}
+  </p>
+
+  <article class="elr-report-sheet exam-matrix-list{% if report_type == 'learning_timetable' or report_type == 'exam_timetable' %} is-timetable-report{% endif %}" aria-label="Learning printable report">
+    {% if report_type != "learning_timetable" and report_type != "exam_timetable" %}
+    {% include "employees/includes/learning_report_letterhead.html" %}
+    {% endif %}
+
+    {% if report_type == "subject_attendance" %}
+    <section class="elr-report-section" aria-label="Subject attendance">
+      <h3 class="elr-report-section-title">Subject attendance · {{ report_date|date:"d M Y" }}</h3>
+      {% if attendance_rows %}
+      <div class="exam-matrix-list-wrap">
+        <table class="schedule-timetable elr-report-table">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Subject</th>
+              <th>Present</th>
+              <th>Absent</th>
+              <th>Late</th>
+              <th>Excused</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in attendance_rows %}
+            <tr>
+              <td class="is-uppercase">{{ row.allocation.academic_class.name }}</td>
+              <td class="is-uppercase">{{ row.allocation.learning_area.name }}</td>
+              <td>{{ row.present }}</td>
+              <td>{{ row.absent }}</td>
+              <td>{{ row.late }}</td>
+              <td>{{ row.excused }}</td>
+              <td>{% if row.rate is not None %}{{ row.rate }}%{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% for row in attendance_rows %}
+      <div class="elr-report-subsection">
+        <h4 class="elr-report-subsection-title">
+          {{ row.allocation.academic_class.name }} · {{ row.allocation.learning_area.name }} · learners
+        </h4>
+        {% if row.learners %}
+        <div class="exam-matrix-list-wrap">
+          <table class="schedule-timetable elr-report-table elr-learner-table">
+            <thead>
+              <tr>
+                <th class="elr-col-learner">Learner</th>
+                <th class="elr-col-admission">Admission</th>
+                <th class="elr-col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for learner in row.learners %}
+              <tr>
+                <td class="elr-col-learner is-uppercase">{{ learner.student.display_name }}</td>
+                <td class="elr-col-admission">{{ learner.student.admission_number|default:"—" }}</td>
+                <td class="elr-col-status">{{ learner.status_label }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="elr-report-empty">No learner records for this subject session.</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="elr-report-empty">No subject attendance sessions recorded for {{ report_date|date:"d M Y" }}.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if report_type == "student_attendance" %}
+    <section class="elr-report-section" aria-label="Student class attendance">
+      <h3 class="elr-report-section-title">Student attendance · {{ report_date|date:"d M Y" }}</h3>
+      {% if class_attendance and class_attendance.has_session %}
+      <div class="exam-matrix-list-wrap">
+        <table class="schedule-timetable elr-report-table">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Morning</th>
+              <th>Afternoon</th>
+              <th>Evening</th>
+              <th>Learners</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="is-uppercase">{{ class_attendance.academic_class.name }}</td>
+              <td>{{ class_attendance.present_morning }}</td>
+              <td>{{ class_attendance.present_afternoon }}</td>
+              <td>{{ class_attendance.present_evening }}</td>
+              <td>{{ class_attendance.recorded }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {% if class_attendance.learners %}
+      <div class="elr-report-subsection">
+        <h4 class="elr-report-subsection-title">{{ class_attendance.academic_class.name }} · learners</h4>
+        <div class="exam-matrix-list-wrap">
+          <table class="schedule-timetable elr-report-table elr-learner-table">
+            <thead>
+              <tr>
+                <th class="elr-col-learner">Learner</th>
+                <th class="elr-col-admission">Admission</th>
+                <th>Morning</th>
+                <th>Afternoon</th>
+                <th>Evening</th>
+                <th class="elr-col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for learner in class_attendance.learners %}
+              <tr>
+                <td class="elr-col-learner is-uppercase">{{ learner.student.display_name }}</td>
+                <td class="elr-col-admission">{{ learner.student.admission_number|default:"—" }}</td>
+                <td>{% if learner.morning %}Yes{% else %}No{% endif %}</td>
+                <td>{% if learner.afternoon %}Yes{% else %}No{% endif %}</td>
+                <td>{% if learner.evening %}Yes{% else %}No{% endif %}</td>
+                <td class="elr-col-status">{{ learner.status_label }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="elr-report-empty">No class attendance recorded for {{ report_date|date:"d M Y" }}.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if report_type == "lesson_plan" %}
+    <section class="elr-report-section" aria-label="Lesson plans">
+      <div class="elr-doc-band">
+        <div>
+          <p class="elr-doc-band-kicker">Document</p>
+          <h3 class="elr-report-section-title">Lesson plans</h3>
+        </div>
+        <p class="elr-doc-band-meta">As of {{ report_date|date:"d M Y" }} · {{ plan_count }}/{{ allocation_count }} saved</p>
+      </div>
+
+      <div class="elr-plan-grid">
+        {% for row in lesson_plan_rows %}
+        <article class="elr-plan-card{% if not row.has_plan %} is-missing{% endif %}">
+          <header class="elr-plan-card-head">
+            <div class="elr-plan-card-titles">
+              <p class="elr-plan-card-level is-uppercase">{{ row.allocation.academic_class.name }}</p>
+              <h4 class="elr-plan-card-subject is-uppercase">{{ row.allocation.learning_area.name }}</h4>
+            </div>
+            <span class="elr-status-pill{% if row.has_plan %} is-saved{% else %} is-missing{% endif %}">
+              {% if row.has_plan %}Saved{% else %}Missing{% endif %}
+            </span>
+          </header>
+
+          {% if row.has_plan %}
+          <div class="elr-plan-metrics">
+            <div class="elr-plan-metric">
+              <span>Strand</span>
+              <strong>{{ row.strand|default:"—" }}</strong>
+            </div>
+            <div class="elr-plan-metric">
+              <span>Substrand</span>
+              <strong>{{ row.substrand|default:"—" }}</strong>
+            </div>
+            <div class="elr-plan-metric">
+              <span>Updated</span>
+              <strong>{% if row.updated_at %}{{ row.updated_at|date:"d M Y" }}{% else %}—{% endif %}</strong>
+            </div>
+          </div>
+
+          <div class="elr-plan-blocks">
+            <div class="elr-plan-block elr-plan-block-wide">
+              <span class="elr-plan-label">Learning outcomes</span>
+              <div class="elr-plan-body">{{ row.outcomes|default:"—"|linebreaksbr }}</div>
+            </div>
+            <div class="elr-plan-block">
+              <span class="elr-plan-label">Key inquiry questions</span>
+              <div class="elr-plan-body">{{ row.key_inquiry_questions|default:"—"|linebreaksbr }}</div>
+            </div>
+            <div class="elr-plan-block">
+              <span class="elr-plan-label">Core competencies</span>
+              <div class="elr-plan-body">{{ row.core_competencies|default:"—"|linebreaksbr }}</div>
+            </div>
+            <div class="elr-plan-block">
+              <span class="elr-plan-label">Values</span>
+              <div class="elr-plan-body">{{ row.values|default:"—"|linebreaksbr }}</div>
+            </div>
+            <div class="elr-plan-block elr-plan-block-wide">
+              <span class="elr-plan-label">Learning resources</span>
+              <div class="elr-plan-body">{{ row.learning_resources|default:"—"|linebreaksbr }}</div>
+            </div>
+            <div class="elr-plan-block">
+              <span class="elr-plan-label">Introduction</span>
+              <div class="elr-plan-body">{{ row.introduction|default:"—"|linebreaksbr }}</div>
+            </div>
+            <div class="elr-plan-block">
+              <span class="elr-plan-label">Lesson development</span>
+              <div class="elr-plan-body">{{ row.lesson_development|default:"—"|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% else %}
+          <p class="elr-report-empty">No lesson plan saved for this subject.</p>
+          {% endif %}
+        </article>
+        {% empty %}
+        <p class="elr-report-empty">No allocated subjects to report.</p>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if report_type == "outcome" %}
+    <section class="elr-report-section" aria-label="Subject outcomes">
+      <div class="elr-doc-band">
+        <div>
+          <p class="elr-doc-band-kicker">Document</p>
+          <h3 class="elr-report-section-title">Subject outcomes</h3>
+        </div>
+        <p class="elr-doc-band-meta">As of {{ report_date|date:"d M Y" }} · {{ outcome_count }}/{{ allocation_count }} saved</p>
+      </div>
+
+      <div class="elr-outcome-grid">
+        {% for row in outcome_rows %}
+        <article class="elr-outcome-card{% if not row.has_outcome %} is-missing{% endif %}">
+          <header class="elr-plan-card-head">
+            <div class="elr-plan-card-titles">
+              <p class="elr-plan-card-level is-uppercase">{{ row.allocation.academic_class.name }}</p>
+              <h4 class="elr-plan-card-subject is-uppercase">{{ row.allocation.learning_area.name }}</h4>
+            </div>
+            <span class="elr-status-pill{% if row.has_outcome %} is-saved{% else %} is-missing{% endif %}">
+              {% if row.has_outcome %}Saved{% else %}Missing{% endif %}
+            </span>
+          </header>
+
+          {% if row.has_outcome %}
+          <div class="elr-outcome-body">
+            <span class="elr-plan-label">Outcome</span>
+            <div class="elr-plan-body">{{ row.outcome_text|linebreaksbr }}</div>
+          </div>
+          <p class="elr-outcome-meta">
+            Updated {% if row.updated_at %}{{ row.updated_at|date:"d M Y" }}{% else %}—{% endif %}
+          </p>
+          {% else %}
+          <p class="elr-report-empty">No outcome saved for this subject.</p>
+          {% endif %}
+        </article>
+        {% empty %}
+        <p class="elr-report-empty">No allocated subjects to report.</p>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if report_type == "learning_timetable" or report_type == "exam_timetable" %}
+    <section class="elr-report-section elr-timetable-report-section" aria-label="{{ report_type_label }}">
+      {% for sheet in timetable_sheets %}
+      {% with page_index=forloop.counter page_total=timetable_sheets|length %}
+      <article class="elr-timetable-sheet{% if not forloop.first %} elr-timetable-sheet-break{% endif %}" aria-label="{{ sheet.title }}">
+        {% include "employees/includes/learning_report_letterhead.html" with page_scope_label=sheet.title %}
+
+        <div class="elr-doc-band elr-timetable-doc-band">
+          <div>
+            <p class="elr-doc-band-kicker">Timetable</p>
+            <h3 class="elr-report-section-title">{{ report_type_label }}</h3>
+          </div>
+          <p class="elr-doc-band-meta elr-timetable-count-pill">
+            Class {{ page_index }} of {{ page_total }}
+          </p>
+        </div>
+
+        <header class="elr-timetable-sheet-head">
+          <div class="elr-timetable-sheet-identity">
+            <span class="elr-timetable-class-badge is-uppercase">{{ sheet.title }}</span>
+            <div>
+              <h4 class="elr-timetable-sheet-title">Class timetable</h4>
+              <p class="elr-timetable-sheet-meta">{{ sheet.subtitle }}</p>
+            </div>
+          </div>
+        </header>
+        {% if sheet.has_data and sheet.periods %}
+        <div class="exam-matrix-list-wrap schedule-timetable-wrap is-scrollable-x elr-timetable-wrap">
+          <table class="schedule-timetable generated-timetable elr-report-table elr-timetable-table">
+            <thead>
+              <tr>
+                <th>Day</th>
+                {% for period in sheet.periods %}
+                <th>
+                  <span>{{ period.name }}</span>
+                  <span>{{ period.start_label }}–{{ period.end_label }}</span>
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in sheet.rows %}
+              <tr>
+                <th scope="row">{{ row.day_label }}</th>
+                {% for cell in row.cells %}
+                {% if report_type == "learning_timetable" %}
+                  {% if cell.lesson %}
+                  <td class="elr-tt-filled{% if cell.is_collision %} is-collision{% endif %}">
+                    <span class="tt-subject">{{ cell.lesson.learning_area.code }}</span>
+                    {% if cell.lesson.teacher %}
+                    <span class="tt-teacher">{{ cell.lesson.teacher.employment_number }}</span>
+                    {% endif %}
+                  </td>
+                  {% else %}
+                  <td class="is-blank">Free</td>
+                  {% endif %}
+                {% else %}
+                  {% if cell.sitting %}
+                  <td class="elr-tt-filled">
+                    <span class="tt-subject">{{ cell.sitting.learning_area.code }}</span>
+                    {% if not cell.hide_supervisor and cell.sitting.supervisor %}
+                    <span class="tt-teacher">{{ cell.sitting.supervisor.employment_number }}</span>
+                    {% endif %}
+                  </td>
+                  {% else %}
+                  <td class="is-blank">Free</td>
+                  {% endif %}
+                {% endif %}
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if sheet.teachers %}
+        <aside class="elr-timetable-teachers" aria-label="Teacher reference">
+          <h5 class="elr-timetable-teachers-title">
+            {% if report_type == "exam_timetable" %}Supervisors{% else %}Teachers{% endif %}
+          </h5>
+          <ul class="elr-timetable-teachers-list">
+            {% for teacher in sheet.teachers %}
+            <li>
+              <strong>{{ teacher.employment_number }}</strong>
+              <span>{{ teacher.name }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </aside>
+        {% endif %}
+        {% else %}
+        <p class="elr-report-empty">
+          {% if report_type == "learning_timetable" %}
+          No learning timetable sessions for this class.
+          {% else %}
+          No assessment sittings for this class.
+          {% endif %}
+        </p>
+        {% endif %}
+
+        {% include "employees/includes/learning_report_footer.html" with page_scope_label=sheet.title %}
+      </article>
+      {% endwith %}
+      {% empty %}
+      {% include "employees/includes/learning_report_letterhead.html" %}
+      <p class="elr-report-empty">No classes selected for the timetable report.</p>
+      {% include "employees/includes/learning_report_footer.html" %}
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if report_type != "learning_timetable" and report_type != "exam_timetable" %}
+    {% include "employees/includes/learning_report_footer.html" %}
+    {% endif %}
+  </article>
+  {% endif %}
+  {% endif %}
+</div>
+
+<script>
+(() => {
+  const form = document.querySelector("[data-learning-report-builder]");
+  if (!form) return;
+  const catalogNode = document.getElementById("learning-report-catalog");
+  if (!catalogNode) return;
+  const catalog = JSON.parse(catalogNode.textContent);
+  const dateField = form.querySelector("[data-lr-date-field]");
+  const dateInput = form.querySelector("#lr-report-date");
+  const examField = form.querySelector("[data-lr-exam-field]");
+  const levelSelect = form.querySelector("#lr-report-level");
+  const classField = form.querySelector("[data-lr-class-field]");
+  const classSelect = form.querySelector("#lr-report-class");
+  const subjectField = form.querySelector("[data-lr-subject-field]");
+  const subjectSelect = form.querySelector("#lr-report-subject");
+  const classesField = form.querySelector("[data-lr-classes-field]");
+  const classList = form.querySelector("[data-lr-class-list]");
+  const classCount = form.querySelector("[data-lr-class-count]");
+  const scopeHint = form.querySelector("[data-lr-scope-hint]");
+  const typeInputs = form.querySelectorAll('input[name="report_type"]');
+  const selectAllBtn = form.querySelector("[data-lr-select-all-classes]");
+  const clearBtn = form.querySelector("[data-lr-clear-classes]");
+  const selected = {
+    levelId: "{{ selection.level_id|escapejs }}",
+    classId: "{{ selection.class_id|escapejs }}",
+    subjectId: "{{ selection.subject_id|escapejs }}",
+    classIds: new Set([{% for id in selection.class_ids %}"{{ id }}"{% if not forloop.last %}, {% endif %}{% endfor %}]),
+  };
+
+  const updateClassCount = (total) => {
+    if (!classCount) return;
+    const picked = selected.classIds.size;
+    if (!total) {
+      classCount.textContent = "";
+      return;
+    }
+    classCount.textContent = picked
+      ? `· ${picked} of ${total} selected`
+      : `· ${total} available`;
+  };
+
+  const selectedTypeMeta = () => {
+    const checked = form.querySelector('input[name="report_type"]:checked');
+    const value = checked ? checked.value : "subject_attendance";
+    const fromCatalog = (catalog.report_types || []).find((item) => item.value === value);
+    return {
+      value,
+      needsSubject: fromCatalog ? Boolean(fromCatalog.needs_subject) : true,
+      multiClass: fromCatalog ? Boolean(fromCatalog.multi_class) : false,
+      needsDate: fromCatalog ? fromCatalog.needs_date !== false : true,
+    };
+  };
+
+  const fillSelect = (select, items, placeholder, selectedId) => {
+    const current = selectedId || select.value;
+    select.innerHTML = "";
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    items.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = String(item.id);
+      option.textContent = item.label || item.name;
+      if (String(item.id) === String(current)) option.selected = true;
+      select.appendChild(option);
+    });
+  };
+
+  const filteredClasses = () => {
+    const levelId = levelSelect.value;
+    return (catalog.classes || []).filter(
+      (item) => !levelId || String(item.level_id) === String(levelId)
+    );
+  };
+
+  const renderClassCheckboxes = () => {
+    if (!classList) return;
+    const classes = filteredClasses();
+    classList.innerHTML = "";
+    if (!classes.length) {
+      const empty = document.createElement("p");
+      empty.className = "lr-class-multi-empty";
+      empty.textContent = "No classes available for this level.";
+      classList.appendChild(empty);
+      updateClassCount(0);
+      return;
+    }
+
+    const groups = [];
+    const groupMap = new Map();
+    classes.forEach((item) => {
+      const key = String(item.level_id || "none");
+      if (!groupMap.has(key)) {
+        const group = {
+          key,
+          levelName: item.level_name || "Classes",
+          items: [],
+        };
+        groupMap.set(key, group);
+        groups.push(group);
+      }
+      groupMap.get(key).items.push(item);
+    });
+
+    const showGroups = !levelSelect.value && groups.length > 1;
+
+    const makeCard = (item) => {
+      const label = document.createElement("label");
+      label.className = "lr-class-multi-item";
+      const grade = item.level_name || "";
+      const stream = item.stream || item.name || item.code || "";
+      label.title = [grade, stream].filter(Boolean).join(" · ");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "class_ids";
+      input.value = String(item.id);
+      input.checked = selected.classIds.has(String(item.id));
+      input.addEventListener("change", () => {
+        if (input.checked) selected.classIds.add(String(item.id));
+        else selected.classIds.delete(String(item.id));
+        updateClassCount(classes.length);
+      });
+      const mark = document.createElement("span");
+      mark.className = "lr-class-multi-check";
+      mark.setAttribute("aria-hidden", "true");
+      const copy = document.createElement("span");
+      copy.className = "lr-class-multi-copy";
+      const gradeEl = document.createElement("span");
+      gradeEl.className = "lr-class-multi-grade";
+      gradeEl.textContent = grade || "Grade";
+      const streamEl = document.createElement("span");
+      streamEl.className = "lr-class-multi-stream";
+      streamEl.textContent = stream || item.label || "Class";
+      copy.appendChild(gradeEl);
+      copy.appendChild(streamEl);
+      label.appendChild(input);
+      label.appendChild(mark);
+      label.appendChild(copy);
+      return label;
+    };
+
+    if (showGroups) {
+      groups.forEach((group) => {
+        const wrap = document.createElement("div");
+        wrap.className = "lr-class-multi-group";
+        const title = document.createElement("p");
+        title.className = "lr-class-multi-group-title";
+        title.textContent = group.levelName;
+        const items = document.createElement("div");
+        items.className = "lr-class-multi-group-items";
+        group.items.forEach((item) => items.appendChild(makeCard(item)));
+        wrap.appendChild(title);
+        wrap.appendChild(items);
+        classList.appendChild(wrap);
+      });
+    } else {
+      const items = document.createElement("div");
+      items.className = "lr-class-multi-group-items";
+      classes.forEach((item) => items.appendChild(makeCard(item)));
+      classList.appendChild(items);
+    }
+    updateClassCount(classes.length);
+  };
+
+  const applyTypeUi = () => {
+    const meta = selectedTypeMeta();
+    if (dateField) dateField.hidden = !meta.needsDate;
+    if (dateInput) {
+      dateInput.required = meta.needsDate;
+      if (!meta.needsDate) dateInput.removeAttribute("required");
+    }
+    if (examField) examField.hidden = meta.value !== "exam_timetable";
+    if (subjectField) subjectField.hidden = !meta.needsSubject;
+    if (subjectSelect) {
+      subjectSelect.required = meta.needsSubject;
+      if (!meta.needsSubject) {
+        subjectSelect.value = "";
+        selected.subjectId = "";
+      }
+    }
+    if (classField) classField.hidden = meta.multiClass;
+    if (classSelect) {
+      classSelect.required = !meta.multiClass;
+      if (meta.multiClass) {
+        classSelect.value = "";
+        selected.classId = "";
+        classSelect.removeAttribute("required");
+      }
+    }
+    if (classesField) classesField.hidden = !meta.multiClass;
+    if (levelSelect) {
+      levelSelect.required = !meta.multiClass;
+      const blank = levelSelect.querySelector('option[value=""]');
+      if (blank) {
+        blank.textContent = meta.multiClass ? "All levels" : "Select academic level";
+      }
+    }
+    if (scopeHint) {
+      if (meta.multiClass) {
+        scopeHint.textContent =
+          meta.value === "exam_timetable"
+            ? "Optionally filter by level, pick an assessment, then select one or more classes."
+            : "Optionally filter by level, then select one or more classes for the learning timetable.";
+      } else if (meta.needsSubject) {
+        scopeHint.textContent = "Choose the class and subject the report should cover.";
+      } else {
+        scopeHint.textContent = "Choose the class for student attendance. Subject is not required.";
+      }
+    }
+  };
+
+  const refreshClasses = () => {
+    const meta = selectedTypeMeta();
+    const classes = filteredClasses();
+    if (meta.multiClass) {
+      const allowed = new Set(classes.map((item) => String(item.id)));
+      selected.classIds = new Set(
+        [...selected.classIds].filter((id) => allowed.has(id))
+      );
+      renderClassCheckboxes();
+      return;
+    }
+    fillSelect(classSelect, classes, "Select class", selected.classId);
+    selected.classId = classSelect.value;
+    refreshSubjects();
+  };
+
+  const refreshSubjects = () => {
+    const meta = selectedTypeMeta();
+    if (!meta.needsSubject) {
+      if (subjectSelect) {
+        fillSelect(subjectSelect, [], "Select subject", "");
+        subjectSelect.value = "";
+      }
+      return;
+    }
+    const levelId = levelSelect.value;
+    const classId = classSelect.value;
+    const subjects = (catalog.subjects || []).filter((item) => {
+      if (levelId && String(item.level_id) !== String(levelId)) return false;
+      if (classId && String(item.class_id) !== String(classId)) return false;
+      return true;
+    });
+    fillSelect(subjectSelect, subjects, "Select subject", selected.subjectId);
+    selected.subjectId = subjectSelect.value;
+  };
+
+  typeInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      selected.subjectId = "";
+      applyTypeUi();
+      refreshClasses();
+    });
+  });
+  levelSelect.addEventListener("change", () => {
+    selected.levelId = levelSelect.value;
+    selected.classId = "";
+    selected.subjectId = "";
+    refreshClasses();
+  });
+  if (classSelect) {
+    classSelect.addEventListener("change", () => {
+      selected.classId = classSelect.value;
+      selected.subjectId = "";
+      refreshSubjects();
+    });
+  }
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", () => {
+      filteredClasses().forEach((item) => selected.classIds.add(String(item.id)));
+      renderClassCheckboxes();
+    });
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      selected.classIds = new Set();
+      renderClassCheckboxes();
+    });
+  }
+  applyTypeUi();
+  refreshClasses();
+})();
+</script>
+
+{% if has_report %}
+<script>
+(() => {
+  const buttons = document.querySelectorAll("[data-print-learning-report]");
+  if (!buttons.length) return;
+  const isTimetable =
+    document.querySelector(".elr-report-sheet.is-timetable-report") !== null;
+  const STYLE_ID = "lr-timetable-print-orientation";
+
+  const clearPrintStyle = () => {
+    const existing = document.getElementById(STYLE_ID);
+    if (existing) existing.remove();
+    document.documentElement.classList.remove("is-printing-timetable-report");
+  };
+
+  const prepareTimetablePrint = () => {
+    clearPrintStyle();
+    if (!isTimetable) return;
+    document.documentElement.classList.add("is-printing-timetable-report");
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = "@page{size:A4 landscape;margin:8mm;}";
+    document.head.appendChild(style);
+  };
+
+  window.addEventListener("beforeprint", prepareTimetablePrint);
+  window.addEventListener("afterprint", clearPrintStyle);
+  buttons.forEach((button) =>
+    button.addEventListener("click", () => {
+      prepareTimetablePrint();
+      window.print();
+    })
+  );
+})();
+</script>
+{% endif %}

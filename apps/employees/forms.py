@@ -1,10 +1,21 @@
+from datetime import date
+
 from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import Employee, IssuedEmploymentNumber, SchoolProfile
+from apps.admissions.models import Student
+from apps.curriculum.models import AcademicLevel
+
+from .models import (
+    Employee,
+    IssuedEmploymentNumber,
+    SchoolActivity,
+    SchoolProfile,
+    StudentConductRecord,
+)
 from .phone_countries import PHONE_COUNTRIES, country_by_iso, normalize_phone, parse_stored_phone
 
 
@@ -723,3 +734,161 @@ class EmployeePasswordChangeForm(PasswordChangeForm):
         )
         self.fields["new_password1"].help_text = "Use at least 6 characters."
         self.fields["new_password2"].help_text = ""
+
+
+class StudentConductForm(forms.ModelForm):
+    """Register a student behaviour record (good or bad)."""
+
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.none(),
+        widget=forms.HiddenInput,
+        label="Student",
+    )
+    rating = forms.TypedChoiceField(
+        choices=RATING_CHOICES,
+        coerce=int,
+        widget=forms.RadioSelect,
+        label="Rating",
+    )
+
+    class Meta:
+        model = StudentConductRecord
+        fields = (
+            "student",
+            "behaviour_type",
+            "description",
+            "incident_date",
+            "witness",
+            "consequence_or_reward",
+            "rating",
+        )
+        widgets = {
+            "behaviour_type": forms.RadioSelect,
+            "description": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Describe what happened",
+                }
+            ),
+            "incident_date": forms.DateInput(
+                attrs={
+                    "type": "date",
+                }
+            ),
+            "witness": forms.TextInput(
+                attrs={
+                    "class": "uppercase-input",
+                    "placeholder": "E.G. CLASS TEACHER / PREFECT",
+                    "autocomplete": "off",
+                }
+            ),
+            "consequence_or_reward": forms.Textarea(
+                attrs={
+                    "rows": 2,
+                    "placeholder": "Repercussion for bad behaviour, or reward for good behaviour",
+                }
+            ),
+        }
+
+    def __init__(self, *args, students_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if students_queryset is None:
+            students_queryset = Student.objects.filter(
+                enrollment_status=Student.EnrollmentStatus.ACTIVE,
+                is_active=True,
+                is_suspended=False,
+            ).order_by("last_name", "first_name")
+        self.fields["student"].queryset = students_queryset
+        self.fields["behaviour_type"].widget.attrs.setdefault("class", "conduct-type-choices")
+        self.fields["witness"].widget.attrs.setdefault("class", "uppercase-input")
+
+    def clean_witness(self):
+        return uppercase_value(self.cleaned_data["witness"])
+
+    def clean_rating(self):
+        rating = self.cleaned_data["rating"]
+        if rating < 1 or rating > 5:
+            raise ValidationError("Rating must be between 1 and 5.")
+        return rating
+
+
+class SchoolActivityForm(forms.ModelForm):
+    """Register or edit a school activity with participating grades."""
+
+    grades = forms.ModelMultipleChoiceField(
+        queryset=AcademicLevel.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        label="Grades undertaking the activity",
+    )
+    activity_dates = forms.CharField(
+        widget=forms.HiddenInput,
+        label="Activity dates",
+    )
+
+    class Meta:
+        model = SchoolActivity
+        fields = ("title", "description", "status", "grades")
+        widgets = {
+            "title": forms.TextInput(
+                attrs={
+                    "class": "uppercase-input",
+                    "placeholder": "E.G. SPORTS DAY",
+                    "autocomplete": "off",
+                }
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Optional overall notes for this activity",
+                }
+            ),
+            "status": forms.RadioSelect,
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["grades"].queryset = AcademicLevel.objects.filter(
+            status=AcademicLevel.Status.ACTIVE
+        ).order_by("order", "name")
+        self.fields["description"].required = False
+        self.fields["status"].choices = SchoolActivity.Status.choices
+        self.fields["title"].widget.attrs.setdefault("class", "uppercase-input")
+        self.initial_day_notes = {}
+        if self.instance and self.instance.pk:
+            days = list(self.instance.days.all())
+            self.fields["activity_dates"].initial = ",".join(
+                day.activity_date.isoformat() for day in days
+            )
+            if "activity_dates" not in self.data:
+                self.initial["activity_dates"] = self.fields["activity_dates"].initial
+            self.initial_day_notes = {
+                day.activity_date.isoformat(): day.day_description or ""
+                for day in days
+            }
+
+    def clean_title(self):
+        return uppercase_value(self.cleaned_data["title"])
+
+    def clean_activity_dates(self):
+        raw = (self.cleaned_data.get("activity_dates") or "").strip()
+        if not raw:
+            raise ValidationError("Select at least one day on the calendar.")
+        parsed = []
+        seen = set()
+        for part in raw.split(","):
+            value = part.strip()
+            if not value:
+                continue
+            try:
+                day = date.fromisoformat(value)
+            except ValueError as exc:
+                raise ValidationError("One or more selected dates are invalid.") from exc
+            if day in seen:
+                continue
+            seen.add(day)
+            parsed.append(day)
+        if not parsed:
+            raise ValidationError("Select at least one day on the calendar.")
+        return sorted(parsed)

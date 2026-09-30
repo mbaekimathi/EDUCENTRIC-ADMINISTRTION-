@@ -160,8 +160,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # On cPanel, "localhost" often needs a Unix socket (PyMySQL otherwise uses TCP → Errno 111).
 _db_name = _env_str("DB_NAME", default="").strip()
 if _db_name:
-    # cPanel/Passenger recycles workers; persistent DB sockets often become
-    # "MySQL server has gone away". Default CONN_MAX_AGE=0 (set DB_CONN_MAX_AGE to override).
+    # Reuse connections briefly; CONN_HEALTH_CHECKS + mysql_backend reconnect
+    # recover from "MySQL server has gone away" on recycled workers.
     DATABASES = {
         "default": build_mysql_database(
             name=_db_name,
@@ -169,7 +169,7 @@ if _db_name:
             password=_env_str("DB_PASSWORD", default=""),
             host=_env_str("DB_HOST", default="127.0.0.1"),
             port=env("DB_PORT", default="3306"),
-            conn_max_age=env.int("DB_CONN_MAX_AGE", default=0),
+            conn_max_age=env.int("DB_CONN_MAX_AGE", default=60),
             socket=env("DB_SOCKET", default=""),
         )
     }
@@ -262,5 +262,45 @@ if "runserver" in sys.argv:
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0 if DEBUG else 31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "error_file": {
+            "class": "logging.FileHandler",
+            "filename": str(BASE_DIR / "logs" / "errors.log"),
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console", "error_file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}
+
+# Ensure the error log directory exists without failing startup on read-only hosts.
+try:
+    (BASE_DIR / "logs").mkdir(exist_ok=True)
+except OSError:
+    LOGGING["loggers"]["django.request"]["handlers"] = ["console"]
 
 

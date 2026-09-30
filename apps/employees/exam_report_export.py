@@ -325,6 +325,7 @@ _PDF_HEAD = (232, 239, 249)
 _PDF_ALT = (250, 252, 255)
 _PDF_MEAN = (226, 235, 248)
 _PDF_SUMMARY = (236, 242, 251)
+_PDF_GRADE = (228, 236, 255)
 _PDF_BLUE = (27, 79, 214)
 _PDF_WHITE = (255, 255, 255)
 
@@ -446,17 +447,30 @@ def _fit(pdf, text, width, family, style, size):
     return f"{content}{ellipsis}" if content else ellipsis
 
 
+_MARK_GRADE_RE = re.compile(r"^(.*?)\s*\(([^)]+)\)\s*$")
+
+
+def _split_mark_grade(value):
+    """Split '88 (A)' into mark + grade for blue/black dual-color cells."""
+    text = _pdf_text(value)
+    match = _MARK_GRADE_RE.match(text)
+    if not match:
+        return text, ""
+    return match.group(1).strip(), match.group(2).strip()
+
+
 def _matrix_fixed_widths(header, usable_width):
     """Allocate fixed mm widths so Class / Grade / # never collapse."""
     fixed_map = {
-        "pos": 7.5,
-        "#": 7.5,
-        "learner": 46,
-        "class": 11,
-        "admission no.": 15.5,
-        "total": 11.5,
-        "average": 12,
-        "grade": 10,
+        "pos": 7.0,
+        "#": 7.0,
+        "learner": 48,
+        "class": 10,
+        "admission no.": 13,
+        "total": 10.5,
+        "average": 10.5,
+        "avg": 10.5,
+        "grade": 9,
     }
     widths = []
     flex_indexes = []
@@ -549,7 +563,7 @@ class PrintStyleExamPDF(FPDF):
         self.set_text_color(*_PDF_WHITE)
         self.cell(size, size * 0.42, self.brand["initial"], align="C")
 
-    def draw_matrix_letterhead(self, sheet, *, compact=False, kicker="ACADEMIC LEVEL MARK SHEET"):
+    def draw_matrix_letterhead(self, sheet, *, compact=False, kicker=""):
         self._active_sheet = sheet
         top = self.get_y()
         logo = 10 if compact else 12
@@ -559,10 +573,11 @@ class PrintStyleExamPDF(FPDF):
         cx = self.l_margin + logo + 4
 
         self.set_xy(cx, top + 0.1)
-        self.set_font(self.font_family, "B", 5.8 if compact else 6.2)
-        self.set_text_color(*self.primary)
-        self.cell(center_w, 2.8, kicker, align="C", new_x="LMARGIN", new_y="NEXT")
-        self.set_x(cx)
+        if kicker:
+            self.set_font(self.font_family, "B", 5.8 if compact else 6.2)
+            self.set_text_color(*self.primary)
+            self.cell(center_w, 2.8, kicker, align="C", new_x="LMARGIN", new_y="NEXT")
+            self.set_x(cx)
         self.set_font(self.font_family, "B", 8.6 if compact else 10)
         self.set_text_color(*_PDF_NAVY)
         self.cell(
@@ -604,23 +619,27 @@ class PrintStyleExamPDF(FPDF):
         self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
         self.ln(1.3)
 
-        # Meta chip bar
-        level = self.report.get("level")
+        # Meta: exam name + class/scope only
         selected_class = self.report.get("selected_class")
-        scope = getattr(level, "name", None) or ""
-        if selected_class is not None:
-            scope = f"{scope} · {selected_class.display_label}".strip(" ·")
-        elif level is not None:
-            scope = f"{scope} · whole grade".strip(" ·")
-        chips = [
-            sheet.get("section_title") or sheet.get("exam_title") or self.report.get("exam_title") or "",
-            sheet.get("scope_label") or scope,
-            f"{sheet.get('student_count') or len(sheet.get('rows') or [])} students",
-            f"{sheet.get('subject_count') or len(sheet.get('subjects') or [])} subjects",
-            "With grades" if self.mode == "graded" else "Raw marks",
-        ]
-        if sheet.get("overall_mean") is not None:
-            chips.insert(-1, f"Mean {sheet.get('overall_mean')}")
+        scope = (
+            sheet.get("scope_label")
+            or self.report.get("scope_label")
+            or ""
+        )
+        if not scope and selected_class is not None:
+            scope = getattr(selected_class, "display_label", None) or str(selected_class)
+        if not scope:
+            level = self.report.get("level")
+            level_name = getattr(level, "name", None) or sheet.get("level_name") or ""
+            if level_name:
+                scope = f"{level_name} · whole grade"
+        exam_name = (
+            sheet.get("exam_title")
+            or self.report.get("exam_title")
+            or sheet.get("section_title")
+            or ""
+        )
+        chips = [exam_name, scope]
         chips = [chip for chip in chips if chip]
         bar_h = 5.2
         y = self.get_y()
@@ -832,6 +851,56 @@ class PrintStyleExamPDF(FPDF):
         self.set_line_width(0.35)
         self.line(self.l_margin, y + row_h, self.w - self.r_margin, y + row_h)
         self.set_y(y + row_h)
+
+    def _paint_mark_grade_cell(self, x, y, width, row_h, value, *, font_size, fill, align="C"):
+        """Paint a cell with black mark and blue grade side by side when graded."""
+        mark, grade = _split_mark_grade(value)
+        self.set_fill_color(*fill)
+        self.set_draw_color(*_PDF_LINE)
+        self.set_xy(x, y)
+        self.cell(width, row_h, "", border="B", fill=True)
+
+        if not grade or self.mode != "graded":
+            self.set_text_color(*_PDF_INK)
+            self.set_font(self.font_family, "B", font_size)
+            label = _fit(self, mark or value, width, self.font_family, "B", font_size)
+            self.set_xy(x, y)
+            self.cell(width, row_h, label, border=0, align=align)
+            return
+
+        gap = 0.6
+        grade_size = max(font_size - 1.0, 4.2)
+        self.set_font(self.font_family, "B", font_size)
+        mark_w = self.get_string_width(mark) if mark else 0
+        self.set_font(self.font_family, "B", grade_size)
+        grade_w = self.get_string_width(grade)
+        total_w = mark_w + (gap if mark else 0) + grade_w
+        pad = 1.2
+        if total_w > width - pad:
+            # Prefer keeping the grade visible; trim the mark if needed.
+            self.set_font(self.font_family, "B", font_size)
+            available = max(width - pad - grade_w - gap, 2.0)
+            mark = _fit(self, mark, available + pad, self.font_family, "B", font_size)
+            mark_w = self.get_string_width(mark) if mark else 0
+            total_w = mark_w + (gap if mark else 0) + grade_w
+
+        if align == "L":
+            cursor = x + 0.6
+        else:
+            cursor = x + max((width - total_w) / 2, 0.4)
+
+        if mark:
+            self.set_xy(cursor, y)
+            self.set_font(self.font_family, "B", font_size)
+            self.set_text_color(*_PDF_INK)
+            self.cell(mark_w, row_h, mark, border=0, align="L")
+            cursor += mark_w + gap
+
+        self.set_xy(cursor, y)
+        self.set_font(self.font_family, "B", grade_size)
+        self.set_text_color(*self.primary)
+        self.cell(grade_w, row_h, grade, border=0, align="L")
+        self.set_text_color(*_PDF_INK)
 
     def draw_results_table(self, card):
         self.set_font(self.font_family, "B", 7.4)
@@ -1057,20 +1126,58 @@ class PrintStyleExamPDF(FPDF):
             self.set_text_color(*_PDF_INK)
             for col_i, (width, value) in enumerate(zip(widths, values)):
                 heading = str(display_header[col_i] or "").casefold()
+                key = str(header[col_i] or "").casefold()
                 is_summary = heading in summary_keys
-                cell_fill = _PDF_SUMMARY if is_summary and not is_mean else fill
-                self.set_fill_color(*cell_fill)
-                self.set_font(self.font_family, "B", font_size)
+                if heading in {"grade", "total"} and not is_mean:
+                    cell_fill = _PDF_GRADE
+                elif is_summary and not is_mean:
+                    cell_fill = _PDF_SUMMARY
+                else:
+                    cell_fill = fill
                 align = "L" if heading in {"learner"} else "C"
-                self.set_xy(x, y)
-                self.cell(
-                    width,
-                    row_h,
-                    _fit(self, value, width, self.font_family, "B", font_size),
-                    border="B",
-                    align=align,
-                    fill=True,
-                )
+                is_subject = key not in {
+                    "pos",
+                    "#",
+                    "learner",
+                    "class",
+                    "admission no.",
+                    "total",
+                    "average",
+                    "avg",
+                    "grade",
+                }
+                if is_subject and self.mode == "graded":
+                    self._paint_mark_grade_cell(
+                        x, y, width, row_h, value, font_size=font_size, fill=cell_fill, align=align
+                    )
+                elif heading in {"grade", "total"}:
+                    self.set_fill_color(*cell_fill)
+                    self.set_xy(x, y)
+                    self.cell(width, row_h, "", border="B", fill=True)
+                    self.set_xy(x, y)
+                    self.set_font(self.font_family, "B", font_size)
+                    self.set_text_color(*self.primary)
+                    self.cell(
+                        width,
+                        row_h,
+                        _fit(self, value, width, self.font_family, "B", font_size),
+                        border=0,
+                        align=align,
+                    )
+                    self.set_text_color(*_PDF_INK)
+                else:
+                    self.set_fill_color(*cell_fill)
+                    self.set_font(self.font_family, "B", font_size)
+                    self.set_text_color(*_PDF_INK)
+                    self.set_xy(x, y)
+                    self.cell(
+                        width,
+                        row_h,
+                        _fit(self, value, width, self.font_family, "B", font_size),
+                        border="B",
+                        align=align,
+                        fill=True,
+                    )
                 x += width
             self.set_y(y + row_h)
 
@@ -1109,17 +1216,46 @@ class PrintStyleExamPDF(FPDF):
             for col_i, (width, value) in enumerate(zip(widths, values)):
                 heading = str(header[col_i] or "").casefold()
                 is_summary = heading in {"total", "mean", "grade"}
-                self.set_fill_color(*(_PDF_SUMMARY if is_summary and not is_mean else fill))
-                self.set_font(self.font_family, "B", font_size)
-                self.set_xy(x, y)
-                self.cell(
-                    width,
-                    row_h,
-                    _fit(self, value, width, self.font_family, "B", font_size),
-                    border="B",
-                    align="L" if col_i in left_cols else "C",
-                    fill=True,
-                )
+                if heading in {"grade", "total"} and not is_mean:
+                    cell_fill = _PDF_GRADE
+                elif is_summary and not is_mean:
+                    cell_fill = _PDF_SUMMARY
+                else:
+                    cell_fill = fill
+                align = "L" if col_i in left_cols else "C"
+                is_subject_mark = col_i >= 3 and heading not in {"total", "mean", "grade"}
+                if is_subject_mark and self.mode == "graded":
+                    self._paint_mark_grade_cell(
+                        x, y, width, row_h, value, font_size=font_size, fill=cell_fill, align=align
+                    )
+                elif heading in {"grade", "total"}:
+                    self.set_fill_color(*cell_fill)
+                    self.set_xy(x, y)
+                    self.cell(width, row_h, "", border="B", fill=True)
+                    self.set_xy(x, y)
+                    self.set_font(self.font_family, "B", font_size)
+                    self.set_text_color(*self.primary)
+                    self.cell(
+                        width,
+                        row_h,
+                        _fit(self, value, width, self.font_family, "B", font_size),
+                        border=0,
+                        align=align,
+                    )
+                    self.set_text_color(*_PDF_INK)
+                else:
+                    self.set_fill_color(*cell_fill)
+                    self.set_font(self.font_family, "B", font_size)
+                    self.set_text_color(*_PDF_INK)
+                    self.set_xy(x, y)
+                    self.cell(
+                        width,
+                        row_h,
+                        _fit(self, value, width, self.font_family, "B", font_size),
+                        border="B",
+                        align=align,
+                        fill=True,
+                    )
                 x += width
             self.set_y(y + row_h)
 
@@ -1130,17 +1266,14 @@ def build_exam_report_pdf(report, *, mode="raw"):
 
     if report.get("is_matrix"):
         sheets = report.get("matrix_sheets") or [{}]
-        max_subjects = max((len(sheet.get("subjects") or []) for sheet in sheets), default=0)
-        landscape = max_subjects >= 4 or bool(report.get("show_class_column"))
-        pdf = PrintStyleExamPDF(report, mode, landscape=landscape)
+        pdf = PrintStyleExamPDF(report, mode, landscape=False)
         for sheet in sheets:
             pdf.add_page()
             pdf.draw_matrix_letterhead(sheet)
             pdf.draw_matrix_table(sheet)
     elif report.get("is_analytics"):
         sheets = report.get("analytics_sheets") or [{}]
-        max_subjects = max((len(sheet.get("subjects") or []) for sheet in sheets), default=0)
-        pdf = PrintStyleExamPDF(report, mode, landscape=True)
+        pdf = PrintStyleExamPDF(report, mode, landscape=False)
         for sheet in sheets:
             pdf.add_page()
             pdf.draw_matrix_letterhead(sheet, kicker="SUBJECT ANALYTICS")

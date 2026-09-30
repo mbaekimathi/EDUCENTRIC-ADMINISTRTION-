@@ -140,7 +140,7 @@ def clear_workspace_preview(request):
 
 
 def exam_management_url_names(role=None):
-    """Named URL map for assessment management (IT Support + Secretary)."""
+    """Named URL map for assessment management (IT Support + Secretary + Curriculum Coordinator)."""
     if role == Employee.Role.SECRETARY:
         return {
             "exam_hub_url": "employees:secretary_assessment_management",
