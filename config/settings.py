@@ -78,17 +78,47 @@ def _merge_unique(*groups):
     return seen
 
 
+def _clean_hosts(values):
+    """Normalize host lists from .env (trim whitespace / accidental quotes)."""
+    cleaned = []
+    for raw in values or []:
+        host = str(raw).strip().strip("'\"")
+        if host and host not in cleaned:
+            cleaned.append(host)
+    return cleaned
+
+
+def _clean_origins(values):
+    cleaned = []
+    for raw in values or []:
+        origin = str(raw).strip().strip("'\"")
+        if origin and origin not in cleaned:
+            cleaned.append(origin)
+    return cleaned
+
+
 DEBUG = _env_bool("DEBUG", default=_IS_LOCAL)
 SECRET_KEY = env("SECRET_KEY", default="")
+if isinstance(SECRET_KEY, str):
+    SECRET_KEY = SECRET_KEY.strip().strip("'\"")
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = "unsafe-development-key-change-before-production"
     else:
         raise ImproperlyConfigured("Set SECRET_KEY in .env when DEBUG=False")
 
+# Always include BOTH local and hosted hosts so a forgotten LOCAL=True on cPanel
+# cannot reject admin.kwetudeliveries.com when HOSTED_ALLOWED_HOSTS is set.
 ALLOWED_HOSTS = _merge_unique(
-    _env_list("ALLOWED_HOSTS", local_default=["localhost", "127.0.0.1", "testserver"]),
-    env.list("HOSTED_ALLOWED_HOSTS", default=[]),
+    _clean_hosts(
+        _env_list(
+            "ALLOWED_HOSTS",
+            local_default=["localhost", "127.0.0.1", "testserver"],
+        )
+    ),
+    _clean_hosts(env.list("HOSTED_ALLOWED_HOSTS", default=[])),
+    _clean_hosts(env.list("LOCAL_ALLOWED_HOSTS", default=[])),
+    _clean_hosts(env.list("ALLOWED_HOSTS", default=[])),
 )
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
@@ -96,9 +126,10 @@ if not ALLOWED_HOSTS:
     )
 
 CSRF_TRUSTED_ORIGINS = _merge_unique(
-    _env_list("CSRF_TRUSTED_ORIGINS", local_default=[]),
-    env.list("HOSTED_CSRF_TRUSTED_ORIGINS", default=[]),
-    env.list("CSRF_TRUSTED_ORIGINS", default=[]),
+    _clean_origins(_env_list("CSRF_TRUSTED_ORIGINS", local_default=[])),
+    _clean_origins(env.list("HOSTED_CSRF_TRUSTED_ORIGINS", default=[])),
+    _clean_origins(env.list("LOCAL_CSRF_TRUSTED_ORIGINS", default=[])),
+    _clean_origins(env.list("CSRF_TRUSTED_ORIGINS", default=[])),
 )
 
 # cPanel / Cloudflare / Nginx terminate SSL in front of the app.
