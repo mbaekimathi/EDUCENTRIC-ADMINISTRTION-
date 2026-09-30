@@ -28,10 +28,18 @@
       });
     }
 
+    function isPeerReadonly(input) {
+      return (
+        input.classList.contains("is-readonly-peer") ||
+        input.getAttribute("aria-readonly") === "true"
+      );
+    }
+
     function setEditing(editing) {
       form.classList.toggle("is-editing", editing);
       inputs.forEach(function (input) {
-        input.readOnly = !editing;
+        // Peer / other-teacher columns stay read-only so their saved marks remain visible only.
+        input.readOnly = isPeerReadonly(input) ? true : !editing;
       });
       if (editButton) editButton.hidden = editing;
       if (cancelButton) cancelButton.hidden = !editing;

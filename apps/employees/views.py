@@ -1135,7 +1135,71 @@ def _teacher_exam_mark_sections(employee, academic_class, level):
             }
         )
     flush_standalone()
+    # Allocated subjects missing from display columns (e.g. not linked on the level yet)
+    # must still appear so previously saved marks can be reviewed and edited.
+    shown_ids = {
+        column["subject"].id
+        for section in sections
+        for column in section["columns"]
+        if column.get("kind") == "subject"
+    }
+    orphan_columns = []
+    for area in subjects:
+        if area.id in shown_ids:
+            continue
+        orphan_columns.append(
+            {
+                "kind": "subject",
+                "subject": area,
+                "code": area.code,
+                "name": area.name,
+                "exam_out_of": out_of_by_subject.get(area.id, area.total_marks),
+                "editable": True,
+            }
+        )
+    if orphan_columns:
+        sections.append(
+            {
+                "kind": "standalone",
+                "code": " · ".join(column["code"] for column in orphan_columns),
+                "name": ", ".join(column["name"] for column in orphan_columns),
+                "component_ids": [],
+                "columns": orphan_columns,
+            }
+        )
     return sections, subjects
+
+
+def _teacher_exam_section_subjects(sections):
+    """Unique subject objects shown on the mark sheet (editable and read-only peers)."""
+    subjects = []
+    seen = set()
+    for section in sections or []:
+        for column in section.get("columns") or []:
+            if column.get("kind") != "subject":
+                continue
+            subject = column.get("subject")
+            if subject is None or subject.id in seen:
+                continue
+            seen.add(subject.id)
+            subjects.append(subject)
+    return subjects
+
+
+def _teacher_exam_editable_subjects(sections):
+    """Subjects this teacher may save from the mark sheet (allocated / editable only)."""
+    subjects = []
+    seen = set()
+    for section in sections or []:
+        for column in section.get("columns") or []:
+            if column.get("kind") != "subject" or not column.get("editable"):
+                continue
+            subject = column.get("subject")
+            if subject is None or subject.id in seen:
+                continue
+            seen.add(subject.id)
+            subjects.append(subject)
+    return subjects
 
 
 def _teacher_exam_mark_cell(student, column, marks_lookup, out_of_by_subject):
@@ -3673,7 +3737,9 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
         mark_sections, subjects = _teacher_exam_mark_sections(
             employee, selected_class, selected_level
         )
-        out_of_by_subject = _exam_record_out_of(selected_level, subjects)
+        sheet_subjects = _teacher_exam_section_subjects(mark_sections) or subjects
+        editable_subjects = _teacher_exam_editable_subjects(mark_sections) or subjects
+        out_of_by_subject = _exam_record_out_of(selected_level, sheet_subjects)
         class_url = reverse(
             "employees:teacher_exam_record_class",
             kwargs={"exam_id": generation.id, "class_id": selected_class.id},
@@ -3691,7 +3757,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                     _save_exam_record_marks(
                         generation,
                         students,
-                        subjects,
+                        editable_subjects,
                         out_of_by_subject,
                         request.POST,
                         input_is_percent=False,
@@ -3699,21 +3765,25 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                 except (TypeError, ValueError, ValidationError):
                     error(request, "Enter whole numbers within each subject's total marks.")
                     validation_failed = True
-                    post_lookup = {
-                        (student.id, subject.id): (
-                            request.POST.get(f"mark_{student.id}_{subject.id}") or ""
-                        ).strip()
-                        for student in students
-                        for subject in subjects
-                    }
+                    marks_lookup = _exam_record_mark_lookup(
+                        generation, students, sheet_subjects
+                    )
+                    for student in students:
+                        for subject in editable_subjects:
+                            raw_post = (
+                                request.POST.get(f"mark_{student.id}_{subject.id}") or ""
+                            ).strip()
+                            marks_lookup[(student.id, subject.id)] = raw_post
                     _attach_teacher_exam_mark_sections(
-                        students, mark_sections, post_lookup, out_of_by_subject
+                        students, mark_sections, marks_lookup, out_of_by_subject
                     )
                 else:
                     success(request, "Student marks were saved.")
                     return redirect(_with_student_sort(class_url, sort_mode))
             if not validation_failed:
-                marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
+                marks_lookup = _exam_record_mark_lookup(
+                    generation, students, sheet_subjects
+                )
                 out_of_settings_changed = _exam_marks_out_of_settings_changed(
                     marks_lookup, out_of_by_subject
                 )
@@ -3721,7 +3791,9 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                     students, mark_sections, marks_lookup, out_of_by_subject
                 )
         else:
-            marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
+            marks_lookup = _exam_record_mark_lookup(
+                generation, students, sheet_subjects
+            )
             out_of_settings_changed = _exam_marks_out_of_settings_changed(
                 marks_lookup, out_of_by_subject
             )

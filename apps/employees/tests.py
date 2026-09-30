@@ -7310,6 +7310,108 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(page, "CA-COMB")
         self.assertContains(page, ">70<")
 
+    def test_teacher_mark_sheet_shows_saved_peer_marks_in_combined_section(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        art = LearningArea.objects.create(name="Art", code="ART")
+        art.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=art,
+            teacher=self.other_teacher,
+        )
+        math_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=self.subject,
+            out_of_marks=50,
+        )
+        art_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=art,
+            out_of_marks=50,
+        )
+        combined = CombinedExamSubject.objects.create(
+            academic_level=self.level,
+            name="CREATIVE ARTS",
+            code="CA-COMB",
+        )
+        CombinedExamSubjectComponent.objects.bulk_create(
+            [
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=math_setting,
+                    position=1,
+                ),
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=art_setting,
+                    position=2,
+                ),
+            ]
+        )
+        parent = ParentGuardian.objects.create(
+            full_name="JANE DOE",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000333",
+            email="jane.peer.marks@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="G1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=self.subject,
+            marks=40,
+            out_of_marks=50,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=art,
+            marks=30,
+            out_of_marks=50,
+        )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+
+        page = self.client.get(class_url)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'value="40"')
+        self.assertContains(page, 'value="30"')
+        self.assertContains(page, "is-readonly-peer")
+        self.assertContains(page, ">70<")
+
+        # Saving only the teacher's subject must not wipe the peer teacher's mark.
+        save = self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "42"})
+        self.assertRedirects(save, class_url)
+        self.assertEqual(
+            ExamMark.objects.get(student=student, learning_area=self.subject).marks,
+            42,
+        )
+        self.assertEqual(
+            ExamMark.objects.get(student=student, learning_area=art).marks,
+            30,
+        )
+        rebound = self.client.get(class_url)
+        self.assertContains(rebound, 'value="42"')
+        self.assertContains(rebound, 'value="30"')
+        self.assertContains(rebound, ">72<")
+
     def test_changing_out_of_settings_does_not_alter_saved_percent_until_edit(self):
         from apps.admissions.models import ParentGuardian, Student
 
