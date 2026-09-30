@@ -16272,7 +16272,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 }
 
 .exam-matrix-mark em {
-  margin-left: 0.22em;
+  margin-left: 0.4em;
   color: #1b4fd6;
   font-size: 0.62rem;
   font-style: normal;
@@ -16296,7 +16296,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.15rem;
+  gap: 0.35rem;
   line-height: 1.1;
   max-width: 100%;
   white-space: nowrap;
@@ -16413,7 +16413,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.15rem;
+  gap: 0.35rem;
   min-height: 0;
   line-height: 1.1;
   white-space: nowrap;
@@ -16860,7 +16860,7 @@ body.is-reordering-academic-levels [data-normal-only] {
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.12rem;
+  gap: 0.35rem;
   line-height: 1.1;
   margin: 0 auto;
   max-width: 100%;
@@ -17869,7 +17869,7 @@ body.is-reordering-academic-levels [data-normal-only] {
 
 .src-mark em,
 .src-exam-cell em {
-  margin-left: 0.22em;
+  margin-left: 0.4em;
   color: #1b4fd6;
   font-size: 0.64rem;
   font-style: normal;
@@ -19274,7 +19274,7 @@ table.src-table-matrix thead th.exam-matrix-sticky-total {
     flex-wrap: nowrap;
     align-items: baseline;
     justify-content: center;
-    gap: 0.15mm;
+    gap: 0.9mm;
     min-height: 0;
     line-height: 1.1;
     white-space: nowrap;
@@ -19450,7 +19450,7 @@ table.src-table-matrix thead th.exam-matrix-sticky-total {
   }
 
   .exam-matrix-list-table:not(.exam-analytics-table) .exam-matrix-mark em {
-    margin-left: 0.18em;
+    margin-left: 0.45em;
     color: #1b4fd6 !important;
     font-size: 6pt;
     font-style: normal;
@@ -19465,7 +19465,7 @@ table.src-table-matrix thead th.exam-matrix-sticky-total {
     flex-wrap: nowrap !important;
     align-items: baseline !important;
     justify-content: center !important;
-    gap: 0.2mm !important;
+    gap: 0.9mm !important;
     white-space: nowrap !important;
   }
 

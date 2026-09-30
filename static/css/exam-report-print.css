@@ -448,7 +448,7 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 }
 
 .src-mark em {
-  margin-left: 0.18em;
+  margin-left: 0.45em;
   color: #1b4fd6;
   font-size: 6pt;
   font-style: normal;
@@ -465,7 +465,7 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.2mm;
+  gap: 0.9mm;
   line-height: 1.1;
   max-width: 100%;
   white-space: nowrap;
@@ -507,7 +507,7 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 }
 
 .exam-matrix-mark em {
-  margin-left: 0.18em;
+  margin-left: 0.45em;
   color: #1b4fd6;
   font-size: 6pt;
   font-style: normal;
@@ -551,7 +551,7 @@ html[data-export-mode="raw"] .export-grade-col {
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.2mm;
+  gap: 0.9mm;
   line-height: 1.1;
   white-space: nowrap;
 }

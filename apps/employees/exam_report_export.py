@@ -324,26 +324,16 @@ _PDF_META = (51, 65, 85)  # #334155
 _PDF_LINE = (213, 222, 236)  # #d5deec
 _PDF_BORDER = (100, 116, 139)  # #64748b — print cell borders
 _PDF_SOFT = (248, 251, 255)  # #f8fbff
-_PDF_HEAD = (232, 238, 248)  # #e8eef8
+_PDF_HEAD = (232, 238, 248)  # #e8eef8 light blue header
 _PDF_ALT = (248, 250, 252)  # #f8fafc
 _PDF_MEAN = (226, 234, 247)  # #e2eaf7
 _PDF_SUMMARY = (238, 243, 251)  # #eef3fb
 _PDF_GRADE = (228, 236, 255)  # #e4ecff
 _PDF_GRADE_HEAD = (219, 230, 255)  # #dbe6ff
-_PDF_BLUE = (27, 79, 214)  # #1b4fd6
+_PDF_BLUE = (27, 79, 214)  # #1b4fd6 — exam report / print theme
 _PDF_WHITE = (255, 255, 255)
 _PDF_EMPTY = (148, 163, 184)  # #94a3b8
 _PDF_SUMMARY_EDGE = (51, 65, 85)  # #334155 inset for avg/total
-
-
-def _hex_to_rgb(value, fallback=_PDF_BLUE):
-    raw = (value or "").strip().lstrip("#")
-    if len(raw) != 6:
-        return fallback
-    try:
-        return tuple(int(raw[i : i + 2], 16) for i in (0, 2, 4))
-    except ValueError:
-        return fallback
 
 
 def _resolve_pdf_fonts():
@@ -375,6 +365,26 @@ def _pdf_dash(value):
     return text if text else "-"
 
 
+def _resolve_logo_path(profile):
+    """Return an on-disk logo path if the school has an uploaded logo file."""
+    logo_field = getattr(profile, "school_logo", None)
+    if logo_field is None:
+        return None
+    name = (getattr(logo_field, "name", None) or "").strip()
+    has_logo = getattr(profile, "has_logo_file", None)
+    if has_logo is None:
+        has_logo = bool(name)
+    if not has_logo or not name:
+        return None
+    try:
+        path = Path(logo_field.path)
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not path.is_file():
+        return None
+    return str(path)
+
+
 def _school_brand(report):
     profile = report.get("school_profile")
     if profile is None:
@@ -384,37 +394,30 @@ def _school_brand(report):
             "contact": "",
             "logo_path": None,
             "initial": "E",
+            # Exam/print reports always use the blue report theme.
             "primary": _PDF_BLUE,
         }
-    bits = []
-    for part in (
-        getattr(profile, "physical_address", "") or "",
-        getattr(profile, "main_phone", "") or "",
-        getattr(profile, "general_email", "") or "",
-    ):
-        cleaned = " ".join(str(part).split())
-        if cleaned:
-            bits.append(cleaned)
-    logo_path = None
-    try:
-        if getattr(profile, "has_logo", False) and getattr(profile, "school_logo", None):
-            logo_path = profile.school_logo.path
-    except (OSError, ValueError, AttributeError):
-        logo_path = None
+    phone = " ".join(str(getattr(profile, "main_phone", "") or "").split())
+    email = " ".join(str(getattr(profile, "general_email", "") or "").split())
+    # Letterhead contact matches print: phone · email (address stays off the header).
+    contact = " · ".join(part for part in (phone, email) if part)
     name = (
         getattr(profile, "brand_official_name", None)
         or getattr(profile, "official_name", None)
         or getattr(profile, "display_name", None)
         or "School"
     )
-    initial = (getattr(profile, "display_name", None) or name or "E")[:1].upper()
+    initials = getattr(profile, "brand_initials", None)
+    if not initials:
+        initials = (getattr(profile, "display_name", None) or name or "E")[:1].upper()
     return {
         "name": name,
         "motto": (getattr(profile, "motto", None) or "").strip(),
-        "contact": " · ".join(bits),
-        "logo_path": logo_path,
-        "initial": initial,
-        "primary": _hex_to_rgb(getattr(profile, "primary_color", None)),
+        "contact": contact,
+        "logo_path": _resolve_logo_path(profile),
+        "initial": initials[:2] if initials else "E",
+        # Match exam-report-print.css (#1b4fd6), not school sign-in primary_color.
+        "primary": _PDF_BLUE,
     }
 
 
@@ -541,128 +544,136 @@ class PrintStyleExamPDF(FPDF):
     def _draw_logo_or_mark(self, x, y, size):
         if self.brand["logo_path"]:
             try:
-                self.image(self.brand["logo_path"], x=x, y=y, w=size, h=size)
+                # Fit inside a square box while keeping aspect ratio.
+                self.image(self.brand["logo_path"], x=x, y=y, h=size)
                 return
             except Exception:
-                pass
-        # Print-style monogram badge (rounded look approximated with inset).
-        self.set_fill_color(*self.primary)
+                try:
+                    self.image(self.brand["logo_path"], x=x, y=y, w=size, h=size)
+                    return
+                except Exception:
+                    pass
+        # Print-style monogram badge when no logo is available.
+        self.set_fill_color(*_PDF_BLUE)
         self.set_draw_color(*_PDF_LINE)
         self.set_line_width(0.25)
         self.rect(x, y, size, size, "DF")
         self.set_xy(x, y + size * 0.28)
-        self.set_font(self.font_family, "B", max(size * 0.42, 7.5))
+        self.set_font(self.font_family, "B", max(size * 0.38, 7))
         self.set_text_color(*_PDF_WHITE)
         self.cell(size, size * 0.42, self.brand["initial"], align="C")
 
-    def _matrix_meta_bits(self, sheet):
-        selected_class = self.report.get("selected_class")
-        scope = sheet.get("scope_label") or self.report.get("scope_label") or ""
-        if not scope and selected_class is not None:
-            scope = getattr(selected_class, "display_label", None) or str(selected_class)
-        if not scope:
-            level = self.report.get("level")
-            level_name = getattr(level, "name", None) or sheet.get("level_name") or ""
-            if level_name:
-                scope = f"{level_name} · whole grade"
+    def _matrix_meta_line(self, sheet):
+        """Build 'YEAR - TERM - EXAM · SCOPE' like the print letterhead."""
+        year = self.report.get("academic_year")
+        term = self.report.get("academic_term")
+        year_name = (getattr(year, "name", None) or "").strip() if year is not None else ""
+        term_name = (getattr(term, "name", None) or "").strip() if term is not None else ""
         exam_name = (
             sheet.get("exam_title")
             or self.report.get("exam_title")
             or sheet.get("section_title")
             or ""
-        )
-        return [bit for bit in (exam_name, scope) if bit]
+        ).strip()
+        selected_class = self.report.get("selected_class")
+        scope = (sheet.get("scope_label") or self.report.get("scope_label") or "").strip()
+        if not scope and selected_class is not None:
+            scope = (getattr(selected_class, "display_label", None) or str(selected_class)).strip()
+        if not scope:
+            level = self.report.get("level")
+            level_name = (getattr(level, "name", None) or sheet.get("level_name") or "").strip()
+            if level_name:
+                scope = f"{level_name} · whole grade"
+
+        # Avoid duplicating year/term if they are already inside the exam title.
+        title_fold = exam_name.casefold()
+        lead = []
+        if year_name and year_name.casefold() not in title_fold:
+            lead.append(year_name)
+        if term_name and term_name.casefold() not in title_fold:
+            lead.append(term_name)
+        if exam_name:
+            lead.append(exam_name)
+        left = " - ".join(lead)
+        if left and scope:
+            return f"{left} · {scope}"
+        return left or scope
 
     def draw_matrix_letterhead(self, sheet, *, compact=False, kicker=""):
+        """Standard letterhead: logo left, page-centred identity, meta, blue rule."""
         self._active_sheet = sheet
         top = self.get_y()
-        logo = 11 if compact else 14
-        # Balanced brand: logo left, mirror spacer right so title stays centered.
-        self._draw_logo_or_mark(self.l_margin, top, logo)
-        center_w = self.epw - (logo * 2) - 4
-        cx = self.l_margin + logo + 2
+        logo = 14 if compact else 18
+        # Identity block (centred on full page width — logo sits beside, not squeezing text).
+        name_size = 11 if compact else 13
+        contact_size = 7.0 if compact else 7.8
+        meta_size = 7.4 if compact else 8.4
+        name_h = 5.0 if compact else 5.8
+        contact_h = 3.4 if compact else 3.8
+        kicker_h = 2.8 if kicker else 0
+        has_contact = bool(self.brand["contact"]) and not compact
 
-        self.set_xy(cx, top + 0.2)
+        identity_h = kicker_h + name_h + (contact_h if has_contact else 0)
+        logo_y = top + max((identity_h - logo) / 2.0, 0)
+        self._draw_logo_or_mark(self.l_margin, logo_y, logo)
+
+        text_top = top + max((logo - identity_h) / 2.0, 0.15)
+        self.set_xy(self.l_margin, text_top)
         if kicker:
-            self.set_font(self.font_family, "B", 5.8 if compact else 6.0)
-            self.set_text_color(*self.primary)
-            self.cell(
-                center_w,
-                2.6,
-                kicker.upper(),
-                align="C",
-                new_x="LMARGIN",
-                new_y="NEXT",
-            )
-            self.set_x(cx)
-        title_size = 8.8 if compact else 10
-        self.set_font(self.font_family, "B", title_size)
-        self.set_text_color(*_PDF_NAVY)
+            self.set_font(self.font_family, "B", 6.0)
+            self.set_text_color(*_PDF_BLUE)
+            self.cell(self.epw, kicker_h, kicker.upper(), align="C", new_x="LMARGIN", new_y="NEXT")
+
+        self.set_x(self.l_margin)
+        self.set_font(self.font_family, "B", name_size)
+        self.set_text_color(*_PDF_BLUE)
         self.cell(
-            center_w,
-            3.8 if compact else 4.2,
-            _fit(self, self.brand["name"].upper(), center_w, self.font_family, "B", title_size),
+            self.epw,
+            name_h,
+            _fit(self, self.brand["name"].upper(), self.epw - logo - 4, self.font_family, "B", name_size),
             align="C",
             new_x="LMARGIN",
             new_y="NEXT",
         )
-        if self.brand["motto"] and not compact:
-            self.set_x(cx)
-            self.set_font(self.font_family, "B", 6.5)
+
+        if has_contact:
+            self.set_x(self.l_margin)
+            self.set_font(self.font_family, "B", contact_size)
             self.set_text_color(*_PDF_META)
             self.cell(
-                center_w,
-                2.8,
-                _fit(self, f'"{self.brand["motto"]}"', center_w, self.font_family, "B", 6.5),
-                align="C",
-                new_x="LMARGIN",
-                new_y="NEXT",
-            )
-        if self.brand["contact"] and not compact:
-            self.set_x(cx)
-            self.set_font(self.font_family, "B", 5.8)
-            self.set_text_color(*_PDF_MUTED)
-            self.cell(
-                center_w,
-                2.5,
-                _fit(self, self.brand["contact"], center_w, self.font_family, "B", 5.8),
+                self.epw,
+                contact_h,
+                _fit(self, self.brand["contact"], self.epw - 8, self.font_family, "B", contact_size),
                 align="C",
                 new_x="LMARGIN",
                 new_y="NEXT",
             )
 
-        self.set_y(max(self.get_y(), top + logo) + (0.4 if compact else 0.8))
-        self.set_draw_color(*self.primary)
-        self.set_line_width(0.55)
+        # Thin grey rule sits just under the logo / identity block.
+        self.set_y(max(self.get_y(), top + logo) + (1.0 if compact else 1.35))
+        self.set_draw_color(*_PDF_LINE)
+        self.set_line_width(0.28)
         self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-        self.ln(1.0)
+        self.ln(1.5 if compact else 1.85)
 
-        # Meta line matching print: thin rule + "Exam · Scope"
-        chips = self._matrix_meta_bits(sheet)
-        if chips:
-            self.set_draw_color(*_PDF_LINE)
-            self.set_line_width(0.2)
-            y = self.get_y()
-            self.line(self.l_margin, y, self.w - self.r_margin, y)
-            self.ln(1.0)
-            meta = "  ·  ".join(_pdf_text(chip) for chip in chips)
-            self.set_font(self.font_family, "B", 6.8)
-            self.set_text_color(*_PDF_HEAD_TEXT)
+        meta = self._matrix_meta_line(sheet)
+        if meta:
+            self.set_font(self.font_family, "B", meta_size)
+            self.set_text_color(*_PDF_BLUE)
             self.cell(
                 self.epw,
-                3.4,
-                _fit(self, meta, self.epw, self.font_family, "B", 6.8),
+                3.8 if compact else 4.2,
+                _fit(self, meta, self.epw - 4, self.font_family, "B", meta_size),
                 align="C",
                 new_x="LMARGIN",
                 new_y="NEXT",
             )
-            self.ln(1.2)
+            self.ln(1.15 if compact else 1.45)
 
-        if not compact:
-            self.set_font(self.font_family, "B", 5.8)
-            self.set_text_color(*_PDF_MUTED)
-            self.cell(self.epw, 3.0, "ASSESSMENT RESULTS", new_x="LMARGIN", new_y="NEXT")
-            self.ln(0.4)
+        self.set_draw_color(*_PDF_BLUE)
+        self.set_line_width(0.9 if compact else 1.1)
+        self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+        self.ln(1.8 if compact else 2.2)
 
     def draw_card_letterhead(self, card, *, compact=False):
         self._active_card = card
@@ -899,7 +910,8 @@ class PrintStyleExamPDF(FPDF):
             self.cell(width, row_h, label, border=0, align=align)
             return
 
-        gap = 0.5
+        # Small breathing room between mark and grade (mm).
+        gap = 1.35
         grade_size = max(font_size - 1.2, 4.0)
         self.set_font(self.font_family, "B", font_size)
         mark_w = self.get_string_width(mark) if mark else 0
