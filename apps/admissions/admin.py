@@ -57,6 +57,7 @@ class ParentGuardianAdmin(admin.ModelAdmin):
         "relationship_to_student",
         "phone_number",
         "email",
+        "profile_image",
         "is_active",
         "new_password",
         "password",

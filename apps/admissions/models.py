@@ -28,6 +28,7 @@ class ParentGuardian(PortalAccount):
         validators=[RegexValidator(r"^\+?[0-9\s-]{7,24}$", "Enter a valid phone number.")],
     )
     email = models.EmailField(blank=True)
+    profile_image = models.ImageField(upload_to="parents/profiles/", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
