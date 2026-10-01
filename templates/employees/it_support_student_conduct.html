@@ -43,7 +43,7 @@
     <header class="pending-admit-panel-head">
       <div>
         <h3>Conduct records</h3>
-        <p>
+        <p data-conduct-record-status>
           {% if search_query %}
           Showing matches for “{{ search_query }}”
           {% else %}
@@ -53,23 +53,34 @@
       </div>
     </header>
 
-    <form class="student-conduct-filter" method="get" action="{% url 'employees:it_support_student_conduct' %}">
-      <label class="visually-hidden" for="conduct-record-search">Search records</label>
+    <form
+      class="student-conduct-filter"
+      method="get"
+      action="{% url 'employees:it_support_student_conduct' %}"
+      data-conduct-record-search-form
+    >
+      <label class="visually-hidden" for="conduct-record-search">Search by name or admission number</label>
       <div class="student-conduct-filter-row">
         <input
           id="conduct-record-search"
           type="search"
           name="q"
-          placeholder="Search by student, admission, witness, or description"
+          placeholder="Type a student name or admission number…"
           value="{{ search_query }}"
+          autocomplete="off"
+          data-conduct-record-search-input
         >
-        <button type="submit" class="primary-button">Search</button>
-        {% if search_query %}
-        <a class="ghost-button" href="{% url 'employees:it_support_student_conduct' %}">Clear</a>
-        {% endif %}
+        <button type="submit" class="primary-button" data-conduct-record-search-submit>Search</button>
+        <a
+          class="ghost-button"
+          href="{% url 'employees:it_support_student_conduct' %}"
+          data-conduct-record-search-clear
+          {% if not search_query %}hidden{% endif %}
+        >Clear</a>
       </div>
     </form>
 
+    <div data-conduct-record-results>
     {% if conduct_records %}
     <div class="student-conduct-cards">
       {% for record in conduct_records %}
@@ -131,7 +142,7 @@
       <h3>{% if search_query %}No matches{% else %}No conduct records yet{% endif %}</h3>
       <p>
         {% if search_query %}
-        Nothing matched “{{ search_query }}”. Try another name, admission number, or witness.
+        Nothing matched “{{ search_query }}”. Try another name or admission number.
         {% else %}
         Use <strong>Register conduct</strong> to log the first good or bad behaviour entry.
         {% endif %}
@@ -141,6 +152,7 @@
       {% endif %}
     </div>
     {% endif %}
+    </div>
   </section>
 </div>
 
@@ -254,5 +266,5 @@
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/student-conduct.js' %}?v=20260930sc3" defer></script>
+<script src="{% static 'js/student-conduct.js' %}?v=20260930live1" defer></script>
 {% endblock %}

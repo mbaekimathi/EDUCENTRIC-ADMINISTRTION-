@@ -367,6 +367,11 @@ FULL_MODULE_WORKSPACE_ROLES = frozenset(
     }
 )
 
+# Roles that use IT Support curriculum report URLs (learning / assessment generators).
+IT_SUPPORT_CURRICULUM_REPORT_ROLES = FULL_MODULE_WORKSPACE_ROLES | {
+    Employee.Role.CURRICULUM_COORDINATOR,
+}
+
 CURRICULUM_COORDINATOR_MODULE_SLUGS = frozenset(
     {"student-management", "curriculum-management", "reports"}
 )
@@ -5911,7 +5916,7 @@ def it_support_curriculum_report_page(request, page):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role not in FULL_MODULE_WORKSPACE_ROLES:
+    if role not in IT_SUPPORT_CURRICULUM_REPORT_ROLES:
         return redirect_to_role_dashboard(request)
     return _render_curriculum_report_page(request, page, role)
 
@@ -7650,7 +7655,7 @@ def it_support_exam_reports(request, page):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role not in FULL_MODULE_WORKSPACE_ROLES:
+    if role not in IT_SUPPORT_CURRICULUM_REPORT_ROLES:
         return redirect_to_role_dashboard(request)
     return _render_exam_reports(request, page, role)
 
@@ -7717,7 +7722,7 @@ def it_support_exam_report_export(request):
     denied = _require_module_action(request, "curriculum.exam_management", "download")
     if denied:
         return denied
-    if role not in FULL_MODULE_WORKSPACE_ROLES:
+    if role not in IT_SUPPORT_CURRICULUM_REPORT_ROLES:
         return redirect_to_role_dashboard(request)
     return _exam_report_export_response(request, role)
 
@@ -7727,7 +7732,7 @@ def it_support_exam_report_students(request):
     denied, role = _require_curriculum_reports(request)
     if denied:
         return denied
-    if role not in FULL_MODULE_WORKSPACE_ROLES:
+    if role not in IT_SUPPORT_CURRICULUM_REPORT_ROLES:
         return JsonResponse({"students": []}, status=403)
     return _exam_report_students_response(request)
 
@@ -8391,6 +8396,38 @@ def it_support_pending_admissions(request):
     )
 
 
+def _serialize_conduct_record(record):
+    student = record.student
+    recorded_by = record.recorded_by
+    return {
+        "id": record.pk,
+        "behaviour_type": record.behaviour_type,
+        "behaviour_label": record.get_behaviour_type_display(),
+        "description": record.description,
+        "incident_date": record.incident_date.strftime("%d %b %Y") if record.incident_date else "",
+        "witness": record.witness,
+        "consequence_or_reward": record.consequence_or_reward,
+        "outcome_label": record.outcome_label,
+        "rating": record.rating,
+        "rating_label": record.rating_label,
+        "delete_url": reverse("employees:delete_student_conduct", kwargs={"record_id": record.pk}),
+        "student": {
+            "id": student.pk,
+            "name": student.display_name,
+            "initials": f"{(student.first_name or ' ')[:1]}{(student.last_name or ' ')[:1]}".upper(),
+            "admission_number": student.admission_number or "",
+            "level_label": student.get_academic_level_display(),
+            "class_group": student.class_group or "",
+            "profile_image_url": student.profile_image.url if student.profile_image else "",
+        },
+        "recorded_by": (
+            recorded_by.get_full_name() or recorded_by.employee_code
+            if recorded_by
+            else ""
+        ),
+    }
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def it_support_student_conduct(request):
@@ -8426,10 +8463,25 @@ def it_support_student_conduct(request):
             | Q(student__first_name__icontains=search_query)
             | Q(student__last_name__icontains=search_query)
             | Q(student__admission_number__icontains=search_query)
+            | Q(student__assessment_number__icontains=search_query)
             | Q(description__icontains=search_query)
             | Q(witness__icontains=search_query)
         )
     records = list(records_qs[:100])
+
+    wants_json = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in (request.headers.get("Accept") or "")
+        or request.GET.get("format") == "json"
+    )
+    if wants_json and request.method == "GET":
+        return JsonResponse(
+            {
+                "query": search_query,
+                "count": len(records),
+                "records": [_serialize_conduct_record(record) for record in records],
+            }
+        )
 
     selected_student = None
     student_id = form["student"].value() if form.is_bound else None

@@ -601,6 +601,33 @@ class ITSupportWorkspaceTests(TestCase):
             reports_page,
             reverse("employees:it_support_report_section", kwargs={"section": "curriculum-reports"}),
         )
+
+        curriculum_reports = self.client.get(
+            reverse(
+                "employees:it_support_report_section",
+                kwargs={"section": "curriculum-reports"},
+            )
+        )
+        self.assertEqual(curriculum_reports.status_code, 200)
+
+        learning_reports = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "learning-reports"},
+            )
+        )
+        self.assertEqual(learning_reports.status_code, 200)
+        self.assertContains(learning_reports, "Generate learning report")
+
+        exam_reports = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            )
+        )
+        self.assertEqual(exam_reports.status_code, 200)
+        self.assertContains(exam_reports, "Generate assessment report")
+
     def test_it_support_dashboard_does_not_embed_system_performance(self):
         response = self.client.get(
             reverse("employees:role_dashboard", kwargs={"role": "it_support"})
