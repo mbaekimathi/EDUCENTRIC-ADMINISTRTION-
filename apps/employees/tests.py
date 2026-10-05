@@ -945,6 +945,74 @@ class ITSupportWorkspaceTests(TestCase):
                         "/workspace/it_support/reports/curriculum-reports/learning-reports/",
                     )
 
+    def test_exam_report_catalog_lists_newest_assessments_first(self):
+        from datetime import timedelta
+
+        from django.core.cache import cache
+
+        from apps.employees.views import _exam_report_builder_catalog
+
+        level = AcademicLevel.objects.create(name="Grade 1", code="G1", order=1)
+        AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 1 East",
+            code="G1E",
+            order=1,
+        )
+        year = AcademicYear.objects.create(
+            name="2026-2027",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 2",
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 8, 1),
+            opening_date=date(2026, 5, 1),
+            midterm_date=date(2026, 6, 15),
+            closing_date=date(2026, 8, 1),
+            order=2,
+        )
+        opening = GeneratedExamTimetable.objects.create(
+            name="OPENING EXAM",
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 5, 5),
+            end_date=date(2026, 5, 7),
+        )
+        opening.academic_levels.add(level)
+        midterm = GeneratedExamTimetable.objects.create(
+            name="MIDTERM EXAM",
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 6, 15),
+            end_date=date(2026, 6, 17),
+        )
+        midterm.academic_levels.add(level)
+        closing = GeneratedExamTimetable.objects.create(
+            name="CLOSING EXAM",
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 7, 20),
+            end_date=date(2026, 7, 22),
+        )
+        closing.academic_levels.add(level)
+
+        # Same-second created_at values still sort newest-registered (highest id) first.
+        GeneratedExamTimetable.objects.filter(
+            pk__in=[opening.pk, midterm.pk, closing.pk]
+        ).update(created_at=timezone.now() - timedelta(minutes=5))
+
+        cache.delete("exam_report_builder_catalog")
+        catalog = _exam_report_builder_catalog()
+        year_entry = next(item for item in catalog["years"] if item["id"] == str(year.id))
+        exam_ids = [item["id"] for item in year_entry["exams"]]
+
+        self.assertEqual(exam_ids[0], "all")
+        self.assertEqual(exam_ids[1:], [closing.id, midterm.id, opening.id])
+
     def test_exam_report_requires_exam_selection(self):
         response = self.client.get(
             reverse(

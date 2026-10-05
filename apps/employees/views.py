@@ -5926,7 +5926,8 @@ def _exam_report_builder_catalog():
                 ),
             )
         )
-        .order_by("-academic_year__start_date", "academic_term__order", "-created_at")
+        # Newest academic year first; within a year, latest registered assessment first.
+        .order_by("-academic_year__start_date", "-created_at", "-id")
     )
     years_by_key = OrderedDict()
     for exam in generations:
@@ -5970,10 +5971,18 @@ def _exam_report_builder_catalog():
                     part for part in (exam.display_name, year_label, term_label) if part
                 ),
                 "levels": levels,
+                "_created_at": exam.created_at,
             }
         )
     years = list(years_by_key.values())
     for year in years:
+        # Pin "All assessments" at the top; list registered exams newest → oldest.
+        year["exams"].sort(
+            key=lambda item: (item.get("_created_at"), item.get("id") or 0),
+            reverse=True,
+        )
+        for item in year["exams"]:
+            item.pop("_created_at", None)
         merged_levels = _merge_exam_catalog_levels(year["exams"])
         year["exams"] = [
             {
