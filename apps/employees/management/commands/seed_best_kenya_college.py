@@ -44,45 +44,60 @@ EMPLOYEES = [
     ("100010", "MR", "Kevin", "Omondi", "STORE_MANAGER", "kevin.omondi@bestkenyacollege.ac.ke", "+254712000010"),
 ]
 
-# 10 academic levels (CBC / secondary mix for a Kenyan college brand).
+# 10 college academic levels (not primary/secondary grades).
 LEVELS = [
-    ("PRE_PRIMARY", "Pre-Primary 1", "PP1", 1),
-    ("PRE_PRIMARY", "Pre-Primary 2", "PP2", 2),
-    ("LOWER_PRIMARY", "Grade 1", "G1", 3),
-    ("LOWER_PRIMARY", "Grade 2", "G2", 4),
-    ("UPPER_PRIMARY", "Grade 4", "G4", 5),
-    ("UPPER_PRIMARY", "Grade 6", "G6", 6),
-    ("JUNIOR_SECONDARY", "Grade 7", "G7", 7),
-    ("JUNIOR_SECONDARY", "Grade 8", "G8", 8),
-    ("JUNIOR_SECONDARY", "Grade 9", "G9", 9),
-    ("SENIOR_SECONDARY", "Form 1", "F1", 10),
+    ("UNDERGRADUATE", "First Year", "Y1", 1),
+    ("UNDERGRADUATE", "Second Year", "Y2", 2),
+    ("UNDERGRADUATE", "Third Year", "Y3", 3),
+    ("UNDERGRADUATE", "Fourth Year", "Y4", 4),
+    ("DIPLOMA", "Diploma Year 1", "D1", 5),
+    ("DIPLOMA", "Diploma Year 2", "D2", 6),
+    ("CERTIFICATE", "Certificate Year 1", "C1", 7),
+    ("CERTIFICATE", "Certificate Year 2", "C2", 8),
+    ("FOUNDATION", "Bridging", "BR", 9),
+    ("SHORT_COURSE", "Short Course", "SC", 10),
 ]
 
 # Student academic_level choice aligned to LEVELS order (index).
+# Labels must match AcademicLevel.name so the CLIENTS portal can resolve them.
 STUDENT_LEVEL_CHOICES = [
-    Student.AcademicLevel.PRE_PRIMARY_1,
-    Student.AcademicLevel.PRE_PRIMARY_2,
-    Student.AcademicLevel.GRADE_1,
-    Student.AcademicLevel.GRADE_2,
-    Student.AcademicLevel.GRADE_4,
-    Student.AcademicLevel.GRADE_6,
-    Student.AcademicLevel.GRADE_7,
-    Student.AcademicLevel.GRADE_8,
-    Student.AcademicLevel.GRADE_9,
-    Student.AcademicLevel.FORM_1,
+    Student.AcademicLevel.YEAR_1,
+    Student.AcademicLevel.YEAR_2,
+    Student.AcademicLevel.YEAR_3,
+    Student.AcademicLevel.YEAR_4,
+    Student.AcademicLevel.DIPLOMA_1,
+    Student.AcademicLevel.DIPLOMA_2,
+    Student.AcademicLevel.CERTIFICATE_1,
+    Student.AcademicLevel.CERTIFICATE_2,
+    Student.AcademicLevel.BRIDGING,
+    Student.AcademicLevel.SHORT_COURSE,
 ]
 
 SUBJECTS = [
-    ("ENG", "English", 1),
-    ("KIS", "Kiswahili", 2),
-    ("MAT", "Mathematics", 3),
-    ("SCI", "Integrated Science", 4),
-    ("SST", "Social Studies", 5),
-    ("CRE", "Christian Religious Education", 6),
-    ("AGR", "Agriculture", 7),
-    ("COMP", "Computer Studies", 8),
-    ("PE", "Physical Education", 9),
-    ("ART", "Creative Arts", 10),
+    ("COM", "Communication Skills", 1),
+    ("ICT", "Computer Applications", 2),
+    ("ACC", "Financial Accounting", 3),
+    ("ENT", "Entrepreneurship", 4),
+    ("MKT", "Principles of Marketing", 5),
+    ("HRM", "Human Resource Management", 6),
+    ("RES", "Research Methods", 7),
+    ("ETH", "Professional Ethics", 8),
+    ("STAT", "Business Statistics", 9),
+    ("PROJ", "Capstone Project", 10),
+]
+
+# Programme / stream labels for class groups (college, not grade streams).
+CLASS_STREAMS = [
+    "Business",
+    "ICT",
+    "Education",
+    "Hospitality",
+    "Agriculture",
+    "Health Sciences",
+    "Engineering",
+    "Media Studies",
+    "Theology",
+    "Community Development",
 ]
 
 PARENTS = [
@@ -99,16 +114,16 @@ PARENTS = [
 ]
 
 STUDENTS = [
-    ("Amina", "W", "Hassan", "FEMALE", date(2018, 3, 12), "BKC/2026/001", "ASM1001", "Nairobi"),
-    ("Brian", "K", "Otieno", "MALE", date(2017, 7, 4), "BKC/2026/002", "ASM1002", "Kisumu"),
-    ("Cynthia", "", "Chebet", "FEMALE", date(2016, 1, 22), "BKC/2026/003", "ASM1003", "Eldoret"),
-    ("David", "M", "Kamau", "MALE", date(2015, 11, 9), "BKC/2026/004", "ASM1004", "Thika"),
-    ("Eva", "N", "Mutiso", "FEMALE", date(2014, 5, 18), "BKC/2026/005", "ASM1005", "Machakos"),
-    ("Felix", "", "Kiprono", "MALE", date(2013, 9, 30), "BKC/2026/006", "ASM1006", "Kericho"),
-    ("Grace", "A", "Achieng", "FEMALE", date(2012, 2, 14), "BKC/2026/007", "ASM1007", "Kisumu"),
-    ("Hassan", "J", "Mwangi", "MALE", date(2011, 8, 21), "BKC/2026/008", "ASM1008", "Nyeri"),
-    ("Irene", "", "Njeri", "FEMALE", date(2010, 12, 3), "BKC/2026/009", "ASM1009", "Nakuru"),
-    ("James", "O", "Omondi", "MALE", date(2009, 6, 27), "BKC/2026/010", "ASM1010", "Mombasa"),
+    ("Amina", "W", "Hassan", "FEMALE", date(2005, 3, 12), "BKC/2026/001", "ASM1001", "Nairobi"),
+    ("Brian", "K", "Otieno", "MALE", date(2004, 7, 4), "BKC/2026/002", "ASM1002", "Kisumu"),
+    ("Cynthia", "", "Chebet", "FEMALE", date(2003, 1, 22), "BKC/2026/003", "ASM1003", "Eldoret"),
+    ("David", "M", "Kamau", "MALE", date(2002, 11, 9), "BKC/2026/004", "ASM1004", "Thika"),
+    ("Eva", "N", "Mutiso", "FEMALE", date(2004, 5, 18), "BKC/2026/005", "ASM1005", "Machakos"),
+    ("Felix", "", "Kiprono", "MALE", date(2003, 9, 30), "BKC/2026/006", "ASM1006", "Kericho"),
+    ("Grace", "A", "Achieng", "FEMALE", date(2005, 2, 14), "BKC/2026/007", "ASM1007", "Kisumu"),
+    ("Hassan", "J", "Mwangi", "MALE", date(2004, 8, 21), "BKC/2026/008", "ASM1008", "Nyeri"),
+    ("Irene", "", "Njeri", "FEMALE", date(2006, 12, 3), "BKC/2026/009", "ASM1009", "Nakuru"),
+    ("James", "O", "Omondi", "MALE", date(2001, 6, 27), "BKC/2026/010", "ASM1010", "Mombasa"),
 ]
 
 
@@ -176,7 +191,7 @@ class Command(BaseCommand):
         school.display_name = "BEST KENYA COLLEGE"
         school.school_type = SchoolProfile.SchoolType.MIXED
         school.ownership = SchoolProfile.Ownership.PRIVATE
-        school.curricula = ["CBC", "844"]
+        school.curricula = ["TVET", "DIPLOMA", "DEGREE"]
         school.county = "NAIROBI"
         school.sub_county = "WESTLANDS"
         school.ward = "PARKLANDS"
@@ -187,8 +202,8 @@ class Command(BaseCommand):
         school.admissions_email = "admissions@bestkenyacollege.ac.ke"
         school.website = "https://bestkenyacollege.ac.ke"
         school.motto = "EXCELLENCE THROUGH DISCIPLINE"
-        school.vision_statement = "TO BE A LEADING KENYAN COLLEGE NURTURING DISCIPLINED, COMPETENT LEARNERS."
-        school.mission_statement = "TO PROVIDE QUALITY CBC AND SECONDARY EDUCATION IN A SAFE, VALUES-DRIVEN ENVIRONMENT."
+        school.vision_statement = "TO BE A LEADING KENYAN COLLEGE NURTURING DISCIPLINED, COMPETENT GRADUATES."
+        school.mission_statement = "TO PROVIDE QUALITY CERTIFICATE, DIPLOMA AND DEGREE PROGRAMMES IN A VALUES-DRIVEN ENVIRONMENT."
         school.primary_color = "#0B5E2B"
         school.principal_name = "DR JAMES MWANGI"
         school.term_structure = "THREE_TERM_KENYAN"
@@ -199,8 +214,8 @@ class Command(BaseCommand):
         school.mpesa_paybill = "400200"
         school.mpesa_till_number = "884455"
         school.bank_details = "EQUITY BANK — BEST KENYA COLLEGE — ACC 0123456789012"
-        school.grade_levels_offered = "PP1–PP2, G1–G9, FORM 1"
-        school.streams_offered = "EAST, WEST"
+        school.grade_levels_offered = "FIRST YEAR – FOURTH YEAR, DIPLOMA, CERTIFICATE, BRIDGING, SHORT COURSE"
+        school.streams_offered = "BUSINESS, ICT, EDUCATION, HOSPITALITY, HEALTH SCIENCES"
         school.save()
         self.stdout.write(
             self.style.SUCCESS(f"{'Created' if created else 'Updated'} school profile")
@@ -249,6 +264,10 @@ class Command(BaseCommand):
         teachers = [e for e in employees if e.has_role(Employee.Role.TEACHER)]
         levels = []
         classes = []
+        # Hide earlier primary/secondary demo levels if this college seed re-runs.
+        AcademicLevel.objects.filter(
+            code__in=["PP1", "PP2", "G1", "G2", "G4", "G6", "G7", "G8", "G9", "F1"]
+        ).update(status=AcademicLevel.Status.INACTIVE)
         for i, (category, name, code, order) in enumerate(LEVELS):
             level, _ = AcademicLevel.objects.get_or_create(
                 code=code,
@@ -267,9 +286,9 @@ class Command(BaseCommand):
             level.save()
             levels.append(level)
 
-            stream = "East" if i % 2 == 0 else "West"
-            class_code = f"{code}E" if stream == "East" else f"{code}W"
-            class_name = f"{name} {stream}"
+            stream = CLASS_STREAMS[i % len(CLASS_STREAMS)]
+            class_code = f"{code}-{stream[:3].upper()}"
+            class_name = f"{name} — {stream}"
             teacher = teachers[i % len(teachers)] if teachers else None
             klass, _ = AcademicClass.objects.get_or_create(
                 academic_level=level,
