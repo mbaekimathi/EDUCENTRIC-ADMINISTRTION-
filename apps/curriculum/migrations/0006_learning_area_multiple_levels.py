@@ -35,6 +35,17 @@ def copy_levels_to_m2m(apps, schema_editor):
     connection = schema_editor.connection
     if not _table_has_column(connection, "curriculum_learningarea", "academic_level_id"):
         return
+    if connection.vendor == "mysql":
+        schema_editor.execute(
+            """
+            INSERT IGNORE INTO curriculum_learningarea_academic_levels
+                (learningarea_id, academiclevel_id)
+            SELECT id, academic_level_id
+            FROM curriculum_learningarea
+            WHERE academic_level_id IS NOT NULL
+            """
+        )
+        return
     LearningArea = apps.get_model("curriculum", "LearningArea")
     through = LearningArea.academic_levels.through
     for area in LearningArea.objects.all():
@@ -131,9 +142,28 @@ def add_academic_levels_m2m_if_missing(apps, schema_editor):
             )
             if cursor.fetchone():
                 return
+    # SeparateDatabaseAndState DB ops run before state AddField — build through table
+    # without reading LearningArea.academic_levels on the historical model.
     LearningArea = apps.get_model("curriculum", "LearningArea")
-    field = LearningArea._meta.get_field("academic_levels")
-    schema_editor.create_model(field.remote_field.through)
+    AcademicLevel = apps.get_model("curriculum", "AcademicLevel")
+
+    class LearningAreaAcademicLevels(models.Model):
+        learningarea = models.ForeignKey(
+            LearningArea,
+            on_delete=django.db.models.deletion.CASCADE,
+        )
+        academiclevel = models.ForeignKey(
+            AcademicLevel,
+            on_delete=django.db.models.deletion.CASCADE,
+        )
+
+        class Meta:
+            db_table = through_table
+            app_label = "curriculum"
+            unique_together = (("learningarea", "academiclevel"),)
+
+    LearningAreaAcademicLevels._meta.apps = apps
+    schema_editor.create_model(LearningAreaAcademicLevels)
 
 
 def ensure_learning_area_code_unique(apps, schema_editor):
