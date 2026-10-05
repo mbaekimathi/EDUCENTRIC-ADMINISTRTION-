@@ -34,11 +34,11 @@ DEFAULT_PASSWORD = "DemoPass123!"
 EMPLOYEES = [
     ("100001", "DR", "James", "Mwangi", "HEAD_OF_INSTITUTION", "james.mwangi@bestkenyacollege.ac.ke", "+254712000001"),
     ("100002", "MRS", "Grace", "Achieng", "DEPUTY_HEAD_OF_INSTITUTION", "grace.achieng@bestkenyacollege.ac.ke", "+254712000002"),
-    ("100003", "TR", "Peter", "Kamau", "CURRICULUM_COORDINATOR", "peter.kamau@bestkenyacollege.ac.ke", "+254712000003"),
-    ("100004", "TR", "Faith", "Wanjiru", "TEACHER", "faith.wanjiru@bestkenyacollege.ac.ke", "+254712000004"),
-    ("100005", "TR", "Daniel", "Otieno", "TEACHER", "daniel.otieno@bestkenyacollege.ac.ke", "+254712000005"),
-    ("100006", "TR", "Naomi", "Chebet", "TEACHER", "naomi.chebet@bestkenyacollege.ac.ke", "+254712000006"),
-    ("100007", "TR", "Brian", "Kiptoo", "TEACHER", "brian.kiptoo@bestkenyacollege.ac.ke", "+254712000007"),
+    ("100003", "MR", "Peter", "Kamau", "CURRICULUM_COORDINATOR", "peter.kamau@bestkenyacollege.ac.ke", "+254712000003"),
+    ("100004", "MS", "Faith", "Wanjiru", "TEACHER", "faith.wanjiru@bestkenyacollege.ac.ke", "+254712000004"),
+    ("100005", "MR", "Daniel", "Otieno", "TEACHER", "daniel.otieno@bestkenyacollege.ac.ke", "+254712000005"),
+    ("100006", "MS", "Naomi", "Chebet", "TEACHER", "naomi.chebet@bestkenyacollege.ac.ke", "+254712000006"),
+    ("100007", "MR", "Brian", "Kiptoo", "TEACHER", "brian.kiptoo@bestkenyacollege.ac.ke", "+254712000007"),
     ("100008", "MR", "Samuel", "Njeri", "ACCOUNTANT", "samuel.njeri@bestkenyacollege.ac.ke", "+254712000008"),
     ("100009", "MS", "Lucy", "Mutiso", "IT_SUPPORT", "lucy.mutiso@bestkenyacollege.ac.ke", "+254712000009"),
     ("100010", "MR", "Kevin", "Omondi", "STORE_MANAGER", "kevin.omondi@bestkenyacollege.ac.ke", "+254712000010"),
@@ -74,29 +74,37 @@ STUDENT_LEVEL_CHOICES = [
 ]
 
 SUBJECTS = [
-    ("COM", "Communication Skills", 1),
-    ("ICT", "Computer Applications", 2),
-    ("ACC", "Financial Accounting", 3),
-    ("ENT", "Entrepreneurship", 4),
-    ("MKT", "Principles of Marketing", 5),
-    ("HRM", "Human Resource Management", 6),
-    ("RES", "Research Methods", 7),
-    ("ETH", "Professional Ethics", 8),
-    ("STAT", "Business Statistics", 9),
-    ("PROJ", "Capstone Project", 10),
+    # College / TVET units — not CBC learning areas.
+    ("COM101", "Communication Skills", 1, "foundation"),
+    ("ICT101", "Computer Applications", 2, "foundation"),
+    ("ACC101", "Financial Accounting", 3, "core"),
+    ("ENT101", "Entrepreneurship", 4, "core"),
+    ("MKT201", "Principles of Marketing", 5, "core"),
+    ("HRM201", "Human Resource Management", 6, "core"),
+    ("RES301", "Research Methods", 7, "advanced"),
+    ("ETH201", "Professional Ethics", 8, "core"),
+    ("STA201", "Business Statistics", 9, "core"),
+    ("PRJ401", "Capstone / Industrial Project", 10, "capstone"),
 ]
 
-# Programme / stream labels for class groups (college, not grade streams).
+# CBC / basic-education subject codes from earlier demos — deactivated on re-seed.
+LEGACY_CBC_SUBJECT_CODES = [
+    "ENG", "KIS", "MAT", "SCI", "SST", "CRE", "AGR", "COMP", "PE", "ART",
+    # Short codes from the first college draft (replaced by unit codes below).
+    "COM", "ICT", "ACC", "ENT", "MKT", "HRM", "RES", "ETH", "STAT", "PROJ",
+]
+
+# Programme / cohort labels (college, not grade streams).
 CLASS_STREAMS = [
-    "Business",
-    "ICT",
-    "Education",
-    "Hospitality",
-    "Agriculture",
-    "Health Sciences",
-    "Engineering",
-    "Media Studies",
-    "Theology",
+    "Business Management",
+    "Information Technology",
+    "Education Studies",
+    "Hospitality Management",
+    "Agricultural Extension",
+    "Community Health",
+    "Electrical Engineering",
+    "Media & Communication",
+    "Theology & Counselling",
     "Community Development",
 ]
 
@@ -183,15 +191,15 @@ class Command(BaseCommand):
             defaults={
                 "official_name": "BEST KENYA COLLEGE",
                 "display_name": "BEST KENYA COLLEGE",
-                "school_type": SchoolProfile.SchoolType.MIXED,
+                "school_type": SchoolProfile.SchoolType.COLLEGE,
                 "ownership": SchoolProfile.Ownership.PRIVATE,
             },
         )
         school.official_name = "BEST KENYA COLLEGE"
         school.display_name = "BEST KENYA COLLEGE"
-        school.school_type = SchoolProfile.SchoolType.MIXED
+        school.school_type = SchoolProfile.SchoolType.COLLEGE
         school.ownership = SchoolProfile.Ownership.PRIVATE
-        school.curricula = ["TVET", "DIPLOMA", "DEGREE"]
+        school.curricula = ["TVET", "DIPLOMA", "DEGREE", "CERTIFICATE"]
         school.county = "NAIROBI"
         school.sub_county = "WESTLANDS"
         school.ward = "PARKLANDS"
@@ -206,16 +214,17 @@ class Command(BaseCommand):
         school.mission_statement = "TO PROVIDE QUALITY CERTIFICATE, DIPLOMA AND DEGREE PROGRAMMES IN A VALUES-DRIVEN ENVIRONMENT."
         school.primary_color = "#0B5E2B"
         school.principal_name = "DR JAMES MWANGI"
-        school.term_structure = "THREE_TERM_KENYAN"
+        school.term_structure = "THREE_SEMESTER_COLLEGE"
         school.academic_year_start = date(2026, 1, 5)
         school.academic_year_end = date(2026, 11, 20)
         school.enrollment_capacity = 1200
         school.boarding_status = "DAY_AND_BOARDING"
         school.mpesa_paybill = "400200"
-        school.mpesa_till_number = "884455"
+        school.mpesa_till_number = "559900"
         school.bank_details = "EQUITY BANK — BEST KENYA COLLEGE — ACC 0123456789012"
         school.grade_levels_offered = "FIRST YEAR – FOURTH YEAR, DIPLOMA, CERTIFICATE, BRIDGING, SHORT COURSE"
-        school.streams_offered = "BUSINESS, ICT, EDUCATION, HOSPITALITY, HEALTH SCIENCES"
+        school.streams_offered = "BUSINESS, ICT, EDUCATION, HOSPITALITY, HEALTH, ENGINEERING"
+        school.departments = "BUSINESS; ICT; EDUCATION; HOSPITALITY; HEALTH SCIENCES; ENGINEERING"
         school.save()
         self.stdout.write(
             self.style.SUCCESS(f"{'Created' if created else 'Updated'} school profile")
@@ -327,10 +336,14 @@ class Command(BaseCommand):
         year.save()
 
         terms = [
-            ("Term 1", date(2026, 1, 5), date(2026, 4, 3), date(2026, 1, 5), date(2026, 2, 20), date(2026, 4, 3), 1, True),
-            ("Term 2", date(2026, 5, 4), date(2026, 8, 7), date(2026, 5, 4), date(2026, 6, 19), date(2026, 8, 7), 2, False),
-            ("Term 3", date(2026, 8, 31), date(2026, 11, 20), date(2026, 8, 31), date(2026, 10, 9), date(2026, 11, 20), 3, False),
+            ("Semester 1", date(2026, 1, 5), date(2026, 4, 3), date(2026, 1, 5), date(2026, 2, 20), date(2026, 4, 3), 1, True),
+            ("Semester 2", date(2026, 5, 4), date(2026, 8, 7), date(2026, 5, 4), date(2026, 6, 19), date(2026, 8, 7), 2, False),
+            ("Semester 3", date(2026, 8, 31), date(2026, 11, 20), date(2026, 8, 31), date(2026, 10, 9), date(2026, 11, 20), 3, False),
         ]
+        # Remove old Term 1/2/3 demo names if present from earlier school seed.
+        AcademicTerm.objects.filter(
+            academic_year=year, name__in=["Term 1", "Term 2", "Term 3"]
+        ).delete()
         for name, start, end, opening, midterm, closing, order, current in terms:
             term, _ = AcademicTerm.objects.get_or_create(
                 academic_year=year,
@@ -353,13 +366,24 @@ class Command(BaseCommand):
             term.order = order
             term.is_current = current
             term.save()
-        self.stdout.write(self.style.SUCCESS("Academic year 2026 + 3 terms"))
+        self.stdout.write(self.style.SUCCESS("Academic year 2026 + 3 semesters"))
         return year
 
     def _seed_subjects(self, levels, classes, employees):
         teachers = [e for e in employees if e.has_role(Employee.Role.TEACHER)]
+        # Hide CBC / basic-education subjects from earlier demos.
+        LearningArea.objects.filter(code__in=LEGACY_CBC_SUBJECT_CODES).update(
+            status=LearningArea.Status.INACTIVE
+        )
+
+        undergrad = [lv for lv in levels if lv.category == "UNDERGRADUATE"]
+        diploma = [lv for lv in levels if lv.category == "DIPLOMA"]
+        certificate = [lv for lv in levels if lv.category == "CERTIFICATE"]
+        foundation = [lv for lv in levels if lv.category in {"FOUNDATION", "SHORT_COURSE"}]
+        all_programme = undergrad + diploma + certificate
+
         subjects = []
-        for code, name, order in SUBJECTS:
+        for code, name, order, band in SUBJECTS:
             area, _ = LearningArea.objects.get_or_create(
                 code=code,
                 defaults={
@@ -367,17 +391,31 @@ class Command(BaseCommand):
                     "display_order": order,
                     "total_marks": 100,
                     "status": LearningArea.Status.ACTIVE,
-                    "description": f"{name} — Best Kenya College",
+                    "description": f"{name} — Best Kenya College unit",
                 },
             )
             area.name = name
             area.display_order = order
             area.status = LearningArea.Status.ACTIVE
+            area.description = f"{name} — Best Kenya College unit"
             area.save()
-            area.academic_levels.set(levels)
+
+            if band == "foundation":
+                target_levels = all_programme + foundation
+            elif band == "capstone":
+                target_levels = [
+                    lv for lv in levels if lv.code in {"Y3", "Y4", "D2"}
+                ]
+            elif band == "advanced":
+                target_levels = [
+                    lv for lv in levels if lv.code in {"Y2", "Y3", "Y4", "D1", "D2"}
+                ]
+            else:
+                target_levels = all_programme
+            area.academic_levels.set(target_levels or levels)
             subjects.append(area)
 
-            for level in levels:
+            for level in target_levels or levels:
                 ExamSubjectSetting.objects.get_or_create(
                     academic_level=level,
                     learning_area=area,
@@ -386,6 +424,8 @@ class Command(BaseCommand):
 
         for i, klass in enumerate(classes):
             for j, area in enumerate(subjects):
+                if not area.academic_levels.filter(pk=klass.academic_level_id).exists():
+                    continue
                 teacher = teachers[(i + j) % len(teachers)] if teachers else None
                 if teacher is None:
                     continue
@@ -395,7 +435,7 @@ class Command(BaseCommand):
                     defaults={"teacher": teacher},
                 )
 
-        self.stdout.write(self.style.SUCCESS(f"Subjects + allocations: {len(subjects)}"))
+        self.stdout.write(self.style.SUCCESS(f"College units + allocations: {len(subjects)}"))
         return subjects
 
     def _seed_parents(self, password, reset_passwords):
@@ -457,7 +497,7 @@ class Command(BaseCommand):
                     enrollment_status=Student.EnrollmentStatus.ACTIVE,
                     is_active=True,
                     is_suspended=False,
-                    previous_school="Local Primary School",
+                    previous_school="County Secondary School",
                 )
                 student.set_password(password)
                 student.save()

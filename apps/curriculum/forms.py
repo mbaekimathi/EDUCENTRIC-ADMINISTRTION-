@@ -37,15 +37,15 @@ class AcademicLevelForm(forms.ModelForm):
         }
         widgets = {
             "name": forms.TextInput(
-                attrs={"class": "uppercase-input", "placeholder": "E.G. GRADE 1"}
+                attrs={"class": "uppercase-input", "placeholder": "E.G. FIRST YEAR"}
             ),
             "code": forms.TextInput(
-                attrs={"class": "uppercase-input", "placeholder": "E.G. G1"}
+                attrs={"class": "uppercase-input", "placeholder": "E.G. Y1"}
             ),
             "category": forms.TextInput(
                 attrs={
                     "class": "uppercase-input",
-                    "placeholder": "E.G. LOWER PRIMARY",
+                    "placeholder": "E.G. UNDERGRADUATE / DIPLOMA / CERTIFICATE",
                     "list": "level-category-suggestions",
                     "autocomplete": "off",
                 }

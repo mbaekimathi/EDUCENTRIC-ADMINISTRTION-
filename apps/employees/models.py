@@ -51,6 +51,8 @@ class SchoolProfile(models.Model):
         PRIMARY = "PRIMARY", "Primary school"
         SECONDARY = "SECONDARY", "Secondary school"
         MIXED = "MIXED", "Mixed primary and secondary"
+        COLLEGE = "COLLEGE", "College / tertiary"
+        TVET = "TVET", "TVET / technical college"
         INTERNATIONAL = "INTERNATIONAL", "International school"
         SPECIAL_NEEDS = "SPECIAL_NEEDS", "Special needs school"
 

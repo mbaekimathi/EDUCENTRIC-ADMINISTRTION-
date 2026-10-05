@@ -11174,7 +11174,7 @@ def _student_level_choice(level):
         if re.sub(r"[^A-Za-z0-9]+", "", label).casefold() == collapsed_name.casefold():
             return value
 
-    # Match common curriculum codes such as G1/G4 → GRADE_1/GRADE_4, F1 → FORM_1.
+    # Match curriculum codes: Y1→YEAR_1, D1→DIPLOMA_1, G1→GRADE_1, F1→FORM_1.
     token = collapsed_code or collapsed_name
     digit_match = re.search(r"(\d+)", token) or re.search(r"(\d+)", name) or re.search(
         r"(\d+)", code
@@ -11183,7 +11183,21 @@ def _student_level_choice(level):
         number = digit_match.group(1)
         token_upper = token.upper()
         name_upper = name.upper()
-        if (
+        if "YEAR" in name_upper or (
+            token_upper.startswith("Y") and "DIPLOMA" not in name_upper
+        ):
+            candidate = f"YEAR_{number}"
+        elif "DIPLOMA" in name_upper or (
+            token_upper.startswith("D") and token_upper[1:].isdigit()
+        ):
+            candidate = f"DIPLOMA_{number}"
+        elif "CERTIFICATE" in name_upper or (
+            token_upper.startswith("C")
+            and token_upper[1:].isdigit()
+            and "CRE" not in name_upper
+        ):
+            candidate = f"CERTIFICATE_{number}"
+        elif (
             "FORM" in name_upper
             or (token_upper.startswith("F") and not token_upper.startswith("G") and "PRE" not in name_upper)
         ):

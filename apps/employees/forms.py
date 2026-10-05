@@ -112,7 +112,12 @@ class EmployeeLoginForm(forms.Form):
 
 class SchoolProfileForm(UppercaseFieldsMixin, forms.ModelForm):
     CURRICULUM_CHOICES = (
-        ("CBC", "CBC"),
+        ("TVET", "TVET / CDACC"),
+        ("DIPLOMA", "Diploma"),
+        ("DEGREE", "Degree"),
+        ("HIGHER_DIPLOMA", "Higher diploma"),
+        ("CERTIFICATE", "Certificate"),
+        ("CBC", "CBC (basic education)"),
         ("8-4-4", "8-4-4 (legacy)"),
         ("IGCSE", "IGCSE"),
         ("IB", "International Baccalaureate (IB)"),
@@ -122,8 +127,8 @@ class SchoolProfileForm(UppercaseFieldsMixin, forms.ModelForm):
     curricula = forms.MultipleChoiceField(
         choices=CURRICULUM_CHOICES,
         widget=forms.CheckboxSelectMultiple,
-        label="Curriculum offered",
-        help_text="Select every curriculum offered by the school.",
+        label="Programmes / curricula offered",
+        help_text="Select every programme type offered by the institution.",
     )
     uppercase_fields = (
         "official_name",
@@ -287,8 +292,9 @@ class SchoolProfileLeadershipForm(UppercaseFieldsMixin, forms.ModelForm):
 
 class SchoolProfileAcademicSetupForm(UppercaseFieldsMixin, forms.ModelForm):
     TERM_CHOICES = (
+        ("THREE_SEMESTER_COLLEGE", "Three-semester college calendar"),
         ("THREE_TERM_KENYAN", "Three-term Kenyan calendar"),
-        ("TWO_TERM", "Two-term calendar"),
+        ("TWO_TERM", "Two-term / semester calendar"),
         ("OTHER", "Other"),
     )
     term_structure = forms.ChoiceField(
@@ -305,13 +311,23 @@ class SchoolProfileAcademicSetupForm(UppercaseFieldsMixin, forms.ModelForm):
         )
         widgets = {
             "grade_levels_offered": forms.Textarea(
-                attrs={"rows": 3, "placeholder": "E.G. PP1–GRADE 9"}
+                attrs={
+                    "rows": 3,
+                    "placeholder": "E.G. FIRST YEAR – FOURTH YEAR, DIPLOMA, CERTIFICATE",
+                }
             ),
             "streams_offered": forms.Textarea(
-                attrs={"rows": 3, "placeholder": "E.G. GRADE 4: 4A, 4B, 4C"}
+                attrs={
+                    "rows": 3,
+                    "placeholder": "E.G. BUSINESS Y1, ICT Y1, EDUCATION Y2",
+                }
             ),
             "academic_year_start": forms.DateInput(attrs={"type": "date"}),
             "academic_year_end": forms.DateInput(attrs={"type": "date"}),
+        }
+        labels = {
+            "grade_levels_offered": "Levels / years offered",
+            "streams_offered": "Programmes / cohorts offered",
         }
 
 
