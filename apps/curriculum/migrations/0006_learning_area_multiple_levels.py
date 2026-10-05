@@ -65,17 +65,38 @@ def _mysql_index_exists(connection, table, index_name):
         return cursor.fetchone() is not None
 
 
+def _mysql_drop_foreign_keys_on_column(schema_editor, table, column):
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT CONSTRAINT_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = %s
+              AND COLUMN_NAME = %s
+              AND REFERENCED_TABLE_NAME IS NOT NULL
+            """,
+            [table, column],
+        )
+        for (fk_name,) in cursor.fetchall():
+            schema_editor.execute(
+                f"ALTER TABLE `{table}` DROP FOREIGN KEY `{fk_name}`"
+            )
+
+
 def drop_level_code_unique(apps, schema_editor):
     connection = schema_editor.connection
+    table = "curriculum_learningarea"
+    index_name = "unique_learning_area_code_per_level"
     if connection.vendor == "mysql":
-        if not _mysql_index_exists(
-            connection, "curriculum_learningarea", "unique_learning_area_code_per_level"
-        ):
+        if not _mysql_index_exists(connection, table, index_name):
             return
-        schema_editor.execute(
-            "ALTER TABLE `curriculum_learningarea` "
-            "DROP INDEX `unique_learning_area_code_per_level`"
-        )
+        # MySQL binds the academic_level FK to this composite index; do not drop
+        # the index until academic_level_id is removed (see remove_academic_level_fk).
+        if _table_has_column(connection, table, "academic_level_id"):
+            return
+        schema_editor.execute(f"ALTER TABLE `{table}` DROP INDEX `{index_name}`")
         return
     if connection.vendor == "sqlite":
         schema_editor.execute(
@@ -157,6 +178,8 @@ def remove_academic_level_fk_if_present(apps, schema_editor):
     column = "academic_level_id"
     if not _table_has_column(connection, table, column):
         return
+    if connection.vendor == "mysql":
+        _mysql_drop_foreign_keys_on_column(schema_editor, table, column)
     schema_editor.execute(f"ALTER TABLE `{table}` DROP COLUMN `{column}`")
 
 
@@ -166,17 +189,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.SeparateDatabaseAndState(
-            state_operations=[
-                migrations.RemoveConstraint(
-                    model_name="learningarea",
-                    name="unique_learning_area_code_per_level",
-                ),
-            ],
-            database_operations=[
-                migrations.RunPython(drop_level_code_unique, noop_reverse),
-            ],
-        ),
         migrations.SeparateDatabaseAndState(
             state_operations=[
                 migrations.AddField(
@@ -196,6 +208,15 @@ class Migration(migrations.Migration):
         migrations.RunPython(copy_levels_to_m2m, noop_reverse),
         migrations.SeparateDatabaseAndState(
             state_operations=[
+                migrations.RemoveConstraint(
+                    model_name="learningarea",
+                    name="unique_learning_area_code_per_level",
+                ),
+            ],
+            database_operations=[],
+        ),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
                 migrations.RemoveField(
                     model_name="learningarea",
                     name="academic_level",
@@ -203,6 +224,12 @@ class Migration(migrations.Migration):
             ],
             database_operations=[
                 migrations.RunPython(remove_academic_level_fk_if_present, noop_reverse),
+            ],
+        ),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[],
+            database_operations=[
+                migrations.RunPython(drop_level_code_unique, noop_reverse),
             ],
         ),
         migrations.SeparateDatabaseAndState(
