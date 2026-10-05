@@ -7,8 +7,8 @@ from django.views.decorators.http import require_http_methods
 
 from apps.curriculum.models import AcademicLevel, ELearningLearningMaterial
 
-from .forms import ParentLoginForm, StudentAdmissionForm, StudentLoginForm
 from .models import AdmissionSettings, ParentGuardian, Student
+from .forms import ParentLoginForm, StudentAdmissionForm, StudentLoginForm
 
 
 def portal_session_required(session_key):

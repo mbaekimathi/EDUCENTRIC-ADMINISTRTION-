@@ -21,9 +21,11 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.admissions.forms import AdmissionSettingsForm, StudentWorkspaceForm
-from apps.employees.exam_report_export import build_exam_report_excel, build_exam_report_pdf
+# Import admissions.models before any admissions.forms usage. Loading forms at
+# module import time can hit a partial models module under Passenger and raise
+# ImportError: cannot import name 'AdmissionSettings'.
 from apps.admissions.models import AdmissionSettings, Student
+from apps.employees.exam_report_export import build_exam_report_excel, build_exam_report_pdf
 from apps.curriculum.forms import (
     AcademicLevelForm,
     AcademicYearForm,
@@ -8810,6 +8812,8 @@ def update_workspace_student(request, student_id):
     denied = _require_module_action(request, "module.student_management", "edit")
     if denied:
         return denied
+    from apps.admissions.forms import StudentWorkspaceForm
+
     student = get_object_or_404(Student.objects.select_related("parent_guardian"), pk=student_id)
     form = StudentWorkspaceForm(request.POST, request.FILES, student=student)
     if form.is_valid():
@@ -14459,6 +14463,8 @@ def finance_settings(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def admission_settings(request):
+    from apps.admissions.forms import AdmissionSettingsForm
+
     settings_obj = AdmissionSettings.get_solo()
     form = AdmissionSettingsForm(request.POST or None, instance=settings_obj)
 
