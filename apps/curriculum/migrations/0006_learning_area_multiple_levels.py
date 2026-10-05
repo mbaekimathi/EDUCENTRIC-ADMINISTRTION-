@@ -36,15 +36,16 @@ def copy_levels_to_m2m(apps, schema_editor):
     if not _table_has_column(connection, "curriculum_learningarea", "academic_level_id"):
         return
     if connection.vendor == "mysql":
-        schema_editor.execute(
-            """
-            INSERT IGNORE INTO curriculum_learningarea_academic_levels
-                (learningarea_id, academiclevel_id)
-            SELECT id, academic_level_id
-            FROM curriculum_learningarea
-            WHERE academic_level_id IS NOT NULL
-            """
-        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT IGNORE INTO curriculum_learningarea_academic_levels
+                    (learningarea_id, academiclevel_id)
+                SELECT id, academic_level_id
+                FROM curriculum_learningarea
+                WHERE academic_level_id IS NOT NULL
+                """
+            )
         return
     LearningArea = apps.get_model("curriculum", "LearningArea")
     through = LearningArea.academic_levels.through
@@ -214,6 +215,8 @@ def remove_academic_level_fk_if_present(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
+
     dependencies = [
         ("curriculum", "0005_category_as_text_input"),
     ]
