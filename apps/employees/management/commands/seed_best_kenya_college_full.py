@@ -577,7 +577,11 @@ class Command(BaseCommand):
                 learning_area=area,
                 defaults={"supervisor": supervisor},
             )
+            # Always use a Mon–Fri date for weekday label (weekday() is 0=Mon … 6=Sun).
             sitting_day = date.today() - timedelta(days=(i % 5) + 1)
+            while sitting_day.weekday() >= 5:
+                sitting_day -= timedelta(days=1)
+            weekday_codes = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
             _, made = GeneratedExamSitting.objects.get_or_create(
                 generation=exam,
                 academic_class=klass,
@@ -586,7 +590,7 @@ class Command(BaseCommand):
                 defaults={
                     "academic_level": klass.academic_level,
                     "supervisor": supervisor,
-                    "weekday": ["MON", "TUE", "WED", "THU", "FRI"][sitting_day.weekday()],
+                    "weekday": weekday_codes[sitting_day.weekday()],
                     "period_name": "Morning paper" if i % 2 == 0 else "Afternoon paper",
                     "start_time": time(8, 0) if i % 2 == 0 else time(14, 0),
                     "end_time": time(10, 0) if i % 2 == 0 else time(16, 0),
