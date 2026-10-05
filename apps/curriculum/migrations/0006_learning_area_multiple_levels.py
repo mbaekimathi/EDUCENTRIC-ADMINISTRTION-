@@ -97,6 +97,25 @@ def _mysql_drop_foreign_keys_on_column(schema_editor, table, column):
             )
 
 
+def _mysql_drop_indexes_on_column(schema_editor, table, column):
+    """Drop non-PRIMARY indexes that include ``column`` (needed before DROP COLUMN)."""
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT DISTINCT INDEX_NAME
+            FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = %s
+              AND COLUMN_NAME = %s
+              AND INDEX_NAME <> 'PRIMARY'
+            """,
+            [table, column],
+        )
+        for (index_name,) in cursor.fetchall():
+            schema_editor.execute(f"ALTER TABLE `{table}` DROP INDEX `{index_name}`")
+
+
 def drop_level_code_unique(apps, schema_editor):
     connection = schema_editor.connection
     table = "curriculum_learningarea"
@@ -104,10 +123,7 @@ def drop_level_code_unique(apps, schema_editor):
     if connection.vendor == "mysql":
         if not _mysql_index_exists(connection, table, index_name):
             return
-        # MySQL binds the academic_level FK to this composite index; do not drop
-        # the index until academic_level_id is removed (see remove_academic_level_fk).
-        if _table_has_column(connection, table, "academic_level_id"):
-            return
+        # Prefer drop inside remove_academic_level_fk (before DROP COLUMN). Safe retry.
         schema_editor.execute(f"ALTER TABLE `{table}` DROP INDEX `{index_name}`")
         return
     if connection.vendor == "sqlite":
@@ -173,18 +189,23 @@ def ensure_learning_area_code_unique(apps, schema_editor):
     column = "code"
     if connection.vendor == "mysql":
         with connection.cursor() as cursor:
+            # Only skip if a single-column UNIQUE on `code` already exists.
             cursor.execute(
                 """
-                SELECT INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = %s
-                  AND COLUMN_NAME = %s
+                SELECT s.INDEX_NAME
+                FROM information_schema.STATISTICS s
+                WHERE s.TABLE_SCHEMA = DATABASE()
+                  AND s.TABLE_NAME = %s
+                  AND s.NON_UNIQUE = 0
+                GROUP BY s.INDEX_NAME
+                HAVING COUNT(*) = 1
+                   AND MAX(s.COLUMN_NAME) = %s
+                LIMIT 1
                 """,
                 [table, column],
             )
-            for _name, non_unique in cursor.fetchall():
-                if non_unique == 0:
-                    return
+            if cursor.fetchone():
+                return
         schema_editor.execute(
             f"ALTER TABLE `{table}` ADD UNIQUE (`{column}`)"
         )
@@ -210,7 +231,11 @@ def remove_academic_level_fk_if_present(apps, schema_editor):
     if not _table_has_column(connection, table, column):
         return
     if connection.vendor == "mysql":
+        # Order matters on MariaDB: FK → indexes on column → DROP COLUMN.
         _mysql_drop_foreign_keys_on_column(schema_editor, table, column)
+        _mysql_drop_indexes_on_column(schema_editor, table, column)
+        schema_editor.execute(f"ALTER TABLE `{table}` DROP COLUMN `{column}`")
+        return
     schema_editor.execute(f"ALTER TABLE `{table}` DROP COLUMN `{column}`")
 
 
