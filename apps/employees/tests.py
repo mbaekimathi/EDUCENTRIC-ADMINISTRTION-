@@ -680,10 +680,15 @@ class ITSupportWorkspaceTests(TestCase):
         from django.core.cache import cache
 
         from apps.employees.live_sessions import LIVE_SESSION_ACTIVITY_KEY
-        from apps.employees.system_performance import ACTIVE_SESSIONS_CACHE_KEY
+        from apps.employees.system_performance import (
+            ACTIVE_SESSIONS_CACHE_KEY,
+            SNAPSHOT_CACHE_KEY,
+        )
         from apps.employees.workspace import ACTIVE_WORKSPACE_ROLE_SESSION_KEY
 
         cache.delete(ACTIVE_SESSIONS_CACHE_KEY)
+        cache.delete(f"{SNAPSHOT_CACHE_KEY}:1")
+        cache.delete(f"{SNAPSHOT_CACHE_KEY}:0")
 
         store = SessionStore()
         store[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = Employee.Role.IT_SUPPORT
@@ -703,10 +708,15 @@ class ITSupportWorkspaceTests(TestCase):
         from django.core.cache import cache
 
         from apps.employees.live_sessions import LIVE_SESSION_ACTIVITY_KEY
-        from apps.employees.system_performance import ACTIVE_SESSIONS_CACHE_KEY
+        from apps.employees.system_performance import (
+            ACTIVE_SESSIONS_CACHE_KEY,
+            SNAPSHOT_CACHE_KEY,
+        )
         from apps.employees.workspace import ACTIVE_WORKSPACE_ROLE_SESSION_KEY
 
         cache.delete(ACTIVE_SESSIONS_CACHE_KEY)
+        cache.delete(f"{SNAPSHOT_CACHE_KEY}:1")
+        cache.delete(f"{SNAPSHOT_CACHE_KEY}:0")
 
         store = SessionStore()
         store[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = Employee.Role.IT_SUPPORT
@@ -723,12 +733,19 @@ class ITSupportWorkspaceTests(TestCase):
         from django.contrib.sessions.backends.db import SessionStore
 
         from apps.employees.live_sessions import LIVE_SESSION_ACTIVITY_KEY
-        from apps.employees.system_performance import ACTIVE_SESSIONS_CACHE_KEY, STRESS_EVENTS_KEY, get_system_performance_snapshot
+        from apps.employees.system_performance import (
+            ACTIVE_SESSIONS_CACHE_KEY,
+            SNAPSHOT_CACHE_KEY,
+            STRESS_EVENTS_KEY,
+            get_system_performance_snapshot,
+        )
         from apps.employees.workspace import ACTIVE_WORKSPACE_ROLE_SESSION_KEY
         from django.core.cache import cache
 
         cache.delete(STRESS_EVENTS_KEY)
         cache.delete(ACTIVE_SESSIONS_CACHE_KEY)
+        cache.delete(f"{SNAPSHOT_CACHE_KEY}:1")
+        cache.delete(f"{SNAPSHOT_CACHE_KEY}:0")
         store = SessionStore()
         store[ACTIVE_WORKSPACE_ROLE_SESSION_KEY] = Employee.Role.IT_SUPPORT
         store["_auth_user_id"] = str(self.employee.pk)

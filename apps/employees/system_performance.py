@@ -16,20 +16,23 @@ from django.db.models import Count
 from django.utils import timezone
 
 COUNTS_CACHE_KEY = "system_perf:counts"
-COUNTS_CACHE_TTL = 60
+COUNTS_CACHE_TTL = 180
 DB_INFO_CACHE_KEY = "system_perf:db_info"
-DB_INFO_CACHE_TTL = 300
+DB_INFO_CACHE_TTL = 600
 TABLES_CACHE_KEY = "system_perf:tables"
-TABLES_CACHE_TTL = 120
+TABLES_CACHE_TTL = 300
 MEDIA_CACHE_KEY = "system_perf:media"
-MEDIA_CACHE_TTL = 300
+MEDIA_CACHE_TTL = 900
 OPERATIONS_CACHE_KEY = "system_perf:operations"
-OPERATIONS_CACHE_TTL = 60
+OPERATIONS_CACHE_TTL = 120
 LATENCY_HISTORY_KEY = "system_perf:latency_history"
 LATENCY_HISTORY_MAX = 24
 PROBE_CACHE_KEY = "system_perf:probe"
 ACTIVE_SESSIONS_CACHE_KEY = "system_perf:active_sessions"
-ACTIVE_SESSIONS_CACHE_TTL = 30
+ACTIVE_SESSIONS_CACHE_TTL = 90
+ACTIVE_SESSIONS_LOCK_KEY = "system_perf:active_sessions:lock"
+MAX_SESSIONS_SCANNED = 400
+MAX_MEDIA_FILES_SCANNED = 1500
 STRESS_EVENTS_KEY = "system_perf:stress_events"
 STRESS_EVENTS_MAX = 20
 STRESS_EVENTS_TTL = 604800
@@ -37,6 +40,8 @@ STRESS_RECORD_COOLDOWN_KEY = "system_perf:stress_last_record"
 STRESS_RECORD_COOLDOWN_SEC = 60
 STRESS_SESSION_SAMPLE = 20
 MAX_SESSION_USERS_LISTED = 50
+SNAPSHOT_CACHE_KEY = "system_perf:snapshot"
+SNAPSHOT_CACHE_TTL = 45
 
 
 def _iter_database_session_data():
@@ -104,15 +109,55 @@ def _active_user_sessions():
     if cached is not None:
         return cached
 
+    # Prevent stampede when the IT page polls and cache is cold.
+    if not cache.add(ACTIVE_SESSIONS_LOCK_KEY, "1", 60):
+        raced = cache.get(ACTIVE_SESSIONS_CACHE_KEY)
+        if raced is not None:
+            return raced
+        return {
+            "employees": [],
+            "students": [],
+            "parents": [],
+            "totals": {
+                "employees": 0,
+                "students": 0,
+                "parents": 0,
+                "sessions_scanned": 0,
+                "live_sessions": 0,
+            },
+            "window_minutes": int(LIVE_SESSION_WINDOW.total_seconds() // 60),
+            "truncated": {"employees": False, "students": False, "parents": False},
+            "scan_truncated": True,
+            "building": True,
+        }
+
+    try:
+        return _build_active_user_sessions()
+    finally:
+        cache.delete(ACTIVE_SESSIONS_LOCK_KEY)
+
+
+def _build_active_user_sessions():
+    from apps.employees.live_sessions import (
+        LIVE_SESSION_WINDOW,
+        format_last_seen,
+        is_live_session,
+        session_last_activity,
+    )
+
     employee_auth = {}
     student_auth = {}
     parent_auth = {}
     sessions_scanned = 0
     live_sessions = 0
+    scan_truncated = False
 
     for data, expire_date in _iter_active_session_data():
         sessions_scanned += 1
         if not is_live_session(data, expire_date):
+            if sessions_scanned >= MAX_SESSIONS_SCANNED:
+                scan_truncated = True
+                break
             continue
         live_sessions += 1
         last_activity = session_last_activity(data, expire_date)
@@ -152,6 +197,10 @@ def _active_user_sessions():
             entry["devices"] += 1
             if entry["last_seen"] is None or last_activity > entry["last_seen"]:
                 entry["last_seen"] = last_activity
+
+        if sessions_scanned >= MAX_SESSIONS_SCANNED:
+            scan_truncated = True
+            break
 
     from apps.admissions.models import ParentGuardian, Student
     from apps.employees.models import Employee
@@ -246,6 +295,8 @@ def _active_user_sessions():
             "students": len(students) > MAX_SESSION_USERS_LISTED,
             "parents": len(parents) > MAX_SESSION_USERS_LISTED,
         },
+        "scan_truncated": scan_truncated,
+        "building": False,
     }
     cache.set(ACTIVE_SESSIONS_CACHE_KEY, result, ACTIVE_SESSIONS_CACHE_TTL)
     return result
@@ -414,7 +465,7 @@ def _media_storage():
                 file_count += 1
             except OSError:
                 continue
-            if file_count >= 5000:
+            if file_count >= MAX_MEDIA_FILES_SCANNED:
                 partial = True
                 break
 
@@ -1046,6 +1097,11 @@ def _stress_timeline():
 
 
 def get_system_performance_snapshot(*, include_counts=True):
+    cache_key = f"{SNAPSHOT_CACHE_KEY}:{int(bool(include_counts))}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     database = _measure_db_ms()
     cache_info = _measure_cache_ms()
     storage = _storage_layout()
@@ -1096,4 +1152,5 @@ def get_system_performance_snapshot(*, include_counts=True):
         "app": _app_info(),
         "collected_at": collected_at,
     }
+    cache.set(cache_key, snapshot, SNAPSHOT_CACHE_TTL)
     return snapshot

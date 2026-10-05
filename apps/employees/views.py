@@ -3067,42 +3067,7 @@ def _elearning_assessment_mark_lookup(assessment, students, subjects):
     }
 
 
-def _save_elearning_assessment_marks(assessment, students, subjects, out_of_by_subject, post_data):
-    to_upsert = []
-    to_delete = []
-    for student in students:
-        for subject in subjects:
-            raw = (post_data.get(f"mark_{student.id}_{subject.id}") or "").strip()
-            if raw == "":
-                to_delete.append((student.id, subject.id))
-                continue
-            marks = int(raw)
-            limit = out_of_by_subject.get(subject.id, subject.total_marks)
-            if marks < 0 or marks > limit:
-                raise ValidationError(f"Marks must be a whole number out of {limit}.")
-            to_upsert.append((student.id, subject.id, marks, limit))
-    with transaction.atomic():
-        if to_delete:
-            query = Q()
-            for student_id, subject_id in to_delete:
-                query |= Q(student_id=student_id, learning_area_id=subject_id)
-            ELearningAssessmentMark.objects.filter(assessment=assessment).filter(query).delete()
-        bulk_upsert_by_keys(
-            ELearningAssessmentMark,
-            scope_filter={"assessment_id": assessment.id},
-            create_defaults={"assessment_id": assessment.id},
-            rows=[
-                {
-                    "student_id": student_id,
-                    "learning_area_id": subject_id,
-                    "marks": marks,
-                    "out_of_marks": out_of,
-                }
-                for student_id, subject_id, marks, out_of in to_upsert
-            ],
-            key_fields=("student_id", "learning_area_id"),
-            update_fields=("marks", "out_of_marks"),
-        )
+
 
 
 def _grouped_elearning_assessments():
@@ -3277,8 +3242,21 @@ def teacher_elearning_assessment_detail(request, assessment_id, class_id=None):
                     out_of_by_subject,
                     request.POST,
                 )
-            except (TypeError, ValueError, ValidationError):
-                error(request, "Enter whole numbers within each subject's total marks.")
+            except (TypeError, ValueError, ValidationError, Exception) as exc:
+                if isinstance(exc, ValidationError):
+                    message = (
+                        "; ".join(exc.messages)
+                        if getattr(exc, "messages", None)
+                        else str(exc)
+                    )
+                elif isinstance(exc, (TypeError, ValueError)):
+                    message = "Enter whole numbers within each subject's total marks."
+                else:
+                    message = (
+                        "Could not save marks right now (server busy). "
+                        "Wait a few seconds and try again."
+                    )
+                error(request, message)
                 _attach_exam_mark_cells(
                     students,
                     subjects,
@@ -3767,8 +3745,21 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                         request.POST,
                         input_is_percent=False,
                     )
-                except (TypeError, ValueError, ValidationError):
-                    error(request, "Enter whole numbers within each subject's total marks.")
+                except (TypeError, ValueError, ValidationError, Exception) as exc:
+                    if isinstance(exc, ValidationError):
+                        message = (
+                            "; ".join(exc.messages)
+                            if getattr(exc, "messages", None)
+                            else str(exc)
+                        )
+                    elif isinstance(exc, (TypeError, ValueError)):
+                        message = "Enter whole numbers within each subject's total marks."
+                    else:
+                        message = (
+                            "Could not save marks right now (server busy). "
+                            "Wait a few seconds and try again."
+                        )
+                    error(request, message)
                     validation_failed = True
                     marks_lookup = _exam_record_mark_lookup(
                         generation, students, sheet_subjects
@@ -7660,6 +7651,46 @@ def it_support_exam_reports(request, page):
     return _render_exam_reports(request, page, role)
 
 
+_EXAM_EXPORT_MAX_STUDENTS = 800
+_EXAM_EXPORT_MAX_PDF_STUDENTS = 400
+_EXAM_EXPORT_MAX_CARDS = 200
+_EXAM_EXPORT_MAX_SHEETS = 40
+_EXAM_EXPORT_MAX_BYTES = 25 * 1024 * 1024
+_EXAM_EXPORT_LOCK_KEY = "exam_report_export_lock"
+_EXAM_EXPORT_LOCK_TTL = 180
+_MARK_SAVE_MAX_CELLS = 4000
+_MARK_SAVE_LOCK_PREFIX = "exam_mark_save:"
+_MARK_SAVE_LOCK_TTL = 90
+
+
+def _exam_export_size_error(report, export_format):
+    """Refuse oversized exports that would pin/OOM a Passenger worker."""
+    students = int(report.get("student_count") or 0)
+    cards = len(report.get("report_cards") or [])
+    sheets = len(report.get("matrix_sheets") or []) + len(report.get("analytics_sheets") or [])
+    if students > _EXAM_EXPORT_MAX_STUDENTS:
+        return (
+            f"Export is too large ({students} students; limit {_EXAM_EXPORT_MAX_STUDENTS}). "
+            "Narrow to one level or class, then export again."
+        )
+    if cards > _EXAM_EXPORT_MAX_CARDS:
+        return (
+            f"Too many report cards ({cards}; limit {_EXAM_EXPORT_MAX_CARDS}). "
+            "Export fewer students at a time."
+        )
+    if sheets > _EXAM_EXPORT_MAX_SHEETS:
+        return (
+            f"Too many sheets ({sheets}; limit {_EXAM_EXPORT_MAX_SHEETS}). "
+            "Export one academic level at a time."
+        )
+    if export_format == "pdf" and students > _EXAM_EXPORT_MAX_PDF_STUDENTS:
+        return (
+            f"PDF export is limited to {_EXAM_EXPORT_MAX_PDF_STUDENTS} students "
+            f"(this report has {students}). Use Excel or narrow the selection."
+        )
+    return None
+
+
 def _exam_report_export_response(request, role):
     urls = _curriculum_report_urls(role)
     exam_reports_url = reverse(
@@ -7668,27 +7699,73 @@ def _exam_report_export_response(request, role):
     )
     if (request.GET.get("generate") or "").strip() != "1":
         return redirect(exam_reports_url)
-    selection, report = _exam_report_selection(request)
-    if not report or report.get("error"):
+    # Only one heavy export at a time across all workers.
+    if not cache.add(_EXAM_EXPORT_LOCK_KEY, "1", _EXAM_EXPORT_LOCK_TTL):
+        error(
+            request,
+            "Another export is already running. Wait for it to finish, then try again.",
+        )
         query = request.GET.copy()
         query["generate"] = "1"
         return redirect(f"{exam_reports_url}?{query.urlencode()}")
-    export_mode = (request.GET.get("export_mode") or "raw").strip()
-    if export_mode not in {"raw", "graded"}:
-        export_mode = "raw"
-    export_format = (request.GET.get("export_format") or "excel").strip().casefold()
-    if export_format not in {"excel", "pdf"}:
-        export_format = "excel"
-    if export_format == "pdf":
-        payload, filename = build_exam_report_pdf(report, mode=export_mode)
-        content_type = "application/pdf"
-    else:
-        payload, filename = build_exam_report_excel(report, mode=export_mode)
-        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    response = HttpResponse(payload, content_type=content_type)
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return response
-
+    try:
+        selection, report = _exam_report_selection(request)
+        if not report or report.get("error"):
+            query = request.GET.copy()
+            query["generate"] = "1"
+            return redirect(f"{exam_reports_url}?{query.urlencode()}")
+        export_mode = (request.GET.get("export_mode") or "raw").strip()
+        if export_mode not in {"raw", "graded"}:
+            export_mode = "raw"
+        export_format = (request.GET.get("export_format") or "excel").strip().casefold()
+        if export_format not in {"excel", "pdf"}:
+            export_format = "excel"
+        size_error = _exam_export_size_error(report, export_format)
+        if size_error:
+            error(request, size_error)
+            query = request.GET.copy()
+            query["generate"] = "1"
+            query.pop("export_format", None)
+            query.pop("export_mode", None)
+            return redirect(f"{exam_reports_url}?{query.urlencode()}")
+        try:
+            if export_format == "pdf":
+                payload, filename = build_exam_report_pdf(report, mode=export_mode)
+                content_type = "application/pdf"
+            else:
+                payload, filename = build_exam_report_excel(report, mode=export_mode)
+                content_type = (
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+        except MemoryError:
+            error(
+                request,
+                "Export ran out of memory. Narrow the selection or use Excel for smaller chunks.",
+            )
+            query = request.GET.copy()
+            query["generate"] = "1"
+            return redirect(f"{exam_reports_url}?{query.urlencode()}")
+        except Exception:
+            error(
+                request,
+                "Export failed. Try a smaller selection, or refresh and export again.",
+            )
+            query = request.GET.copy()
+            query["generate"] = "1"
+            return redirect(f"{exam_reports_url}?{query.urlencode()}")
+        if len(payload) > _EXAM_EXPORT_MAX_BYTES:
+            error(
+                request,
+                "Export file is too large to download safely. Narrow the selection and try again.",
+            )
+            query = request.GET.copy()
+            query["generate"] = "1"
+            return redirect(f"{exam_reports_url}?{query.urlencode()}")
+        response = HttpResponse(payload, content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+    finally:
+        cache.delete(_EXAM_EXPORT_LOCK_KEY)
 
 def _exam_report_students_response(request):
     level_id = (request.GET.get("level_id") or "").strip()
@@ -11724,47 +11801,172 @@ def _attach_exam_mark_cells(students, subjects, marks_lookup, out_of_by_subject,
 def _save_exam_record_marks(
     generation, students, subjects, out_of_by_subject, post_data, input_is_percent=True
 ):
-    to_upsert = []
-    to_delete = []
-    for student in students:
-        for subject in subjects:
-            raw = (post_data.get(f"mark_{student.id}_{subject.id}") or "").strip()
-            if raw == "":
-                to_delete.append((student.id, subject.id))
-                continue
-            marks = int(raw)
-            limit = out_of_by_subject.get(subject.id, subject.total_marks)
-            if input_is_percent:
-                if marks < 0 or marks > 100:
-                    raise ValidationError("Marks must be a whole number out of 100%.")
-                stored = _percent_to_raw_marks(marks, limit)
-            else:
+    """
+    Persist mark-sheet POST data.
+
+    Scoped to the students/subjects on this sheet so we never load or lock the
+    whole exam generation. Empty cells delete only matching pairs (no giant OR).
+    """
+    student_ids = [student.id for student in students]
+    subject_ids = [subject.id for subject in subjects]
+    cell_count = len(student_ids) * len(subject_ids)
+    if cell_count > _MARK_SAVE_MAX_CELLS:
+        raise ValidationError(
+            f"This sheet is too large to save at once ({cell_count} cells; "
+            f"limit {_MARK_SAVE_MAX_CELLS}). Save one class or fewer subjects."
+        )
+    if not student_ids or not subject_ids:
+        return
+
+    lock_key = (
+        f"{_MARK_SAVE_LOCK_PREFIX}{generation.id}:"
+        f"{min(student_ids)}-{max(student_ids)}:{len(student_ids)}:{len(subject_ids)}"
+    )
+    if not cache.add(lock_key, "1", _MARK_SAVE_LOCK_TTL):
+        raise ValidationError(
+            "Someone is already saving marks for this sheet. Wait a moment and try again."
+        )
+
+    try:
+        to_upsert = []
+        to_delete = []
+        for student in students:
+            for subject in subjects:
+                raw = (post_data.get(f"mark_{student.id}_{subject.id}") or "").strip()
+                if raw == "":
+                    to_delete.append((student.id, subject.id))
+                    continue
+                marks = int(raw)
+                limit = out_of_by_subject.get(subject.id, subject.total_marks)
+                if input_is_percent:
+                    if marks < 0 or marks > 100:
+                        raise ValidationError("Marks must be a whole number out of 100%.")
+                    stored = _percent_to_raw_marks(marks, limit)
+                else:
+                    if marks < 0 or marks > limit:
+                        raise ValidationError(
+                            f"Marks must be a whole number out of {limit}."
+                        )
+                    stored = marks
+                to_upsert.append((student.id, subject.id, stored, limit))
+
+        delete_keys = set(to_delete)
+        with transaction.atomic():
+            if delete_keys:
+                delete_ids = [
+                    mark.id
+                    for mark in ExamMark.objects.filter(
+                        generation_id=generation.id,
+                        student_id__in=student_ids,
+                        learning_area_id__in=subject_ids,
+                    ).only("id", "student_id", "learning_area_id")
+                    if (mark.student_id, mark.learning_area_id) in delete_keys
+                ]
+                if delete_ids:
+                    # Chunk PK deletes to keep the IN clause bounded.
+                    for offset in range(0, len(delete_ids), 500):
+                        ExamMark.objects.filter(
+                            pk__in=delete_ids[offset : offset + 500]
+                        ).delete()
+            bulk_upsert_by_keys(
+                ExamMark,
+                scope_filter={
+                    "generation_id": generation.id,
+                    "student_id__in": student_ids,
+                    "learning_area_id__in": subject_ids,
+                },
+                create_defaults={"generation_id": generation.id},
+                rows=[
+                    {
+                        "student_id": student_id,
+                        "learning_area_id": subject_id,
+                        "marks": marks,
+                        "out_of_marks": out_of,
+                    }
+                    for student_id, subject_id, marks, out_of in to_upsert
+                ],
+                key_fields=("student_id", "learning_area_id"),
+                update_fields=("marks", "out_of_marks"),
+            )
+    finally:
+        cache.delete(lock_key)
+
+
+def _save_elearning_assessment_marks(assessment, students, subjects, out_of_by_subject, post_data):
+    student_ids = [student.id for student in students]
+    subject_ids = [subject.id for subject in subjects]
+    cell_count = len(student_ids) * len(subject_ids)
+    if cell_count > _MARK_SAVE_MAX_CELLS:
+        raise ValidationError(
+            f"This sheet is too large to save at once ({cell_count} cells; "
+            f"limit {_MARK_SAVE_MAX_CELLS}). Save one class or fewer subjects."
+        )
+    if not student_ids or not subject_ids:
+        return
+
+    lock_key = (
+        f"{_MARK_SAVE_LOCK_PREFIX}elearn:{assessment.id}:"
+        f"{min(student_ids)}-{max(student_ids)}:{len(student_ids)}:{len(subject_ids)}"
+    )
+    if not cache.add(lock_key, "1", _MARK_SAVE_LOCK_TTL):
+        raise ValidationError(
+            "Someone is already saving marks for this sheet. Wait a moment and try again."
+        )
+
+    try:
+        to_upsert = []
+        to_delete = []
+        for student in students:
+            for subject in subjects:
+                raw = (post_data.get(f"mark_{student.id}_{subject.id}") or "").strip()
+                if raw == "":
+                    to_delete.append((student.id, subject.id))
+                    continue
+                marks = int(raw)
+                limit = out_of_by_subject.get(subject.id, subject.total_marks)
                 if marks < 0 or marks > limit:
                     raise ValidationError(f"Marks must be a whole number out of {limit}.")
-                stored = marks
-            to_upsert.append((student.id, subject.id, stored, limit))
-    with transaction.atomic():
-        if to_delete:
-            query = Q()
-            for student_id, subject_id in to_delete:
-                query |= Q(student_id=student_id, learning_area_id=subject_id)
-            ExamMark.objects.filter(generation=generation).filter(query).delete()
-        bulk_upsert_by_keys(
-            ExamMark,
-            scope_filter={"generation_id": generation.id},
-            create_defaults={"generation_id": generation.id},
-            rows=[
-                {
-                    "student_id": student_id,
-                    "learning_area_id": subject_id,
-                    "marks": marks,
-                    "out_of_marks": out_of,
-                }
-                for student_id, subject_id, marks, out_of in to_upsert
-            ],
-            key_fields=("student_id", "learning_area_id"),
-            update_fields=("marks", "out_of_marks"),
-        )
+                to_upsert.append((student.id, subject.id, marks, limit))
+
+        delete_keys = set(to_delete)
+        with transaction.atomic():
+            if delete_keys:
+                delete_ids = [
+                    mark.id
+                    for mark in ELearningAssessmentMark.objects.filter(
+                        assessment_id=assessment.id,
+                        student_id__in=student_ids,
+                        learning_area_id__in=subject_ids,
+                    ).only("id", "student_id", "learning_area_id")
+                    if (mark.student_id, mark.learning_area_id) in delete_keys
+                ]
+                if delete_ids:
+                    for offset in range(0, len(delete_ids), 500):
+                        ELearningAssessmentMark.objects.filter(
+                            pk__in=delete_ids[offset : offset + 500]
+                        ).delete()
+            bulk_upsert_by_keys(
+                ELearningAssessmentMark,
+                scope_filter={
+                    "assessment_id": assessment.id,
+                    "student_id__in": student_ids,
+                    "learning_area_id__in": subject_ids,
+                },
+                create_defaults={"assessment_id": assessment.id},
+                rows=[
+                    {
+                        "student_id": student_id,
+                        "learning_area_id": subject_id,
+                        "marks": marks,
+                        "out_of_marks": out_of,
+                    }
+                    for student_id, subject_id, marks, out_of in to_upsert
+                ],
+                key_fields=("student_id", "learning_area_id"),
+                update_fields=("marks", "out_of_marks"),
+            )
+    finally:
+        cache.delete(lock_key)
 
 
 @login_required
@@ -11833,8 +12035,21 @@ def exam_record_detail(request, exam_id, level_id=None):
                     out_of_by_subject,
                     request.POST,
                 )
-            except (TypeError, ValueError, ValidationError):
-                error(request, "Enter whole numbers from 0 to 100 for each subject.")
+            except (TypeError, ValueError, ValidationError, Exception) as exc:
+                if isinstance(exc, ValidationError):
+                    message = (
+                        "; ".join(exc.messages)
+                        if getattr(exc, "messages", None)
+                        else str(exc)
+                    )
+                elif isinstance(exc, (TypeError, ValueError)):
+                    message = "Enter whole numbers from 0 to 100 for each subject."
+                else:
+                    message = (
+                        "Could not save marks right now (server busy). "
+                        "Wait a few seconds and try again."
+                    )
+                error(request, message)
                 marks_lookup = _exam_record_mark_lookup(generation, students, subjects)
                 for student in students:
                     for subject in subjects:

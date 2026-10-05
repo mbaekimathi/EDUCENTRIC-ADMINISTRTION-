@@ -1,0 +1,45 @@
+# Capacity checklist for cPanel (16GB dedicated) — Educentric Administration
+#
+# After deploying code changes (shared FileBasedCache + gzip + media/.htaccess):
+#
+# 1) Setup Python App
+#    - Startup file: django_wsgi.py
+#    - Entry point: application
+#    - Passenger MaxPoolSize: 20–25  (≈150–250 MB/worker; leave RAM for MySQL)
+#    - PassengerMinInstances: 2–4   (warm workers; avoid cold-start stampedes)
+#    - Do NOT set MaxPoolSize above ~40 on 16GB — MySQL + OS need headroom
+#
+# 2) .env on hosted
+#    LOCAL=False
+#    HOSTED_DEBUG=False
+#    HOSTED_AUTO_MIGRATE=False
+#    DB_CONN_MAX_AGE=0
+#    # After media/.htaccess is live and /media/logo loads OK:
+#    HOSTED_SERVE_MEDIA=False
+#    # If host offers Redis (or Redis Object Cache):
+#    # REDIS_URL=redis://127.0.0.1:6379/0
+#
+# 3) MySQL (cPanel → phpMyAdmin / MySQL settings if available)
+#    - max_connections ≥ 80 (Passenger pool × 1.5–2)
+#    - Prefer InnoDB buffer pool ~2–4 GB on a 16GB box
+#
+# 4) Static files (required after CSS/JS changes, and after storage backend change)
+#    # Remove old WhiteNoise .gz files (they break CSS on LiteSpeed if re-served)
+#    find staticfiles -name '*.gz' -delete
+#    # Or full rebuild:
+#    python manage.py collectstatic --noinput --clear
+#    touch tmp/restart.txt
+#    Ensure tmp/django_cache/ is writable by the app user
+#    Confirm in browser DevTools → Network: /static/css/app.css is 200,
+#    Content-Type text/css, and body starts with ":root" not binary garbage.
+#
+# 5) Re-probe
+#    python manage.py load_probe --base-url https://YOUR_DOMAIN --users 50 --rounds 2
+#    Target after tuning: comfortable 30–40 concurrent; peak ~50–60 with slower pages
+#
+# 6) Overload guards (already in code)
+#    - Exam export: size caps + one-at-a-time lock + soft error (no raw 500)
+#    - Mark submit: scoped upsert/delete, 4000-cell cap, per-sheet lock, friendly busy errors
+#    - System performance: 60s poll, 45s snapshot cache, session scan capped at 400
+#    - School logo optimize: only on save, never on every page request
+#    - During peak: avoid opening System performance; export one report at a time

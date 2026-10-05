@@ -1,7 +1,9 @@
 .env
 db.sqlite3
-media/
+media/*
+!media/.htaccess
 staticfiles/
+tmp/django_cache/
 __pycache__/
 *.py[cod]
 .venv/

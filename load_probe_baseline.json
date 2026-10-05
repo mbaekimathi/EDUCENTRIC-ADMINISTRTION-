@@ -1,0 +1,222 @@
+{
+  "page_timings": {
+    "/": {
+      "status": 200,
+      "ms": 426.4,
+      "bytes": 25283,
+      "error": ""
+    },
+    "/workspace/teacher/": {
+      "status": 200,
+      "ms": 154.1,
+      "bytes": 25283,
+      "error": ""
+    },
+    "/workspace/teacher/my-class/": {
+      "status": 200,
+      "ms": 231.6,
+      "bytes": 25442,
+      "error": ""
+    },
+    "/workspace/teacher/my-class/students-class-attendance/": {
+      "status": 200,
+      "ms": 206.5,
+      "bytes": 25442,
+      "error": ""
+    },
+    "/workspace/teacher/my-class/register-class-attendance/": {
+      "status": 200,
+      "ms": 239.8,
+      "bytes": 25442,
+      "error": ""
+    },
+    "/workspace/teacher/my-class/students-discipline/": {
+      "status": 200,
+      "ms": 206.3,
+      "bytes": 25442,
+      "error": ""
+    },
+    "/workspace/teacher/exam-records/": {
+      "status": 200,
+      "ms": 163.3,
+      "bytes": 19148,
+      "error": ""
+    },
+    "/workspace/it-support/": {
+      "status": 200,
+      "ms": 171.2,
+      "bytes": 25283,
+      "error": ""
+    },
+    "/workspace/it-support/system-performance/": {
+      "status": 404,
+      "ms": 73.4,
+      "bytes": 38062,
+      "error": ""
+    }
+  },
+  "ramp": [
+    {
+      "users": 1,
+      "requests": 2,
+      "ok_pct": 100.0,
+      "err500": 0,
+      "errors": 0,
+      "p50_ms": 177.3,
+      "p95_ms": 222.5,
+      "max_ms": 222.5,
+      "mean_ms": 199.9,
+      "rps": 5.0,
+      "sample_errors": []
+    },
+    {
+      "users": 5,
+      "requests": 10,
+      "ok_pct": 100.0,
+      "err500": 0,
+      "errors": 0,
+      "p50_ms": 578.8,
+      "p95_ms": 1142.7,
+      "max_ms": 1142.7,
+      "mean_ms": 685.9,
+      "rps": 6.2,
+      "sample_errors": []
+    },
+    {
+      "users": 10,
+      "requests": 20,
+      "ok_pct": 90.0,
+      "err500": 0,
+      "errors": 2,
+      "p50_ms": 1409.4,
+      "p95_ms": 1868.0,
+      "max_ms": 2017.9,
+      "mean_ms": 1313.5,
+      "rps": 6.5,
+      "sample_errors": []
+    },
+    {
+      "users": 15,
+      "requests": 30,
+      "ok_pct": 93.3,
+      "err500": 0,
+      "errors": 2,
+      "p50_ms": 2244.9,
+      "p95_ms": 3954.7,
+      "max_ms": 4028.1,
+      "mean_ms": 2418.8,
+      "rps": 5.1,
+      "sample_errors": []
+    },
+    {
+      "users": 20,
+      "requests": 40,
+      "ok_pct": 65.0,
+      "err500": 0,
+      "errors": 14,
+      "p50_ms": 3273.9,
+      "p95_ms": 4212.1,
+      "max_ms": 5195.7,
+      "mean_ms": 2820.0,
+      "rps": 5.9,
+      "sample_errors": [
+        {
+          "path": "/workspace/it-support/system-performance/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/workspace/teacher/my-class/register-class-attendance/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/workspace/teacher/my-class/students-discipline/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/workspace/teacher/my-class/students-class-attendance/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/workspace/teacher/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        },
+        {
+          "path": "/workspace/it-support/",
+          "status": 0,
+          "error": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+        }
+      ]
+    }
+  ],
+  "query_profiles": [
+    {
+      "path": "/",
+      "status": 302,
+      "ms": 188.2,
+      "queries": 6
+    },
+    {
+      "path": "/workspace/teacher/",
+      "status": 200,
+      "ms": 644.3,
+      "queries": 14
+    },
+    {
+      "path": "/workspace/teacher/my-class/",
+      "status": 302,
+      "ms": 81.3,
+      "queries": 9
+    },
+    {
+      "path": "/workspace/teacher/my-class/students-class-attendance/",
+      "status": 302,
+      "ms": 81.8,
+      "queries": 7
+    },
+    {
+      "path": "/workspace/teacher/my-class/register-class-attendance/",
+      "status": 302,
+      "ms": 68.2,
+      "queries": 7
+    },
+    {
+      "path": "/workspace/teacher/my-class/students-discipline/",
+      "status": 302,
+      "ms": 83.7,
+      "queries": 7
+    },
+    {
+      "path": "/workspace/teacher/exam-records/",
+      "status": 200,
+      "ms": 162.0,
+      "queries": 15
+    },
+    {
+      "path": "/workspace/it-support/",
+      "status": 302,
+      "ms": 33.4,
+      "queries": 6
+    },
+    {
+      "path": "/workspace/it-support/system-performance/",
+      "status": 404,
+      "ms": 233.9,
+      "queries": 6
+    }
+  ]
+}

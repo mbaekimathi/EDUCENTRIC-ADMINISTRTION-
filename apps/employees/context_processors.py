@@ -32,14 +32,7 @@ def school_branding(request):
         profile = None
 
     if profile is not None:
-        try:
-            from .logo_optimize import optimize_school_logo
-
-            # One-time shrink for oversized logos already on disk (no re-upload needed).
-            if optimize_school_logo(profile):
-                profile.save(update_fields=["school_logo"])
-        except Exception:
-            pass
+        # Logo compression runs on SchoolProfile.save — never on the request path.
         cache.set(_SCHOOL_PROFILE_CACHE_KEY, profile, _SCHOOL_PROFILE_CACHE_TTL)
         return {"school_profile": profile}
 

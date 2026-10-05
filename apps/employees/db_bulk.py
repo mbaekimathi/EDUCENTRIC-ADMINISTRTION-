@@ -26,8 +26,10 @@ def bulk_upsert_by_keys(
         return
 
     create_defaults = create_defaults or {}
+    # Only pull columns needed for key matching + updates (keeps large mark sheets light).
+    only_fields = list(dict.fromkeys([*key_fields, *update_fields, "id"]))
     existing_map = {}
-    for obj in model.objects.filter(**scope_filter):
+    for obj in model.objects.filter(**scope_filter).only(*only_fields):
         key = tuple(getattr(obj, field) for field in key_fields)
         existing_map[key] = obj
 

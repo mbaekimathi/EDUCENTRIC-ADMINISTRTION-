@@ -152,6 +152,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    # Compress dynamic HTML (attendance grids ~100–160KB). WhiteNoise already
+    # serves pre-compressed static; GZip skips responses that set Content-Encoding.
+    'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -231,15 +234,22 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# Prefer compressed files when collectstatic has run; fall back cleanly on cPanel.
+# Plain storage on purpose: CompressedStaticFilesStorage writes .gz files that
+# WhiteNoise serves with Content-Encoding: gzip. LiteSpeed/cPanel often strips
+# that header but keeps the gzip body, so browsers treat CSS/JS as garbage.
+# Let the edge server compress instead (correct headers).
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
 WHITENOISE_MANIFEST_STRICT = False
+# Long cache for collectstatic assets in production.
+WHITENOISE_MAX_AGE = 60 if DEBUG else 31536000
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 # Serve uploaded media from Django by default (cPanel / shared hosting has no media alias).
+# Prefer Apache serving /media/ via media/.htaccess (PassengerEnabled Off), then set
+# HOSTED_SERVE_MEDIA=False so workers never stream logos/uploads.
 # On a VPS with Nginx media mapping, set SERVE_MEDIA=False in .env.
 SERVE_MEDIA = _env_bool("SERVE_MEDIA", default=True)
 
@@ -253,7 +263,12 @@ LOGOUT_REDIRECT_URL = "employees:login"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Redis is preferred in production; the local cache keeps development friction-free.
+# Cache / sessions
+# - Redis: best (shared across workers + cache-only sessions)
+# - Hosted without Redis: FileBasedCache (shared across Passenger workers) +
+#   cached_db sessions (read from cache, persist to MySQL)
+# - Local runserver: LocMem is fine (single process)
+_FILE_CACHE_DIR = BASE_DIR / "tmp" / "django_cache"
 if env("REDIS_URL", default=""):
     CACHES = {
         "default": {
@@ -266,7 +281,7 @@ if env("REDIS_URL", default=""):
     }
     SESSION_ENGINE = "django.contrib.sessions.backends.cache"
     SESSION_CACHE_ALIAS = "default"
-else:
+elif _IS_LOCAL:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -274,6 +289,23 @@ else:
             "TIMEOUT": 300,
         }
     }
+else:
+    try:
+        _FILE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": str(_FILE_CACHE_DIR),
+            "TIMEOUT": 300,
+            "OPTIONS": {"MAX_ENTRIES": 20000},
+            "KEY_PREFIX": "edu_admin",
+        }
+    }
+    # Shared cache cuts MySQL session reads under concurrency; DB remains source of truth.
+    SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+    SESSION_CACHE_ALIAS = "default"
 
 SESSION_COOKIE_NAME = "edu_admin_sessionid"
 SESSION_COOKIE_HTTPONLY = True
