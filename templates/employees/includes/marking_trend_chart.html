@@ -1,0 +1,99 @@
+{% if chart %}
+<section class="exam-mgmt-marking-trend src-trend{% if chart_class %} {{ chart_class }}{% endif %}" aria-label="{{ chart.title }}">
+  <div class="src-trend-copy">
+    <p class="src-section-label">{{ chart.title }}</p>
+    {% if chart.subtitle %}<p class="src-trend-subtitle">{{ chart.subtitle }}</p>{% endif %}
+  </div>
+  <div class="src-trend-frame">
+    <svg
+      class="src-trend-svg"
+      viewBox="0 0 {{ chart.width }} {{ chart.height }}"
+      role="img"
+      aria-label="{{ chart.title }}"
+    >
+      {% for tick in chart.grid %}
+      <line
+        class="src-trend-grid"
+        x1="{{ chart.plot_left }}"
+        y1="{{ tick.y }}"
+        x2="{{ chart.plot_right }}"
+        y2="{{ tick.y }}"
+      ></line>
+      <text class="src-trend-axis" x="28" y="{{ tick.y }}" dy="0.35em" text-anchor="end">{{ tick.value }}</text>
+      {% endfor %}
+
+      {% if chart.mode == "multi" %}
+        {% for series in chart.series %}
+        <polyline
+          class="src-trend-line exam-mgmt-marking-trend__line {{ series.tone }}"
+          points="{{ series.line }}"
+          fill="none"
+          style="stroke: {{ series.color }};{% if series.is_viewer %} stroke-width: 3.2;{% endif %}"
+        ></polyline>
+        {% endfor %}
+        {% for series in chart.series %}
+          {% if series.is_viewer or chart.series|length <= 8 %}
+          {% with point=series.points|last %}
+          {% if point %}
+          <circle
+            class="src-trend-dot exam-mgmt-marking-trend__dot {{ series.tone }}"
+            cx="{{ point.x }}"
+            cy="{{ point.y }}"
+            r="{% if series.is_viewer %}4.6{% else %}3.4{% endif %}"
+            style="stroke: {{ series.color }};"
+          ></circle>
+          {% if series.is_viewer or chart.series|length <= 6 %}
+          <text
+            class="src-trend-value exam-mgmt-marking-trend__end-value"
+            x="{{ point.x }}"
+            y="{{ point.y }}"
+            dy="-8"
+            text-anchor="middle"
+            style="fill: {{ series.color }};"
+          >{{ series.percent }}%</text>
+          {% endif %}
+          {% endif %}
+          {% endwith %}
+          {% endif %}
+        {% endfor %}
+        {% for label in chart.x_labels %}
+        <text class="src-trend-label" x="{{ label.x }}" y="{{ chart.baseline_y }}" dy="16" text-anchor="middle">{{ label.label }}</text>
+        {% endfor %}
+      {% elif chart.mode == "line" %}
+      <polygon class="src-trend-area" points="{{ chart.area }}"></polygon>
+      <polyline class="src-trend-line" points="{{ chart.line }}" fill="none"></polyline>
+      {% for point in chart.points %}
+      <circle class="src-trend-dot" cx="{{ point.x }}" cy="{{ point.y }}" r="4.2"></circle>
+      <text class="src-trend-value" x="{{ point.x }}" y="{{ point.y }}" dy="-8" text-anchor="middle">{{ point.percent }}%</text>
+      <text class="src-trend-label" x="{{ point.x }}" y="{{ chart.baseline_y }}" dy="16" text-anchor="middle">{{ point.label }}</text>
+      {% endfor %}
+      {% else %}
+      {% for point in chart.points %}
+      <rect
+        class="src-trend-bar"
+        x="{{ point.x }}"
+        y="{{ point.y }}"
+        width="{{ point.width|default:56 }}"
+        height="{{ point.height|default:0 }}"
+        rx="3"
+      ></rect>
+      <text class="src-trend-value" x="{{ point.label_x|default:point.x }}" y="{{ point.y }}" dy="-6" text-anchor="middle">{{ point.percent }}%</text>
+      <text class="src-trend-label" x="{{ point.label_x|default:point.x }}" y="{{ chart.baseline_y }}" dy="14" text-anchor="middle">{{ point.label }}</text>
+      {% endfor %}
+      {% endif %}
+    </svg>
+  </div>
+
+  {% if chart.mode == "multi" and chart.series %}
+  <ul class="src-trend-legend exam-mgmt-marking-trend__legend">
+    {% for series in chart.series %}
+    <li{% if series.is_viewer %} class="is-you"{% endif %}>
+      <span class="exam-mgmt-marking-trend__swatch" style="background: {{ series.color }};" aria-hidden="true"></span>
+      <strong class="is-uppercase">{{ series.name }}</strong>
+      <span>{{ series.entered }} / {{ series.expected }} · {{ series.percent }}%</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}

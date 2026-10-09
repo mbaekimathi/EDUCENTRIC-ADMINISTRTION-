@@ -1,0 +1,32 @@
+{% if teachers %}
+<section class="exam-mgmt-teacher-bars{% if bars_class %} {{ bars_class }}{% endif %}" aria-label="{{ title|default:'Marking progress' }}">
+  {% if title or subtitle %}
+  <div class="exam-mgmt-teacher-bars__copy">
+    {% if title %}<p class="src-section-label">{{ title }}</p>{% endif %}
+    {% if subtitle %}<p class="src-trend-subtitle">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% endif %}
+  <ul class="exam-mgmt-teacher-bars__list">
+    {% for teacher in teachers %}
+    <li class="exam-mgmt-teacher-bars__row{% if teacher.is_viewer %} is-you{% endif %}">
+      <div class="exam-mgmt-teacher-bars__label">
+        <strong class="is-uppercase">
+          {% if teacher.color %}
+          <span class="exam-mgmt-teacher-bars__swatch" style="background: {{ teacher.color }};" aria-hidden="true"></span>
+          {% endif %}
+          {{ teacher.display_name }}{% if teacher.is_viewer %} (you){% endif %}
+        </strong>
+        <span>{{ teacher.entered }} / {{ teacher.expected }} marks</span>
+      </div>
+      <div class="exam-mgmt-teacher-bars__track" aria-hidden="true">
+        <span
+          class="exam-mgmt-teacher-bars__fill{% if teacher.percent >= 100 %} is-complete{% elif teacher.percent >= 50 %} is-mid{% else %} is-low{% endif %}"
+          style="width: {{ teacher.percent }}%;{% if teacher.color %} background: {{ teacher.color }};{% endif %}"
+        ></span>
+      </div>
+      <strong class="exam-mgmt-teacher-bars__value">{{ teacher.percent }}<small>%</small></strong>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

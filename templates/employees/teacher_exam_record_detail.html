@@ -293,6 +293,33 @@
     </div>
   </section>
 
+  {% if marking_comparison and marking_comparison.bars %}
+  <section class="exam-mgmt-panel teacher-exam-marking-compare" aria-label="Marking progress comparison">
+    <header class="exam-mgmt-panel__head">
+      <div>
+        <h3>Marking progress</h3>
+        <p>Compare how far you have reached against other teachers on this assessment</p>
+      </div>
+      {% if marking_comparison.viewer_percent != None %}
+      <span class="exam-mgmt-panel__badge">You {{ marking_comparison.viewer_percent }}%</span>
+      {% elif marking_comparison.teacher_count %}
+      <span class="exam-mgmt-panel__badge">{{ marking_comparison.teacher_count }} teacher{{ marking_comparison.teacher_count|pluralize }}</span>
+      {% endif %}
+    </header>
+    {% include "employees/includes/exam_management_teacher_bars.html" with teachers=marking_comparison.bars title=marking_comparison.title subtitle=marking_comparison.subtitle %}
+    {% if marking_comparison.chart %}
+    <details class="exam-mgmt-teacher-details">
+      <summary class="exam-mgmt-teacher-details__summary">
+        <span>Completion over time</span>
+      </summary>
+      <div class="exam-mgmt-teacher-details__body">
+        {% include "employees/includes/marking_trend_chart.html" with chart=marking_comparison.chart chart_class="is-teacher-compare" %}
+      </div>
+    </details>
+    {% endif %}
+  </section>
+  {% endif %}
+
   {% if exam_subject_groups %}
   <section class="exam-detail-levels teacher-exam-subjects" aria-label="Allocated subjects">
     <header class="exam-detail-levels-head">

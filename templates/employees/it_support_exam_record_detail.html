@@ -92,6 +92,9 @@
             <th scope="col" class="marks-mark-cell" title="{% if column.kind == 'combined' %}{{ column.name }} · {{ column.component_codes }} · combined{% else %}{{ column.name }}{% endif %}">
               <span class="marks-col-head">
                 <span class="marks-subject-code{% if column.kind == 'combined' %} is-combined{% endif %}">{{ column.code }}</span>
+                {% if column.kind == 'combined' %}
+                <span class="marks-out-of">combined</span>
+                {% endif %}
               </span>
             </th>
             {% endfor %}
@@ -114,9 +117,9 @@
               {% if student.admission_number %}<code class="marks-admit">{{ student.admission_number }}</code>{% else %}—{% endif %}
             </td>
             {% for cell in student.mark_cells %}
-            <td class="marks-mark-cell">
+            <td class="marks-mark-cell"{% if cell.kind == "combined" %} data-combined-cell{% endif %}>
               {% if cell.kind == "combined" %}
-              <span class="marks-pct is-combined" title="Combined from {{ cell.component_codes }}">
+              <span class="marks-pct is-combined" data-combined-percent title="Combined from {{ cell.component_codes }}">
                 {% if cell.percent != None %}{{ cell.percent }}%{% else %}—{% endif %}
               </span>
               {% else %}

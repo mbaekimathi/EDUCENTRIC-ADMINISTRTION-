@@ -427,6 +427,11 @@ urlpatterns = [
     ),
     path("workspace/<slug:role>/", views.role_dashboard, name="role_dashboard"),
     path("settings/", views.system_settings, name="system_settings"),
+    path(
+        "settings/system-performance/metrics/",
+        views.settings_system_performance_metrics,
+        name="settings_system_performance_metrics",
+    ),
     path("settings/profile/", views.profile_settings, name="profile_settings"),
     path(
         "settings/academic-calendar/",

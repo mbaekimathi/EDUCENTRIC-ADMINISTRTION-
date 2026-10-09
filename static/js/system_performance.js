@@ -757,6 +757,9 @@
       renderStats(root, initial);
       renderStatus(root, initial);
       renderFullPage(root, initial);
+    } else {
+      // Lazy-load metrics so page render never waits on probes.
+      refreshWidget(root);
     }
 
     if (page) {
@@ -766,7 +769,29 @@
 
     const interval = Number.parseInt(root.dataset.pollInterval || "30000", 10);
     if (interval > 0) {
-      window.setInterval(() => refreshWidget(root), interval);
+      let timerId = null;
+      const startPolling = () => {
+        if (timerId != null) return;
+        timerId = window.setInterval(() => {
+          if (document.hidden) return;
+          refreshWidget(root);
+        }, interval);
+      };
+      const stopPolling = () => {
+        if (timerId == null) return;
+        window.clearInterval(timerId);
+        timerId = null;
+      };
+
+      startPolling();
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          stopPolling();
+          return;
+        }
+        refreshWidget(root);
+        startPolling();
+      });
     }
   }
 

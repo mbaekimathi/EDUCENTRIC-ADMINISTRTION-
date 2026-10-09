@@ -859,6 +859,16 @@ def _it_support_performance_context():
     }
 
 
+def _settings_performance_context():
+    """Cached snapshot only — never runs probes on the settings page render."""
+    from apps.employees.system_performance import peek_system_performance_snapshot
+
+    return {
+        "metrics_url": reverse("employees:settings_system_performance_metrics"),
+        "performance_snapshot": peek_system_performance_snapshot(),
+    }
+
+
 @login_required
 @require_http_methods(["GET"])
 def it_support_system_performance(request):
@@ -2093,7 +2103,7 @@ def _full_module_dashboard_counts():
 def _dashboard_school_activities(limit=12):
     """Published current and upcoming school activities for dashboard cards."""
     today = timezone.localdate()
-    cache_key = f"dashboard:school_activities_v1:{today.isoformat()}:{limit}"
+    cache_key = f"dashboard:school_activities_v2:{today.isoformat()}:{limit}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -2117,6 +2127,9 @@ def _dashboard_school_activities(limit=12):
         is_current = bool(
             first_day and last_day and first_day <= today <= last_day
         )
+        days_until_start = None
+        if first_day and not is_current and first_day > today:
+            days_until_start = (first_day - today).days
         payload.append(
             {
                 "id": activity.id,
@@ -2144,6 +2157,10 @@ def _dashboard_school_activities(limit=12):
                 ),
                 "is_upcoming": not is_current,
                 "is_current": is_current,
+                "days_until_start": days_until_start,
+                "starts_within_three_days": bool(
+                    days_until_start is not None and days_until_start <= 3
+                ),
                 "created_by": (
                     activity.created_by.display_name
                     if activity.created_by_id
@@ -2162,8 +2179,48 @@ def _invalidate_dashboard_activity_caches():
     """Clear short-lived dashboard activity payloads after create/update/delete."""
     today = timezone.localdate()
     for limit in (12, 24, 50):
+        cache.delete(f"dashboard:school_activities_v2:{today.isoformat()}:{limit}")
         cache.delete(f"dashboard:school_activities_v1:{today.isoformat()}:{limit}")
     cache.delete("dashboard:full_module_counts_v1")
+
+
+def _dashboard_activity_header_alerts(activities):
+    """Upcoming activities starting within the next three days."""
+    alerts = []
+    for activity in activities:
+        if activity.get("is_current"):
+            continue
+        days = activity.get("days_until_start")
+        if days is None or days > 3:
+            continue
+        if days == 0:
+            when = "starts today"
+        elif days == 1:
+            when = "starts tomorrow"
+        else:
+            when = f"starts in {days} days"
+        alerts.append(
+            {
+                "id": activity["id"],
+                "title": activity["title"],
+                "date_range": activity["date_range"],
+                "when": when,
+                "days_until_start": days,
+            }
+        )
+    return alerts
+
+
+def _dashboard_activity_context():
+    """School activity cards, full payload, and header alerts for role dashboards."""
+    all_activities = _dashboard_school_activities(limit=50)
+    upcoming = [item for item in all_activities if item.get("is_upcoming")]
+    return {
+        "dashboard_activities": all_activities[:12],
+        "dashboard_activities_all": all_activities,
+        "dashboard_upcoming_activities": upcoming,
+        "dashboard_activity_alerts": _dashboard_activity_header_alerts(all_activities),
+    }
 
 
 @login_required
@@ -2171,7 +2228,7 @@ def role_dashboard(request, role):
     current = workspace_role(request)
     if current.lower() != role:
         return redirect_to_role_dashboard(request)
-    dashboard_activities = _dashboard_school_activities()
+    activity_context = _dashboard_activity_context()
     if current in FULL_MODULE_WORKSPACE_ROLES:
         return render(
             request,
@@ -2180,7 +2237,7 @@ def role_dashboard(request, role):
                 "active_nav": "dashboard",
                 "it_support_modules": IT_SUPPORT_MODULES,
                 "dashboard_counts": _full_module_dashboard_counts(),
-                "dashboard_activities": dashboard_activities,
+                **activity_context,
             },
         )
     if current == Employee.Role.CURRICULUM_COORDINATOR:
@@ -2190,7 +2247,7 @@ def role_dashboard(request, role):
             {
                 "active_nav": "dashboard",
                 "curriculum_coordinator_modules": CURRICULUM_COORDINATOR_MODULES,
-                "dashboard_activities": dashboard_activities,
+                **activity_context,
             },
         )
     if current == Employee.Role.TEACHER:
@@ -2204,7 +2261,7 @@ def role_dashboard(request, role):
                 "active_nav": "dashboard",
                 "session_timetable": session_timetable,
                 "elearning_timetable": elearning_timetable,
-                "dashboard_activities": dashboard_activities,
+                **activity_context,
             },
         )
     if current == Employee.Role.SECRETARY:
@@ -2214,7 +2271,7 @@ def role_dashboard(request, role):
             {
                 "active_nav": "dashboard",
                 "secretary_modules": SECRETARY_MODULES,
-                "dashboard_activities": dashboard_activities,
+                **activity_context,
             },
         )
     return render(
@@ -2222,7 +2279,7 @@ def role_dashboard(request, role):
         "employees/role_dashboard.html",
         {
             "active_nav": "dashboard",
-            "dashboard_activities": dashboard_activities,
+            **activity_context,
         },
     )
 
@@ -3810,6 +3867,9 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
     else:
         mark_sections = []
         marks_editable = generation.status == GeneratedExamTimetable.Status.MARKING
+    marking_comparison = None
+    if generation.status == GeneratedExamTimetable.Status.MARKING and selected_class is None:
+        marking_comparison = _exam_marking_teacher_comparison_trend(generation, viewer=employee)
     return render(
         request,
         "employees/teacher_exam_record_detail.html",
@@ -3832,6 +3892,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
             "mark_sections": mark_sections,
             "out_of_settings_changed": out_of_settings_changed,
             "marks_editable": marks_editable,
+            "marking_comparison": marking_comparison,
             **(_student_sort_template_context(request) if selected_class else {}),
         },
     )
@@ -8990,6 +9051,10 @@ def _exam_marking_mark_timeline(generation):
     return mark_keys, mark_dates_by_key
 
 
+def _exam_marking_date_label(mark_date):
+    return mark_date.strftime("%d %b").lstrip("0")
+
+
 def _exam_marking_progress_metrics(slot_keys, mark_keys, mark_dates_by_key):
     expected = len(slot_keys)
     entered = sum(1 for key in slot_keys if key in mark_keys)
@@ -9004,18 +9069,328 @@ def _exam_marking_progress_metrics(slot_keys, mark_keys, mark_dates_by_key):
     )
     if not all_dates:
         trend_values = [0, percent] if percent else [0]
+        trend_points = (
+            [
+                {
+                    "date": timezone.localdate(),
+                    "label": _exam_marking_date_label(timezone.localdate()),
+                    "percent": percent,
+                }
+            ]
+            if percent
+            else []
+        )
     else:
         trend_values = []
+        trend_points = []
         for mark_date in all_dates:
             count = sum(
                 1
                 for key in slot_keys
                 if key in mark_keys and any(item <= mark_date for item in mark_dates_by_key.get(key, []))
             )
-            trend_values.append(round((count / expected) * 100) if expected else 0)
+            point_percent = round((count / expected) * 100) if expected else 0
+            trend_values.append(point_percent)
+            trend_points.append(
+                {
+                    "date": mark_date,
+                    "label": _exam_marking_date_label(mark_date),
+                    "percent": point_percent,
+                }
+            )
         if not trend_values or trend_values[-1] != percent:
             trend_values.append(percent)
-    return entered, expected, percent, trend_values
+            today = timezone.localdate()
+            trend_points.append(
+                {
+                    "date": today,
+                    "label": _exam_marking_date_label(today),
+                    "percent": percent,
+                }
+            )
+    return entered, expected, percent, trend_values, trend_points
+
+
+_MARKING_TREND_COLORS = (
+    "#1570ef",
+    "#039855",
+    "#d97706",
+    "#7c3aed",
+    "#e11d48",
+    "#0891b2",
+    "#c026d3",
+    "#4f46e5",
+)
+
+
+def _exams_in_marking():
+    return list(
+        GeneratedExamTimetable.objects.filter(status=GeneratedExamTimetable.Status.MARKING)
+        .select_related("academic_year", "academic_term")
+        .prefetch_related("academic_levels")
+        .order_by("-is_current", "-created_at")
+    )
+
+
+def _exam_marking_series_metrics(generation):
+    slots = _exam_marking_allocation_slots(generation)
+    if not slots:
+        return None
+
+    mark_keys, mark_dates_by_key = _exam_marking_mark_timeline(generation)
+    all_slot_keys = [
+        (student_id, slot["subject_id"])
+        for slot in slots
+        for student_id in slot["student_ids"]
+    ]
+    entered, expected, percent, _trend_values, trend_points = _exam_marking_progress_metrics(
+        all_slot_keys, mark_keys, mark_dates_by_key
+    )
+    percent_by_date = {point["date"]: point["percent"] for point in trend_points}
+    return {
+        "exam": generation,
+        "title": _exam_record_title(generation),
+        "entered": entered,
+        "expected": expected,
+        "percent": percent,
+        "percent_by_date": percent_by_date,
+        "mark_dates": sorted(percent_by_date.keys()),
+    }
+
+
+def _build_multi_exam_marking_trend_chart(
+    series_metrics,
+    *,
+    title="Marking completion trend",
+    subtitle=None,
+    force_multi=False,
+):
+    if not series_metrics:
+        return None
+
+    today = timezone.localdate()
+    all_dates = sorted({mark_date for series in series_metrics for mark_date in series["mark_dates"]})
+    if not all_dates:
+        all_dates = [today]
+    elif all_dates[-1] != today and any(series["percent"] for series in series_metrics):
+        # Keep the axis current when later marks exist only as a final percent.
+        all_dates = list(all_dates) + [today]
+
+    width = 560
+    if len(series_metrics) > 8:
+        height = 220
+    elif len(series_metrics) > 1:
+        height = 196
+    else:
+        height = 176
+    pad_l, pad_r, pad_t, pad_b = 34, 18, 26, 42
+    plot_w = width - pad_l - pad_r
+    plot_h = height - pad_t - pad_b
+    baseline_y = pad_t + plot_h
+    n = len(all_dates)
+
+    def y_for(percent):
+        return round(pad_t + plot_h * (1 - (max(0, min(100, percent)) / 100.0)), 1)
+
+    def x_for(index):
+        if n == 1:
+            return round(pad_l + plot_w / 2, 1)
+        return round(pad_l + (plot_w * index / (n - 1)), 1)
+
+    grid = [{"value": tick, "y": y_for(tick)} for tick in (0, 25, 50, 75, 100)]
+    x_labels = [
+        {"x": x_for(index), "label": _exam_marking_date_label(mark_date)}
+        for index, mark_date in enumerate(all_dates)
+    ]
+
+    chart_series = []
+    for index, series in enumerate(series_metrics):
+        color = _MARKING_TREND_COLORS[index % len(_MARKING_TREND_COLORS)]
+        running = 0
+        plotted = []
+        for date_index, mark_date in enumerate(all_dates):
+            if mark_date in series["percent_by_date"]:
+                running = series["percent_by_date"][mark_date]
+            elif mark_date == today:
+                running = series["percent"]
+            plotted.append(
+                {
+                    "x": x_for(date_index),
+                    "y": y_for(running),
+                    "percent": running,
+                    "label": _exam_marking_date_label(mark_date),
+                }
+            )
+        line = " ".join(f'{point["x"]},{point["y"]}' for point in plotted)
+        series_id = series.get("id")
+        if series_id is None and series.get("exam") is not None:
+            series_id = series["exam"].id
+        is_viewer = bool(series.get("is_viewer"))
+        chart_series.append(
+            {
+                "id": series_id,
+                "name": series["title"],
+                "tone": "is-you" if is_viewer else f"is-series-{index % len(_MARKING_TREND_COLORS)}",
+                "color": "#0b4ea2" if is_viewer else color,
+                "is_viewer": is_viewer,
+                "entered": series["entered"],
+                "expected": series["expected"],
+                "percent": series["percent"],
+                "line": line,
+                "points": plotted,
+            }
+        )
+
+    # Draw the viewer's line last so it stays on top in multi-teacher charts.
+    chart_series.sort(key=lambda item: (bool(item.get("is_viewer")), item["percent"]))
+
+    total_entered = sum(series["entered"] for series in series_metrics)
+    total_expected = sum(series["expected"] for series in series_metrics)
+    overall_percent = round((total_entered / total_expected) * 100) if total_expected else 0
+    series_count = len(series_metrics)
+    if subtitle is None:
+        if series_count > 1:
+            subtitle = (
+                f"{series_count} assessments being marked · "
+                f"{total_entered} / {total_expected} marks entered · {overall_percent}% overall"
+            )
+        else:
+            subtitle = (
+                f"{total_entered} / {total_expected} marks entered · {overall_percent}% complete"
+                if total_expected
+                else "No expected marks yet"
+            )
+
+    if force_multi or series_count > 1:
+        mode = "multi"
+    elif n >= 2:
+        mode = "line"
+    else:
+        mode = "bars"
+        point = chart_series[0]["points"][0]
+        bar_w = 56
+        bar_x = round(point["x"] - bar_w / 2, 1)
+        chart_series[0]["points"] = [
+            {
+                **point,
+                "x": bar_x,
+                "width": bar_w,
+                "height": round(baseline_y - point["y"], 1),
+                "label_x": point["x"],
+            }
+        ]
+
+    single_points = chart_series[0]["points"] if series_count == 1 and mode != "multi" else []
+    return {
+        "mode": mode,
+        "title": title,
+        "subtitle": subtitle,
+        "width": width,
+        "height": height,
+        "plot_left": pad_l,
+        "plot_right": width - pad_r,
+        "baseline_y": baseline_y,
+        "grid": grid,
+        "x_labels": x_labels,
+        "series": chart_series,
+        "line": chart_series[0]["line"] if mode == "line" else "",
+        "area": (
+            f'{single_points[0]["x"]},{baseline_y} '
+            + chart_series[0]["line"]
+            + f' {single_points[-1]["x"]},{baseline_y}'
+            if mode == "line" and single_points
+            else ""
+        ),
+        "points": single_points,
+    }
+
+
+def _disambiguate_marking_series_titles(series_metrics):
+    title_counts = {}
+    for series in series_metrics:
+        title_counts[series["title"]] = title_counts.get(series["title"], 0) + 1
+    if all(count == 1 for count in title_counts.values()):
+        return series_metrics
+
+    tentative = []
+    for series in series_metrics:
+        title = series["title"]
+        if title_counts.get(title, 0) <= 1:
+            tentative.append(title)
+            continue
+        exam = series["exam"]
+        if exam.start_date:
+            start_label = _exam_marking_date_label(exam.start_date)
+            if exam.end_date and exam.end_date != exam.start_date:
+                suffix = f"{start_label}-{_exam_marking_date_label(exam.end_date)}"
+            else:
+                suffix = start_label
+            tentative.append(f"{title} ({suffix})")
+        else:
+            tentative.append(f"{title} (#{exam.id})")
+
+    tentative_counts = {}
+    for title in tentative:
+        tentative_counts[title] = tentative_counts.get(title, 0) + 1
+    for series, candidate in zip(series_metrics, tentative):
+        if tentative_counts.get(candidate, 0) > 1:
+            series["title"] = f"{candidate} #{series['exam'].id}"
+        else:
+            series["title"] = candidate
+    return series_metrics
+
+
+def _exam_marking_overall_trend(generations=None):
+    exams = list(generations) if generations is not None else _exams_in_marking()
+    if not exams:
+        return None
+
+    series_metrics = []
+    for exam in exams:
+        metrics = _exam_marking_series_metrics(exam)
+        if metrics is not None:
+            series_metrics.append(metrics)
+    if not series_metrics:
+        return None
+    series_metrics = _disambiguate_marking_series_titles(series_metrics)
+
+    chart = _build_multi_exam_marking_trend_chart(series_metrics)
+    if chart is None:
+        return None
+
+    total_entered = sum(series["entered"] for series in series_metrics)
+    total_expected = sum(series["expected"] for series in series_metrics)
+    overall_percent = round((total_entered / total_expected) * 100) if total_expected else 0
+    color_by_id = {item["id"]: item["color"] for item in chart.get("series") or []}
+    exams = [
+        {
+            "id": series["exam"].id,
+            "title": series["title"],
+            "display_name": series["title"],
+            "entered": series["entered"],
+            "expected": series["expected"],
+            "percent": series["percent"],
+            "color": color_by_id.get(series["exam"].id)
+            or _MARKING_TREND_COLORS[index % len(_MARKING_TREND_COLORS)],
+            "is_viewer": False,
+        }
+        for index, series in enumerate(series_metrics)
+    ]
+    bars = sorted(exams, key=lambda item: (-item["percent"], item["display_name"]))
+    return {
+        "entered": total_entered,
+        "expected": total_expected,
+        "percent": overall_percent,
+        "exam_count": len(series_metrics),
+        "exams": exams,
+        "bars": bars,
+        "bars_title": "Assessment marking progress",
+        "bars_subtitle": (
+            f"{len(bars)} assessment{'' if len(bars) == 1 else 's'} · "
+            f"{total_entered} / {total_expected} marks entered · {overall_percent}% overall"
+        ),
+        "chart": chart,
+    }
 
 
 def _exam_marking_allocation_slots(generation):
@@ -9064,8 +9439,6 @@ def _exam_marking_allocation_slots(generation):
 
 
 def _exam_marking_teacher_progress(generation):
-    from apps.employees.system_performance import _build_sparkline
-
     slots = _exam_marking_allocation_slots(generation)
     if not slots:
         return []
@@ -9086,7 +9459,7 @@ def _exam_marking_teacher_progress(generation):
         for slot in sorted(teacher_slot_list, key=lambda item: (item["class_name"], item["subject_code"])):
             slot_keys = [(student_id, slot["subject_id"]) for student_id in slot["student_ids"]]
             all_slot_keys.extend(slot_keys)
-            entered, expected, percent, trend_values = _exam_marking_progress_metrics(
+            entered, expected, percent, _trend_values, _trend_points = _exam_marking_progress_metrics(
                 slot_keys, mark_keys, mark_dates_by_key
             )
             allocation_rows.append(
@@ -9097,11 +9470,10 @@ def _exam_marking_teacher_progress(generation):
                     "entered": entered,
                     "expected": expected,
                     "percent": percent,
-                    "trend": _build_sparkline(trend_values, width=100, height=28, pad=2),
                 }
             )
 
-        entered, expected, percent, trend_values = _exam_marking_progress_metrics(
+        entered, expected, percent, _trend_values, _trend_points = _exam_marking_progress_metrics(
             all_slot_keys, mark_keys, mark_dates_by_key
         )
         results.append(
@@ -9111,13 +9483,120 @@ def _exam_marking_teacher_progress(generation):
                 "expected": expected,
                 "entered": entered,
                 "percent": percent,
-                "trend": _build_sparkline(trend_values, width=120, height=32, pad=2),
                 "allocation_count": len(allocation_rows),
                 "allocations": allocation_rows,
             }
         )
     results.sort(key=lambda item: (-item["percent"], item["display_name"]))
     return results
+
+
+def _exam_marking_teacher_bars(teacher_progress, viewer=None):
+    """Horizontal bar rows for each teacher's current marking completion."""
+    if not teacher_progress:
+        return []
+
+    viewer_id = getattr(viewer, "id", None)
+    bars = []
+    for teacher in teacher_progress:
+        teacher_obj = teacher.get("teacher")
+        teacher_id = getattr(teacher_obj, "id", None)
+        is_viewer = viewer_id is not None and teacher_id == viewer_id
+        bars.append(
+            {
+                "id": teacher_id,
+                "display_name": teacher["display_name"],
+                "entered": teacher["entered"],
+                "expected": teacher["expected"],
+                "percent": teacher["percent"],
+                "is_viewer": is_viewer,
+            }
+        )
+    bars.sort(key=lambda item: (-item["percent"], item["display_name"]))
+    return bars
+
+
+def _exam_marking_teacher_comparison_trend(generation, viewer=None, *, for_admin=False):
+    """Per-teacher marking completion for one assessment (bars + optional line trend)."""
+    teacher_progress = _exam_marking_teacher_progress(generation)
+    if not teacher_progress:
+        return None
+
+    bars = _exam_marking_teacher_bars(teacher_progress, viewer=viewer)
+    teacher_count = len(bars)
+    viewer_bar = next((item for item in bars if item.get("is_viewer")), None)
+    total_entered = sum(item["entered"] for item in bars)
+    total_expected = sum(item["expected"] for item in bars)
+    overall_percent = round((total_entered / total_expected) * 100) if total_expected else 0
+
+    if for_admin:
+        title = "Teacher marking progress"
+        subtitle = (
+            f"{teacher_count} teacher{'' if teacher_count == 1 else 's'} · "
+            f"{total_entered} / {total_expected} marks entered · {overall_percent}% complete"
+        )
+    elif viewer_bar:
+        title = "Your marking progress vs colleagues"
+        subtitle = (
+            f"Your progress vs {teacher_count - 1} other teacher"
+            f"{'' if teacher_count - 1 == 1 else 's'} · "
+            f"you are at {viewer_bar['percent']}% "
+            f"({viewer_bar['entered']} / {viewer_bar['expected']} marks)"
+        )
+    else:
+        title = "Teacher marking progress"
+        subtitle = (
+            f"{teacher_count} teacher{'' if teacher_count == 1 else 's'} marking this assessment"
+        )
+
+    # Keep a light line trend for temporal context when marks span multiple days.
+    slots = _exam_marking_allocation_slots(generation)
+    mark_keys, mark_dates_by_key = _exam_marking_mark_timeline(generation)
+    teacher_slots = defaultdict(list)
+    for slot in slots:
+        teacher_slots[slot["teacher_id"]].append(slot)
+    series_metrics = []
+    for bar in bars:
+        teacher_id = bar["id"]
+        slot_list = teacher_slots.get(teacher_id) or []
+        all_slot_keys = [
+            (student_id, slot["subject_id"])
+            for slot in slot_list
+            for student_id in slot["student_ids"]
+        ]
+        _entered, _expected, _percent, _trend_values, trend_points = _exam_marking_progress_metrics(
+            all_slot_keys, mark_keys, mark_dates_by_key
+        )
+        series_metrics.append(
+            {
+                "id": teacher_id,
+                "title": f"{bar['display_name']} (you)" if bar["is_viewer"] else bar["display_name"],
+                "entered": bar["entered"],
+                "expected": bar["expected"],
+                "percent": bar["percent"],
+                "percent_by_date": {point["date"]: point["percent"] for point in trend_points},
+                "mark_dates": [point["date"] for point in trend_points],
+                "is_viewer": bar["is_viewer"],
+            }
+        )
+    chart = _build_multi_exam_marking_trend_chart(
+        series_metrics,
+        title="Completion over time",
+        subtitle="How each teacher’s marking progressed by day",
+        force_multi=teacher_count > 1,
+    )
+
+    return {
+        "exam_id": generation.id,
+        "teacher_count": teacher_count,
+        "percent": overall_percent,
+        "viewer_percent": viewer_bar["percent"] if viewer_bar else None,
+        "title": title,
+        "subtitle": subtitle,
+        "bars": bars,
+        "teacher_progress": teacher_progress,
+        "chart": chart,
+    }
 
 
 def _exam_marking_mark_keys(generation):
@@ -9250,10 +9729,39 @@ def _build_exam_management_dashboard():
     }
     if exam.status == GeneratedExamTimetable.Status.IN_SESSION:
         dashboard["today_schedule"] = _exam_today_schedule(exam)
-    if exam.status == GeneratedExamTimetable.Status.MARKING:
-        dashboard["teacher_progress"] = _exam_marking_teacher_progress(exam)
-        if exam.deadline:
-            dashboard["marking_deadline"] = exam.deadline
+    marking_exams = _exams_in_marking()
+    if marking_exams:
+        dashboard["marking_exams"] = marking_exams
+        marking_trend = _exam_marking_overall_trend(marking_exams)
+        dashboard["marking_trend"] = marking_trend
+        trend_titles = {
+            item["id"]: item["title"]
+            for item in ((marking_trend or {}).get("exams") or [])
+        }
+        marking_exam_progress = []
+        for marking_exam in marking_exams:
+            teacher_trend = _exam_marking_teacher_comparison_trend(
+                marking_exam, for_admin=True
+            )
+            marking_exam_progress.append(
+                {
+                    "exam": marking_exam,
+                    "exam_title": trend_titles.get(marking_exam.id)
+                    or _exam_record_title(marking_exam),
+                    "deadline": marking_exam.deadline,
+                    "teacher_progress": (teacher_trend or {}).get("teacher_progress")
+                    or _exam_marking_teacher_progress(marking_exam),
+                    "teacher_trend": teacher_trend,
+                }
+            )
+        dashboard["marking_exam_progress"] = marking_exam_progress
+        focused = next(
+            (item for item in marking_exam_progress if item["exam"].pk == exam.pk),
+            marking_exam_progress[0],
+        )
+        dashboard["teacher_progress"] = focused["teacher_progress"]
+        if focused["deadline"]:
+            dashboard["marking_deadline"] = focused["deadline"]
     if exam.status in (
         GeneratedExamTimetable.Status.ANALYSING,
         GeneratedExamTimetable.Status.PUBLISHED,
@@ -11322,6 +11830,7 @@ def _level_combined_exam_subjects(level):
 
 
 def _exam_record_display_columns(level):
+    """Report / overview columns: hide components and show the combined subject."""
     built_subjects = _build_exam_subjects(level)
     combined_area_ids = set()
     combined_entries = []
@@ -11369,6 +11878,122 @@ def _exam_record_display_columns(level):
     return columns
 
 
+def _exam_record_mark_entry_columns(level):
+    """Mark-entry columns: keep paper inputs editable, then show the combined total."""
+    built_subjects = _build_exam_subjects(level)
+    combined_by_first_index = {}
+    component_ids_hidden_until_block = set()
+    for combined in _level_combined_exam_subjects(level):
+        components = list(combined.components.all())
+        if not components:
+            continue
+        component_areas = [component.subject_setting.learning_area for component in components]
+        component_ids = [area.id for area in component_areas]
+        order_indexes = [
+            index
+            for index, item in enumerate(built_subjects)
+            if item["area"].id in component_ids
+        ]
+        sort_key = min(order_indexes) if order_indexes else len(built_subjects)
+        combined_by_first_index[sort_key] = {
+            "kind": "combined_block",
+            "combined": combined,
+            "code": combined.code,
+            "name": combined.name,
+            "component_codes": combined.component_codes,
+            "component_ids": component_ids,
+            "component_areas": component_areas,
+            "sort_key": sort_key,
+        }
+        component_ids_hidden_until_block.update(component_ids)
+
+    columns = []
+    emitted_blocks = set()
+    for index, item in enumerate(built_subjects):
+        area = item["area"]
+        block = combined_by_first_index.get(index)
+        if block is not None and block["sort_key"] not in emitted_blocks:
+            emitted_blocks.add(block["sort_key"])
+            for component_area in block["component_areas"]:
+                columns.append(
+                    {
+                        "kind": "subject",
+                        "subject": component_area,
+                        "code": component_area.code,
+                        "name": component_area.name,
+                        "sort_key": index,
+                        "editable": True,
+                    }
+                )
+            columns.append(
+                {
+                    "kind": "combined",
+                    "combined": block["combined"],
+                    "code": block["code"],
+                    "name": block["name"],
+                    "component_codes": block["component_codes"],
+                    "component_ids": block["component_ids"],
+                    "sort_key": index,
+                    "editable": False,
+                }
+            )
+            continue
+        if area.id in component_ids_hidden_until_block:
+            continue
+        columns.append(
+            {
+                "kind": "subject",
+                "subject": area,
+                "code": area.code,
+                "name": area.name,
+                "sort_key": index,
+                "editable": True,
+            }
+        )
+    # Any combined block whose first component was missing from level subjects.
+    for sort_key, block in sorted(combined_by_first_index.items()):
+        if sort_key in emitted_blocks:
+            continue
+        for component_area in block["component_areas"]:
+            columns.append(
+                {
+                    "kind": "subject",
+                    "subject": component_area,
+                    "code": component_area.code,
+                    "name": component_area.name,
+                    "sort_key": sort_key,
+                    "editable": True,
+                }
+            )
+        columns.append(
+            {
+                "kind": "combined",
+                "combined": block["combined"],
+                "code": block["code"],
+                "name": block["name"],
+                "component_codes": block["component_codes"],
+                "component_ids": block["component_ids"],
+                "sort_key": sort_key,
+                "editable": False,
+            }
+        )
+    return columns
+
+
+def _exam_record_editable_subjects_from_columns(display_columns):
+    subjects = []
+    seen = set()
+    for column in display_columns or []:
+        if column.get("kind") != "subject":
+            continue
+        subject = column.get("subject")
+        if subject is None or subject.id in seen:
+            continue
+        seen.add(subject.id)
+        subjects.append(subject)
+    return subjects
+
+
 def _exam_report_display_subjects(level):
     """Report columns: hide component subjects and show combined subjects instead."""
     columns = []
@@ -11407,16 +12032,17 @@ def _exam_report_display_subjects(level):
 def _exam_report_subject_cell(subject, student_id, mark_lookup, out_of_by_subject, grade_bands):
     """Build one report mark cell, combining component subjects when configured."""
     if getattr(subject, "kind", "subject") == "combined":
-        percent = _combined_exam_percent(
+        percent, total_raw, total_out = _combined_exam_score(
             mark_lookup,
             student_id,
             subject.component_ids,
             out_of_by_subject,
+            allow_legacy_single=True,
         )
         band = _grade_band_for_percent(percent, grade_bands)
         return {
-            "raw": None,
-            "out_of": None,
+            "raw": total_raw,
+            "out_of": total_out,
             "percent": percent,
             "grade": band.code if band else "",
             "points": band.points if band else None,
@@ -11442,22 +12068,71 @@ def _exam_report_subject_cell(subject, student_id, mark_lookup, out_of_by_subjec
     }
 
 
-def _combined_exam_percent(marks_lookup, student_id, component_ids, out_of_by_subject):
-    total_raw = 0
-    total_out_of = 0
+def _combined_exam_score(
+    marks_lookup,
+    student_id,
+    component_ids,
+    out_of_by_subject,
+    *,
+    allow_legacy_single=False,
+):
+    """
+    Score a combined subject from component marks.
+
+    When every component is present, sum raw marks / sum out-of (current combine).
+    When only one component is present and ``allow_legacy_single`` is on, treat it as
+    a pre-combination sitting if its snapshotted out-of covers a full subject
+    (larger than the current paper setting, or at least the full combined total).
+    Incomplete modern multi-paper entry still returns blank until all papers are in.
+    """
+    present = []
     for component_id in component_ids:
         entry = marks_lookup.get((student_id, component_id))
         raw = _exam_mark_entry_raw(entry)
         if raw in (None, ""):
-            return None
+            continue
         current_out_of = out_of_by_subject.get(component_id)
         saved_out_of = _exam_mark_entry_out_of(entry, None) if isinstance(entry, dict) else None
         display_out_of = saved_out_of if saved_out_of is not None else current_out_of
         if not display_out_of:
-            return None
-        total_raw += int(raw)
-        total_out_of += int(display_out_of)
-    return _marks_as_percent(total_raw, total_out_of)
+            return None, None, None
+        present.append((component_id, int(raw), int(display_out_of)))
+
+    if not present:
+        return None, None, None
+
+    if len(present) < len(component_ids):
+        if not allow_legacy_single or len(present) != 1:
+            return None, None, None
+        component_id, raw, out_of = present[0]
+        current_this = int(out_of_by_subject.get(component_id) or 0)
+        combined_out = sum(int(out_of_by_subject.get(cid) or 0) for cid in component_ids)
+        # Legacy single English/Kiswahili (etc.) before papers were split & combined.
+        if out_of > current_this or (combined_out and out_of >= combined_out):
+            return _marks_as_percent(raw, out_of), raw, out_of
+        return None, None, None
+
+    total_raw = sum(raw for _, raw, _ in present)
+    total_out_of = sum(out_of for _, _, out_of in present)
+    return _marks_as_percent(total_raw, total_out_of), total_raw, total_out_of
+
+
+def _combined_exam_percent(
+    marks_lookup,
+    student_id,
+    component_ids,
+    out_of_by_subject,
+    *,
+    allow_legacy_single=False,
+):
+    percent, _raw, _out = _combined_exam_score(
+        marks_lookup,
+        student_id,
+        component_ids,
+        out_of_by_subject,
+        allow_legacy_single=allow_legacy_single,
+    )
+    return percent
 
 
 def _attach_exam_record_display_cells(students, display_columns, marks_lookup, out_of_by_subject):
@@ -11470,6 +12145,7 @@ def _attach_exam_record_display_cells(students, display_columns, marks_lookup, o
                     student.id,
                     column["component_ids"],
                     out_of_by_subject,
+                    allow_legacy_single=True,
                 )
                 student.mark_cells.append(
                     {
@@ -12049,7 +12725,8 @@ def exam_record_detail(request, exam_id, level_id=None):
             )
         students = list(_students_in_academic_level(selected_level, selected_class))
         subjects = _exam_record_subjects(selected_level, selected_class)
-        display_columns = _exam_record_display_columns(selected_level)
+        display_columns = _exam_record_mark_entry_columns(selected_level)
+        editable_subjects = _exam_record_editable_subjects_from_columns(display_columns)
         out_of_by_subject = _exam_record_out_of(selected_level, subjects)
         for subject in subjects:
             subject.exam_out_of = out_of_by_subject.get(subject.id, subject.total_marks)
@@ -12058,7 +12735,7 @@ def exam_record_detail(request, exam_id, level_id=None):
                 _save_exam_record_marks(
                     generation,
                     students,
-                    subjects,
+                    editable_subjects or subjects,
                     out_of_by_subject,
                     request.POST,
                 )
@@ -13132,11 +13809,19 @@ def timetable_analytics(request, page=None):
 def system_settings(request):
     if uses_profile_settings(workspace_role(request)):
         return redirect("employees:profile_settings")
-    return render(
-        request,
-        "employees/system_settings.html",
-        {"active_nav": "settings", "active_settings": ""},
-    )
+    context = {"active_nav": "settings", "active_settings": ""}
+    context.update(_settings_performance_context())
+    return render(request, "employees/system_settings.html", context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def settings_system_performance_metrics(request):
+    if uses_profile_settings(workspace_role(request)):
+        return JsonResponse({"error": "forbidden"}, status=403)
+    from apps.employees.system_performance import get_system_performance_snapshot
+
+    return JsonResponse(get_system_performance_snapshot())
 
 
 @login_required

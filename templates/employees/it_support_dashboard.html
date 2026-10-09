@@ -10,44 +10,32 @@
 
 {% block workspace_content %}
 <div class="exam-tool-page it-support-dashboard">
-  <section class="teacher-dash-stats" aria-label="School headcounts">
-    <article class="teacher-dash-stat">
-      <strong>{{ dashboard_counts.students }}</strong>
-      <span>Students</span>
-    </article>
-    <article class="teacher-dash-stat">
-      <strong>{{ dashboard_counts.teachers }}</strong>
-      <span>Teachers</span>
-    </article>
-    <article class="teacher-dash-stat">
-      <strong>{{ dashboard_counts.other_employees }}</strong>
-      <span>Other employees</span>
-    </article>
+  <section class="it-dash-overview" aria-label="School headcounts">
+    <header class="it-dash-overview-head">
+      <p class="teacher-dash-kicker">School overview</p>
+      <h2>People at a glance</h2>
+    </header>
+    <div class="teacher-dash-stats it-dash-stats">
+      <article class="teacher-dash-stat">
+        <strong>{{ dashboard_counts.students }}</strong>
+        <span>Students</span>
+      </article>
+      <article class="teacher-dash-stat">
+        <strong>{{ dashboard_counts.teachers }}</strong>
+        <span>Teachers</span>
+      </article>
+      <article class="teacher-dash-stat">
+        <strong>{{ dashboard_counts.other_employees }}</strong>
+        <span>Other employees</span>
+      </article>
+    </div>
   </section>
 
   {% include "employees/includes/dashboard_school_activities.html" %}
-
-  <section class="teacher-dash-actions is-nav-links" aria-label="{{ workspace_role_label }} modules">
-    {% for module in it_support_modules %}
-    <a class="teacher-dash-action" href="{% url 'employees:it_support_module' module.slug %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">{{ module.icon }}</span>
-      <span class="teacher-dash-action-copy">
-        <strong>{{ module.title }}</strong>
-        <span>{{ module.summary }}</span>
-      </span>
-    </a>
-    {% endfor %}
-    <a class="teacher-dash-action" href="{% url 'employees:school_activities' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">SA</span>
-      <span class="teacher-dash-action-copy">
-        <strong>School activities</strong>
-        <span>Register activities, grades, and dates</span>
-      </span>
-    </a>
-  </section>
+  {% include "employees/includes/nav/it_support.html" %}
 </div>
 {% endblock %}
 
 {% block workspace_scripts %}
-<script src="{% static 'js/dashboard-school-activities.js' %}?v=20260930da1" defer></script>
+<script src="{% static 'js/dashboard-school-activities.js' %}?v=20261009ux1" defer></script>
 {% endblock %}

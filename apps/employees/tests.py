@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
@@ -31,7 +31,7 @@ from apps.curriculum.models import (
     LearningScheduleProfile,
 )
 
-from .models import Employee, EmployeeRole, SchoolProfile
+from .models import Employee, EmployeeRole, SchoolActivity, SchoolActivityDay, SchoolProfile
 
 
 class EmployeeAuthenticationTests(TestCase):
@@ -203,7 +203,31 @@ class AcademicCalendarSettingsTests(TestCase):
     def test_system_settings_links_to_academic_calendar(self):
         response = self.client.get(reverse("employees:system_settings"))
         self.assertContains(response, reverse("employees:academic_calendar_settings"))
-        self.assertContains(response, "Academic calendar settings")
+        self.assertContains(response, "Academic calendar")
+
+    def test_system_settings_shows_live_system_analytics(self):
+        response = self.client.get(reverse("employees:system_settings"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Live system health")
+        self.assertContains(response, "data-system-performance")
+        self.assertContains(
+            response, reverse("employees:settings_system_performance_metrics")
+        )
+        self.assertContains(response, "system_performance.js")
+        # Page render must not block on cold probes — snapshot is cache-only.
+        self.assertNotContains(response, "sys-perf-initial")
+
+    def test_settings_system_performance_metrics_returns_json(self):
+        response = self.client.get(
+            reverse("employees:settings_system_performance_metrics")
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("status", payload)
+        self.assertIn("database", payload)
+        self.assertIn("cache", payload)
+        self.assertIn("health", payload)
+        self.assertIn("active_sessions", payload)
 
     def test_academic_year_and_terms_can_be_registered(self):
         response = self.client.post(
@@ -784,6 +808,13 @@ class ITSupportWorkspaceTests(TestCase):
 
     def test_teacher_cannot_access_system_performance_metrics(self):
         response = self.client.get(reverse("employees:it_support_system_performance_metrics"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_teacher_cannot_access_settings_system_performance_metrics(self):
+        self.client.force_login(self.teacher)
+        response = self.client.get(
+            reverse("employees:settings_system_performance_metrics")
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_it_support_module_pages_load(self):
@@ -1632,6 +1663,203 @@ class ITSupportWorkspaceTests(TestCase):
         self.assertContains(response, "Suspend")
         self.assertContains(response, "Delete")
 
+    def test_exam_report_keeps_legacy_single_paper_when_subjects_later_combined(self):
+        """Older exams scored as one subject must still total after papers are combined."""
+        from apps.admissions.models import ParentGuardian, Student
+        from apps.employees.views import (
+            _build_individual_multi_exam_report_cards,
+            _exam_record_subjects,
+            _exam_report_display_subjects,
+            _grade_bands_for_level,
+        )
+
+        level = AcademicLevel.objects.create(name="Grade 9", code="G9", order=9)
+        academic_class = AcademicClass.objects.create(
+            academic_level=level,
+            name="Grade 9 Y",
+            code="G9Y",
+            order=1,
+        )
+        eng_p1 = LearningArea.objects.create(name="ENGLISH PAPER 1", code="ENG P1")
+        eng_p2 = LearningArea.objects.create(name="ENGLISH PAPER 2", code="ENG P2")
+        eng_p1.academic_levels.add(level)
+        eng_p2.academic_levels.add(level)
+        p1_setting = ExamSubjectSetting.objects.create(
+            academic_level=level,
+            learning_area=eng_p1,
+            out_of_marks=50,
+        )
+        p2_setting = ExamSubjectSetting.objects.create(
+            academic_level=level,
+            learning_area=eng_p2,
+            out_of_marks=50,
+        )
+        combined = CombinedExamSubject.objects.create(
+            academic_level=level,
+            name="ENG 1+2",
+            code="ENG",
+        )
+        CombinedExamSubjectComponent.objects.bulk_create(
+            [
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=p1_setting,
+                    position=1,
+                ),
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=p2_setting,
+                    position=2,
+                ),
+            ]
+        )
+        year = AcademicYear.objects.create(
+            name="2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_current=True,
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=year,
+            name="TERM 2",
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 8, 1),
+            opening_date=date(2026, 5, 1),
+            midterm_date=date(2026, 6, 15),
+            closing_date=date(2026, 8, 1),
+            order=2,
+        )
+        legacy_exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 3),
+        )
+        legacy_exam.academic_levels.add(level)
+        combined_exam = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 7, 3),
+        )
+        combined_exam.academic_levels.add(level)
+        parent = ParentGuardian.objects.create(
+            full_name="LEGACY PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700009991",
+            email="legacy.combined@example.com",
+        )
+        student = Student.objects.create(
+            first_name="BEN",
+            last_name="MUTETHIA",
+            date_of_birth="2012-01-01",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_9,
+            admission_number="9493",
+            class_group="G9Y",
+            assessment_number="A9493",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        # Pre-combination: one English paper out of 100.
+        ExamMark.objects.create(
+            generation=legacy_exam,
+            student=student,
+            learning_area=eng_p1,
+            marks=65,
+            out_of_marks=100,
+        )
+        # Post-combination: both papers out of 50.
+        ExamMark.objects.create(
+            generation=combined_exam,
+            student=student,
+            learning_area=eng_p1,
+            marks=40,
+            out_of_marks=50,
+        )
+        ExamMark.objects.create(
+            generation=combined_exam,
+            student=student,
+            learning_area=eng_p2,
+            marks=30,
+            out_of_marks=50,
+        )
+        GradeBand.objects.create(
+            academic_level=level,
+            code="ME1",
+            meaning="Meeting",
+            start_percent=60,
+            end_percent=79,
+            points=8,
+            mark_level="Meeting",
+        )
+
+        subjects = _exam_report_display_subjects(level)
+        cards = _build_individual_multi_exam_report_cards(
+            [student],
+            [legacy_exam, combined_exam],
+            subjects,
+            level,
+            academic_class,
+            list(_grade_bands_for_level(level)),
+            mark_subjects=_exam_record_subjects(level, academic_class),
+        )
+        self.assertEqual(len(cards), 1)
+        eng_row = next(row for row in cards[0]["rows"] if row["subject"].code == "ENG")
+        self.assertEqual(eng_row["cells"][0]["percent"], 65)
+        self.assertEqual(eng_row["cells"][1]["percent"], 70)
+        self.assertEqual(eng_row["mean_percent"], 68)
+
+        # Incomplete modern entry (only current paper out-of) stays blank.
+        incomplete = GeneratedExamTimetable.objects.create(
+            academic_year=year,
+            academic_term=term,
+            start_date=date(2026, 7, 10),
+            end_date=date(2026, 7, 12),
+        )
+        incomplete.academic_levels.add(level)
+        ExamMark.objects.create(
+            generation=incomplete,
+            student=student,
+            learning_area=eng_p1,
+            marks=40,
+            out_of_marks=50,
+        )
+        incomplete_cards = _build_individual_multi_exam_report_cards(
+            [student],
+            [incomplete],
+            subjects,
+            level,
+            academic_class,
+            list(_grade_bands_for_level(level)),
+            mark_subjects=_exam_record_subjects(level, academic_class),
+        )
+        incomplete_row = next(
+            row for row in incomplete_cards[0]["rows"] if row["subject"].code == "ENG"
+        )
+        self.assertIsNone(incomplete_row["cells"][0]["percent"])
+
+        response = self.client.get(
+            reverse(
+                "employees:it_support_curriculum_report_page",
+                kwargs={"page": "exam-reports"},
+            ),
+            {
+                "generate": "1",
+                "year_id": str(year.id),
+                "exam_id": "all",
+                "report_kind": "individual",
+                "level_id": str(level.id),
+                "class_id": str(academic_class.id),
+                "student_id": str(student.id),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ENG")
+        self.assertContains(response, ">65<")
+        self.assertContains(response, ">70<")
+
     def test_exam_report_ranks_by_total_marks_not_average(self):
         """Students with the same rounded average must still rank by total marks."""
         from apps.admissions.models import ParentGuardian, Student
@@ -2332,13 +2560,70 @@ class ExamManagementDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Marking progress")
+        self.assertContains(response, "Marking completion trend")
+        self.assertContains(response, "src-trend")
         self.assertContains(response, "ALI TEACHER")
         self.assertContains(response, "Grade 1 East")
         self.assertContains(response, "MATH")
         self.assertContains(response, "1 / 1 marks entered")
         self.assertContains(response, "100%")
-        self.assertContains(response, "sys-perf-sparkline")
+        self.assertNotContains(response, "sys-perf-sparkline")
         self.assertNotContains(response, "Class marks analytics")
+
+    def test_exam_management_dashboard_marking_trend_includes_all_marking_exams(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.is_current = True
+        self.exam.save(update_fields=["status", "is_current"])
+        second = GeneratedExamTimetable.objects.create(
+            name="SECOND MARKING EXAM",
+            academic_year=self.year,
+            academic_term=self.term,
+            start_date=date(2026, 3, 13),
+            end_date=date(2026, 3, 14),
+            status=GeneratedExamTimetable.Status.MARKING,
+            is_current=False,
+        )
+        second.academic_levels.add(self.level)
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000558",
+            email="pat.multi.mark@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1004",
+            class_group="G1E",
+            assessment_number="A1004",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=self.subject,
+            marks=40,
+        )
+
+        response = self._get_dashboard()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Marking completion trend")
+        self.assertContains(response, "Assessment marking progress")
+        self.assertContains(response, "2 assessments")
+        self.assertContains(response, "is-assessment-bars")
+        self.assertContains(response, "src-trend-legend")
+        self.assertContains(response, "SECOND MARKING EXAM")
+        self.assertContains(response, self.exam.display_name)
+        self.assertContains(response, "Teacher marking progress")
+        self.assertContains(response, "exam-mgmt-teacher-bars")
 
     def test_exam_management_dashboard_shows_class_analytics_when_analysing(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -5280,8 +5565,38 @@ class ExamTimetableGenerationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "CA-COMB")
         self.assertContains(response, "MATH + ART")
-        self.assertNotContains(response, 'name="mark_')
+        self.assertContains(response, f'name="mark_{student.id}_{self.subject.id}"')
+        self.assertContains(response, f'name="mark_{student.id}_{art.id}"')
         self.assertContains(response, ">70<")
+
+        generation.status = GeneratedExamTimetable.Status.MARKING
+        generation.save(update_fields=["status"])
+        save_response = self.client.post(
+            f"{level_url}?class_id={self.academic_class.id}",
+            {
+                "class_id": str(self.academic_class.id),
+                f"mark_{student.id}_{self.subject.id}": "80",
+                f"mark_{student.id}_{art.id}": "80",
+            },
+        )
+        self.assertRedirects(
+            save_response,
+            f"{level_url}?class_id={self.academic_class.id}",
+        )
+        self.assertEqual(
+            ExamMark.objects.get(
+                generation=generation, student=student, learning_area=self.subject
+            ).marks,
+            40,
+        )
+        self.assertEqual(
+            ExamMark.objects.get(
+                generation=generation, student=student, learning_area=art
+            ).marks,
+            40,
+        )
+        page = self.client.get(level_url, {"class_id": str(self.academic_class.id)})
+        self.assertContains(page, ">80<")
 
     def test_exam_record_can_be_updated(self):
         ExamSupervisorAllocation.objects.create(
@@ -6839,6 +7154,50 @@ class TeacherExamRecordsTests(TestCase):
         self.assertNotContains(response, "ENG2")
         self.assertNotContains(response, "Select a class from the sidebar")
 
+    def test_teacher_exam_detail_shows_marking_comparison_when_marking(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        parent = ParentGuardian.objects.create(
+            full_name="PAT EAST",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000559",
+            email="pat.teacher.compare@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="EAST",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1005",
+            class_group="G1E",
+            assessment_number="A1005",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=student,
+            learning_area=self.subject,
+            marks=40,
+        )
+
+        response = self.client.get(
+            reverse("employees:teacher_exam_record_detail", kwargs={"exam_id": self.exam.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Marking progress")
+        self.assertContains(response, "Your marking progress vs colleagues")
+        self.assertContains(response, "ALI TEACHER")
+        self.assertContains(response, "(you)")
+        self.assertContains(response, "SARA MWANGI")
+        self.assertContains(response, "exam-mgmt-teacher-bars")
+        self.assertContains(response, "Compare how far you have reached")
+
     def test_multiple_subjects_in_one_class_share_one_card_and_mark_columns(self):
         from apps.admissions.models import ParentGuardian, Student
 
@@ -7618,4 +7977,77 @@ class TeacherExamRecordsTests(TestCase):
         )
 
 
+class DashboardSchoolActivitiesTests(TestCase):
+    def setUp(self):
+        self.employee = Employee.objects.create_user(
+            employee_code="223344",
+            password="ReliablePass456",
+            title=Employee.Title.MR,
+            first_name="SAM",
+            last_name="KIM",
+            email="sam@example.com",
+            phone_number="+254722222222",
+            role=Employee.Role.TEACHER,
+            approval_status=Employee.ApprovalStatus.APPROVED,
+            is_active=True,
+        )
+        self.level = AcademicLevel.objects.create(
+            name="GRADE 7",
+            order=7,
+            status=AcademicLevel.Status.ACTIVE,
+        )
+        self.client.force_login(self.employee)
+
+    def _published_activity(self, title, start_offset_days):
+        activity = SchoolActivity.objects.create(
+            title=title,
+            status=SchoolActivity.Status.PUBLISHED,
+            created_by=self.employee,
+        )
+        activity.grades.add(self.level)
+        SchoolActivityDay.objects.create(
+            activity=activity,
+            activity_date=date.today() + timedelta(days=start_offset_days),
+        )
+        return activity
+
+    def test_dashboard_shows_header_alert_for_activity_within_three_days(self):
+        self._published_activity("SPORTS DAY", 2)
+        self._published_activity("FAR AWAY FAIR", 10)
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "workspace-activity-alerts")
+        self.assertContains(response, "SPORTS DAY")
+        self.assertContains(response, "starts in 2 days")
+        alerts = response.context["dashboard_activity_alerts"]
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["title"], "SPORTS DAY")
+
+    def test_dashboard_collapses_multiple_soon_alerts_into_summary(self):
+        self._published_activity("SPORTS DAY", 1)
+        self._published_activity("MUSIC FEST", 2)
+        self._published_activity("CULTURAL FESTIVAL", 3)
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "workspace-activity-alerts")
+        self.assertContains(response, "is-summary")
+        self.assertContains(response, "3 activities start within 3 days")
+        self.assertContains(response, "SPORTS DAY")
+        self.assertContains(response, "MUSIC FEST")
+        self.assertContains(response, "CULTURAL FESTIVAL")
+        self.assertContains(response, 'class="workspace-activity-alert is-summary"', count=1)
+        alerts = response.context["dashboard_activity_alerts"]
+        self.assertEqual(len(alerts), 3)
+
+    def test_dashboard_includes_upcoming_list_trigger(self):
+        self._published_activity("MUSIC FEST", 5)
+        response = self.client.get(
+            reverse("employees:role_dashboard", kwargs={"role": "teacher"})
+        )
+        self.assertContains(response, "data-open-upcoming-list")
+        self.assertContains(response, "All upcoming activities")
 

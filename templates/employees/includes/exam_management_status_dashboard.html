@@ -72,7 +72,7 @@
   </section>
   {% endif %}
 
-  {% if exam_dashboard.status == "MARKING" %}
+  {% if exam_dashboard.marking_trend or exam_dashboard.marking_exam_progress or exam_dashboard.status == "MARKING" %}
   {% include "employees/includes/exam_management_marking_progress.html" %}
   {% endif %}
 

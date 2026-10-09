@@ -1,13 +1,26 @@
 {% load static %}
 <section class="dash-activities" aria-label="School activities" data-dash-activities>
   <header class="dash-activities-head">
-    <div>
+    <button
+      type="button"
+      class="dash-activities-head-toggle"
+      data-open-upcoming-list
+      {% if not dashboard_upcoming_activities %}disabled{% endif %}
+      aria-haspopup="dialog"
+      aria-controls="dash-upcoming-list-modal"
+    >
       <p class="dash-activities-kicker">School calendar</p>
-      <h2>School activities</h2>
-      <p class="subtle">Tap an activity to view full details</p>
-    </div>
-    {% if dashboard_activities %}
-    <span class="dash-activities-count">{{ dashboard_activities|length }}</span>
+      <h2>Upcoming school activities</h2>
+      <p class="subtle">
+        {% if dashboard_upcoming_activities %}
+        {{ dashboard_upcoming_activities|length }} upcoming · open to see the full list
+        {% else %}
+        No upcoming activities scheduled
+        {% endif %}
+      </p>
+    </button>
+    {% if dashboard_upcoming_activities %}
+    <span class="dash-activities-count">{{ dashboard_upcoming_activities|length }} upcoming</span>
     {% endif %}
   </header>
 
@@ -16,12 +29,14 @@
     {% for activity in dashboard_activities %}
     <button
       type="button"
-      class="dash-activity-card{% if activity.is_current %} is-current{% else %} is-upcoming{% endif %}"
+      class="dash-activity-card{% if activity.is_current %} is-current{% else %} is-upcoming{% endif %}{% if activity.starts_within_three_days %} is-soon{% endif %}"
       role="listitem"
       data-open-activity="{{ activity.id }}"
       aria-haspopup="dialog"
     >
-      <span class="dash-activity-badge">{% if activity.is_current %}Current{% else %}Upcoming{% endif %}</span>
+      <span class="dash-activity-badge">
+        {% if activity.is_current %}Current{% elif activity.starts_within_three_days %}Soon{% else %}Upcoming{% endif %}
+      </span>
       <strong class="dash-activity-title is-uppercase">{{ activity.title }}</strong>
       <span class="dash-activity-range">{{ activity.date_range }}</span>
       <span class="dash-activity-meta">
@@ -36,52 +51,108 @@
   {% endif %}
 </section>
 
-{{ dashboard_activities|json_script:"dashboard-activities-data" }}
+{{ dashboard_activities_all|json_script:"dashboard-activities-data" }}
 
 <div
-  class="app-modal dash-activity-modal"
+  class="app-modal dash-activity-modal-shell dash-upcoming-list-modal"
+  id="dash-upcoming-list-modal"
+  data-modal="dash-upcoming-list"
+  hidden
+>
+  <div class="app-modal-backdrop dash-activity-modal-backdrop" data-modal-close="upcoming-list"></div>
+  <div
+    class="app-modal-dialog dash-upcoming-list-dialog dash-activity-modal-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="dash-upcoming-list-title"
+  >
+    <div class="dash-upcoming-list-hero">
+      <div class="dash-activity-hero-bg" aria-hidden="true">
+        <span class="dash-activity-orb dash-activity-orb-a"></span>
+        <span class="dash-activity-orb dash-activity-orb-b"></span>
+        <span class="dash-activity-shimmer"></span>
+      </div>
+      <div class="dash-upcoming-list-hero-inner">
+        <div class="dash-upcoming-list-hero-copy">
+          <p class="dash-activities-kicker">School calendar</p>
+          <h2 id="dash-upcoming-list-title">All upcoming activities</h2>
+          <p class="dash-upcoming-list-live" data-upcoming-live-count aria-live="polite"></p>
+        </div>
+        <button type="button" class="dash-activity-modal-close" data-modal-close="upcoming-list" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+    </div>
+    <div class="dash-upcoming-list-body" data-upcoming-list role="list"></div>
+    <div class="app-modal-actions dash-upcoming-list-actions">
+      <button type="button" class="ghost-button" data-modal-close="upcoming-list">Close</button>
+    </div>
+  </div>
+</div>
+
+<div
+  class="app-modal dash-activity-modal-shell dash-activity-modal"
   id="dash-activity-modal"
   data-modal="dash-activity"
   hidden
 >
-  <div class="app-modal-backdrop" data-modal-close></div>
+  <div class="app-modal-backdrop dash-activity-modal-backdrop" data-modal-close="activity"></div>
   <div
-    class="app-modal-dialog dash-activity-dialog"
+    class="app-modal-dialog dash-activity-dialog dash-activity-modal-panel"
     role="dialog"
     aria-modal="true"
     aria-labelledby="dash-activity-title"
+    data-activity-panel
   >
-    <div class="dash-activity-dialog-hero">
-      <div class="dash-activity-dialog-hero-copy">
-        <p class="dash-activity-dialog-kicker" data-activity-badge>Activity</p>
-        <h2 id="dash-activity-title" data-activity-title>Activity</h2>
-        <p class="dash-activity-dialog-range" data-activity-range></p>
+    <div class="dash-activity-dialog-hero" data-activity-hero>
+      <div class="dash-activity-hero-bg" aria-hidden="true">
+        <span class="dash-activity-orb dash-activity-orb-a"></span>
+        <span class="dash-activity-orb dash-activity-orb-b"></span>
+        <span class="dash-activity-orb dash-activity-orb-c"></span>
+        <span class="dash-activity-shimmer"></span>
       </div>
-      <button type="button" class="app-modal-close" data-modal-close aria-label="Close">×</button>
+      <div class="dash-activity-dialog-hero-inner">
+        <div class="dash-activity-dialog-hero-copy">
+          <div class="dash-activity-badge-live" data-activity-badge-wrap>
+            <span class="dash-activity-badge-dot" aria-hidden="true"></span>
+            <p class="dash-activity-dialog-kicker" data-activity-badge>Activity</p>
+          </div>
+          <h2 id="dash-activity-title" data-activity-title tabindex="-1">Activity</h2>
+          <p class="dash-activity-dialog-range" data-activity-range></p>
+          <div class="dash-activity-hero-stats">
+            <span class="dash-activity-stat-pill" data-activity-stat-timing hidden></span>
+            <span class="dash-activity-stat-pill" data-activity-stat-days></span>
+            <span class="dash-activity-stat-pill" data-activity-stat-grades></span>
+          </div>
+        </div>
+        <button type="button" class="dash-activity-modal-close is-on-hero" data-modal-close="activity" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
     </div>
 
-    <div class="dash-activity-dialog-body">
-      <section class="dash-activity-block" data-activity-description-block hidden>
-        <h3>Overview</h3>
+    <div class="dash-activity-dialog-body" data-activity-body>
+      <section class="dash-activity-block dash-activity-block-animate" data-activity-description-block hidden>
+        <h3><span class="dash-activity-block-icon" aria-hidden="true">◆</span> Overview</h3>
         <p data-activity-description></p>
       </section>
 
-      <section class="dash-activity-block">
-        <h3>Grades undertaking</h3>
+      <section class="dash-activity-block dash-activity-block-animate">
+        <h3><span class="dash-activity-block-icon" aria-hidden="true">◆</span> Grades undertaking</h3>
         <div class="dash-activity-grades" data-activity-grades></div>
       </section>
 
-      <section class="dash-activity-block">
-        <h3>Schedule</h3>
-        <div class="dash-activity-days" data-activity-days></div>
+      <section class="dash-activity-block dash-activity-block-animate">
+        <h3><span class="dash-activity-block-icon" aria-hidden="true">◆</span> Schedule</h3>
+        <div class="dash-activity-timeline" data-activity-days></div>
       </section>
 
-      <section class="dash-activity-block dash-activity-meta-block">
-        <div>
+      <section class="dash-activity-block dash-activity-meta-block dash-activity-block-animate">
+        <div class="dash-activity-meta-card">
           <span>Registered by</span>
           <strong data-activity-created-by>—</strong>
         </div>
-        <div>
+        <div class="dash-activity-meta-card">
           <span>Registered on</span>
           <strong data-activity-created-at>—</strong>
         </div>
@@ -89,7 +160,8 @@
     </div>
 
     <div class="app-modal-actions dash-activity-dialog-actions">
-      <button type="button" class="primary-button" data-modal-close>Close</button>
+      <button type="button" class="ghost-button" data-modal-close="activity">Close</button>
+      <button type="button" class="primary-button dash-activity-primary-glow" data-modal-close="activity">Done</button>
     </div>
   </div>
 </div>

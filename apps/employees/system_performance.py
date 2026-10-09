@@ -1096,6 +1096,12 @@ def _stress_timeline():
     }
 
 
+def peek_system_performance_snapshot(*, include_counts=True):
+    """Return a cached snapshot without running probes (page-load friendly)."""
+    cache_key = f"{SNAPSHOT_CACHE_KEY}:{int(bool(include_counts))}"
+    return cache.get(cache_key)
+
+
 def get_system_performance_snapshot(*, include_counts=True):
     cache_key = f"{SNAPSHOT_CACHE_KEY}:{int(bool(include_counts))}"
     cached = cache.get(cache_key)

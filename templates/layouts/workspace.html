@@ -195,6 +195,48 @@
         </div>
       </div>
 
+      {% if dashboard_activity_alerts %}
+        <div class="workspace-activity-alerts" role="region" aria-label="Upcoming activity reminders">
+          {% if dashboard_activity_alerts|length == 1 %}
+            <div class="workspace-activity-alert">
+              <span class="workspace-activity-alert-icon" aria-hidden="true">!</span>
+              <p class="workspace-activity-alert-copy">
+                <strong>{{ dashboard_activity_alerts.0.title }}</strong>
+                {{ dashboard_activity_alerts.0.when }} · {{ dashboard_activity_alerts.0.date_range }}
+              </p>
+              <button
+                type="button"
+                class="workspace-activity-alert-action"
+                data-scroll-to-activities
+                aria-label="View {{ dashboard_activity_alerts.0.title }} on the dashboard"
+              >
+                View
+              </button>
+            </div>
+          {% else %}
+            <div class="workspace-activity-alert is-summary">
+              <span class="workspace-activity-alert-icon" aria-hidden="true">!</span>
+              <div class="workspace-activity-alert-copy">
+                <p>
+                  <strong>{{ dashboard_activity_alerts|length }} activities start within 3 days</strong>
+                </p>
+                <p class="workspace-activity-alert-titles">
+                  {% for alert in dashboard_activity_alerts %}{{ alert.title }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="workspace-activity-alert-action"
+                data-scroll-to-activities
+                aria-label="View upcoming activities on the dashboard"
+              >
+                View
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
       {% if is_role_preview %}
         <div class="workspace-preview-banner">
           <p>

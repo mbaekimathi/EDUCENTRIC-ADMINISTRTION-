@@ -1,4 +1,5 @@
 {% extends "layouts/settings.html" %}
+{% load static %}
 {% block title %}System settings | Edu-Centric{% endblock %}
 {% block header_title %}System settings{% endblock %}
 
@@ -7,50 +8,74 @@
 {% endblock %}
 
 {% block workspace_content %}
-<div class="exam-tool-page">
-  <section class="teacher-dash-actions is-nav-links" aria-label="Settings areas">
-    <a class="teacher-dash-action" href="{% url 'employees:school_profile_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">SP</span>
-      <span class="teacher-dash-action-copy">
-        <strong>School profile settings</strong>
-        <span>School identity, contact details, and campus information.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:curriculum_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">CU</span>
-      <span class="teacher-dash-action-copy">
-        <strong>Curriculum settings</strong>
-        <span>Academic structure, levels, subjects, and programme defaults.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:admission_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">AD</span>
-      <span class="teacher-dash-action-copy">
-        <strong>Admission settings</strong>
-        <span>Enable admissions and configure automatic admission numbers.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:finance_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">FN</span>
-      <span class="teacher-dash-action-copy">
-        <strong>Finance settings</strong>
-        <span>Fees, billing rules, and financial configuration.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:hr_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">HR</span>
-      <span class="teacher-dash-action-copy">
-        <strong>HR settings</strong>
-        <span>Staff roles, employment defaults, and people policies.</span>
-      </span>
-    </a>
-    <a class="teacher-dash-action" href="{% url 'employees:academic_calendar_settings' %}">
-      <span class="teacher-dash-action-icon" aria-hidden="true">AC</span>
-      <span class="teacher-dash-action-copy">
-        <strong>Academic calendar settings</strong>
-        <span>Register academic years, terms, and opening, midterm, and closing dates.</span>
-      </span>
-    </a>
-  </section>
+<div class="exam-tool-page sys-perf-page is-full">
+  {% include "employees/includes/nav/system_settings.html" %}
+
+  <div class="sys-perf-layout">
+    {% include "employees/includes/system_performance_hero.html" %}
+
+    {% include "employees/includes/system_performance_widget.html" with compact=False full_page=True poll_interval=60000 %}
+
+    {% include "employees/includes/system_performance_trend_cards.html" %}
+
+    {% include "employees/includes/system_performance_full_analytics.html" %}
+
+    <div id="users">
+      {% include "employees/includes/system_performance_sessions.html" %}
+    </div>
+
+    {% include "employees/includes/system_performance_stress.html" %}
+
+    <section class="sys-perf-panel" id="storage" aria-label="Largest database tables" data-sys-perf-tables-section {% if not performance_snapshot.tables %}hidden{% endif %}>
+      <header class="sys-perf-panel__head">
+        <div>
+          <p class="sys-perf-eyebrow">Storage breakdown</p>
+          <h3 class="sys-perf-panel__title">Largest database tables</h3>
+          <p class="sys-perf-panel__hint">Relative row volume across the busiest tables</p>
+        </div>
+        <span class="sys-perf-panel__badge">{{ performance_snapshot.tables|length }} shown</span>
+      </header>
+      <div class="sys-perf-table-list" data-sys-perf-tables>
+        {% for table in performance_snapshot.tables %}
+        <article class="sys-perf-table-row">
+          <div class="sys-perf-table-row__copy">
+            <strong class="sys-perf-table-row__name">{{ table.name }}</strong>
+            <span class="sys-perf-table-row__meta">
+              {{ table.rows|floatformat:0 }} rows
+              {% if table.size_mb %} · {{ table.size_mb }} MB{% endif %}
+            </span>
+            <span class="sys-perf-table-row__bar" aria-hidden="true"><span style="width: {{ table.bar_pct }}%"></span></span>
+          </div>
+          <span class="sys-perf-table-row__value">{{ table.bar_pct }}%</span>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <details class="sys-perf-panel sys-perf-details" id="environment" aria-label="Environment" data-sys-perf-details>
+      <summary class="sys-perf-details__summary">
+        <div>
+          <p class="sys-perf-eyebrow">Runtime</p>
+          <h3 class="sys-perf-panel__title">Environment</h3>
+          <p class="sys-perf-panel__hint">Deployment configuration and platform details</p>
+        </div>
+        <span class="sys-perf-panel__badge">Expand</span>
+      </summary>
+      <div class="sys-perf-env-grid">
+        <article class="sys-perf-env-item"><span>Database</span><strong data-sys-perf-app-db>{% if performance_snapshot %}{{ performance_snapshot.database.name }} @ {{ performance_snapshot.database.host }}{% if performance_snapshot.database.port %}:{{ performance_snapshot.database.port }}{% endif %}{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Cache backend</span><strong data-sys-perf-app-cache>{% if performance_snapshot %}{{ performance_snapshot.app.cache_backend }}{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Session engine</span><strong data-sys-perf-app-session>{% if performance_snapshot %}{{ performance_snapshot.app.session_engine }}{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Runtime</span><strong data-sys-perf-app-runtime>{% if performance_snapshot %}Django {{ performance_snapshot.app.django_version }} · Python {{ performance_snapshot.app.python_version }}{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Timezone</span><strong data-sys-perf-app-timezone>{% if performance_snapshot %}{{ performance_snapshot.app.timezone }}{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Debug mode</span><strong data-sys-perf-app-debug class="sys-perf-debug-pill{% if performance_snapshot.app.debug %} is-on{% endif %}">{% if performance_snapshot.app.debug %}On{% elif performance_snapshot %}Off{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Storage path</span><strong data-sys-perf-disk-path>{% if performance_snapshot %}{{ performance_snapshot.storage.media.path }}{% else %}—{% endif %}</strong></article>
+        <article class="sys-perf-env-item"><span>Platform</span><strong data-sys-perf-app-platform>{% if performance_snapshot %}{{ performance_snapshot.app.platform }}{% else %}—{% endif %}</strong></article>
+      </div>
+    </details>
+  </div>
 </div>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script src="{% static 'js/system_performance.js' %}?v=20261009sysperf4" defer></script>
 {% endblock %}
