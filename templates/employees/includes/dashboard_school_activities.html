@@ -1,26 +1,26 @@
 {% load static %}
-<section class="dash-activities" aria-label="School activities" data-dash-activities>
+<section class="dash-activities{% if not dashboard_activities %} is-empty{% endif %}" aria-label="School activities" data-dash-activities>
   <header class="dash-activities-head">
+    {% if dashboard_upcoming_activities %}
     <button
       type="button"
       class="dash-activities-head-toggle"
       data-open-upcoming-list
-      {% if not dashboard_upcoming_activities %}disabled{% endif %}
       aria-haspopup="dialog"
       aria-controls="dash-upcoming-list-modal"
     >
       <p class="dash-activities-kicker">School calendar</p>
       <h2>Upcoming school activities</h2>
-      <p class="subtle">
-        {% if dashboard_upcoming_activities %}
-        {{ dashboard_upcoming_activities|length }} upcoming · open to see the full list
-        {% else %}
-        No upcoming activities scheduled
-        {% endif %}
-      </p>
+      <p class="subtle">{{ dashboard_upcoming_activities|length }} upcoming · open to see the full list</p>
     </button>
-    {% if dashboard_upcoming_activities %}
     <span class="dash-activities-count">{{ dashboard_upcoming_activities|length }} upcoming</span>
+    {% else %}
+    <div class="dash-activities-head-copy">
+      <p class="dash-activities-kicker">School calendar</p>
+      <h2>Upcoming school activities</h2>
+      <p class="subtle">Keep the school calendar current so staff can see what’s next</p>
+    </div>
+    <a class="dash-activities-manage ghost-button" href="{% url 'employees:school_activities' %}">Manage activities</a>
     {% endif %}
   </header>
 
@@ -47,7 +47,25 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="dash-activities-empty">No school activities registered yet.</p>
+  <div class="dash-activities-empty">
+    <span class="dash-activities-empty-mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none">
+        <rect x="6" y="10" width="36" height="32" rx="6" stroke="currentColor" stroke-width="2.2"/>
+        <path d="M6 18h36" stroke="currentColor" stroke-width="2.2"/>
+        <path d="M16 6v8M32 6v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <circle cx="18" cy="28" r="2.2" fill="currentColor"/>
+        <circle cx="24" cy="28" r="2.2" fill="currentColor"/>
+        <circle cx="30" cy="28" r="2.2" fill="currentColor"/>
+        <circle cx="18" cy="34" r="2.2" fill="currentColor"/>
+        <circle cx="24" cy="34" r="2.2" fill="currentColor"/>
+      </svg>
+    </span>
+    <div class="dash-activities-empty-copy">
+      <strong>No school activities registered yet</strong>
+      <p>Add assemblies, exams windows, sports days, and other events so they appear here for every role.</p>
+    </div>
+    <a class="primary-button dash-activities-empty-cta" href="{% url 'employees:school_activities' %}">Add school activity</a>
+  </div>
   {% endif %}
 </section>
 
