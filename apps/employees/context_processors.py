@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.core.cache import cache
 
 from .models import Employee, SchoolProfile
@@ -16,6 +19,36 @@ from .workspace import (
 
 _SCHOOL_PROFILE_CACHE_KEY = "school_profile_branding_v2"
 _SCHOOL_PROFILE_CACHE_TTL = 60 * 60  # 1 hour
+_APP_CSS_VERSION_CACHE_KEY = "app_css_asset_version_v1"
+
+
+def _resolve_app_css_version():
+    """Cache-bust token from app.css mtime/size so deploys pick up new styles."""
+    candidates = [
+        Path(settings.BASE_DIR) / "static" / "css" / "app.css",
+        Path(settings.STATIC_ROOT) / "css" / "app.css",
+    ]
+    latest = None
+    for path in candidates:
+        try:
+            if not path.is_file():
+                continue
+            stat = path.stat()
+            token = f"{int(stat.st_mtime)}-{stat.st_size}"
+            if latest is None or stat.st_mtime > latest[0]:
+                latest = (stat.st_mtime, token)
+        except OSError:
+            continue
+    return latest[1] if latest else "1"
+
+
+def static_assets(request):
+    """Expose a changing app.css version for stylesheet cache busting."""
+    version = cache.get(_APP_CSS_VERSION_CACHE_KEY)
+    if not version:
+        version = _resolve_app_css_version()
+        cache.set(_APP_CSS_VERSION_CACHE_KEY, version, 30)
+    return {"app_css_version": version}
 
 
 def school_branding(request):

@@ -179,6 +179,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'apps.employees.context_processors.school_branding',
                 'apps.employees.context_processors.workspace',
+                'apps.employees.context_processors.static_assets',
             ],
         },
     },
