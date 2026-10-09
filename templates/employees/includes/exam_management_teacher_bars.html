@@ -1,4 +1,31 @@
 {% if teachers %}
+<style>
+  .exam-mgmt-teacher-bars{display:grid;gap:.65rem;margin:0 0 .85rem;padding:.85rem .95rem;border:1px solid #d0dceb;border-radius:.55rem;background:#fff;box-shadow:0 1px 2px #15233f08}
+  .exam-mgmt-teacher-bars__copy{margin:0 0 .15rem}
+  .exam-mgmt-teacher-bars__copy .src-section-label{margin:0;color:#10233f;font-size:.78rem;font-weight:750;letter-spacing:.01em;text-transform:uppercase}
+  .exam-mgmt-teacher-bars__list{display:grid;gap:.55rem;margin:0;padding:0;list-style:none;max-height:28rem;overflow:auto}
+  .exam-mgmt-teacher-bars__row{display:grid;grid-template-columns:minmax(9rem,13rem) minmax(0,1fr) 3.4rem;align-items:center;gap:.65rem .75rem;padding:.35rem .2rem;list-style:none}
+  .exam-mgmt-teacher-bars__row.is-you{padding:.45rem .5rem;border-radius:.45rem;background:#eff6ff}
+  .exam-mgmt-teacher-bars__label{min-width:0}
+  .exam-mgmt-teacher-bars__label strong{display:flex;align-items:center;gap:.4rem;font-size:.82rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .exam-mgmt-teacher-bars__swatch{width:.65rem;height:.65rem;border-radius:999px;flex-shrink:0}
+  .exam-mgmt-teacher-bars.is-assessment-bars .exam-mgmt-teacher-bars__list{max-height:none}
+  .exam-mgmt-teacher-bars.is-assessment-bars .exam-mgmt-teacher-bars__row{grid-template-columns:minmax(11rem,16rem) minmax(0,1fr) 3.4rem}
+  .exam-mgmt-teacher-bars__label span{display:block;margin-top:.12rem;color:#667085;font-size:.72rem}
+  .exam-mgmt-teacher-bars__track{height:.72rem;border-radius:999px;background:#eef2f7;overflow:hidden}
+  .exam-mgmt-teacher-bars__fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2e90fa,#1570ef)}
+  .exam-mgmt-teacher-bars__fill.is-complete{background:linear-gradient(90deg,#32d583,#039855)}
+  .exam-mgmt-teacher-bars__fill.is-mid{background:linear-gradient(90deg,#fdb022,#dc6803)}
+  .exam-mgmt-teacher-bars__fill.is-low{background:linear-gradient(90deg,#f97066,#d92d20)}
+  .exam-mgmt-teacher-bars__value{justify-self:end;font-size:.9rem;color:#10233f;white-space:nowrap}
+  .exam-mgmt-teacher-bars__value small{font-size:.72rem}
+  @media (max-width:720px){
+    .exam-mgmt-teacher-bars__row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label value" "track track";gap:.35rem .6rem}
+    .exam-mgmt-teacher-bars__label{grid-area:label}
+    .exam-mgmt-teacher-bars__value{grid-area:value}
+    .exam-mgmt-teacher-bars__track{grid-area:track}
+  }
+</style>
 <section class="exam-mgmt-teacher-bars{% if bars_class %} {{ bars_class }}{% endif %}" aria-label="{{ title|default:'Marking progress' }}">
   {% if title or subtitle %}
   <div class="exam-mgmt-teacher-bars__copy">
@@ -6,9 +33,9 @@
     {% if subtitle %}<p class="src-trend-subtitle">{{ subtitle }}</p>{% endif %}
   </div>
   {% endif %}
-  <ul class="exam-mgmt-teacher-bars__list">
+  <div class="exam-mgmt-teacher-bars__list" role="list">
     {% for teacher in teachers %}
-    <li class="exam-mgmt-teacher-bars__row{% if teacher.is_viewer %} is-you{% endif %}">
+    <div class="exam-mgmt-teacher-bars__row{% if teacher.is_viewer %} is-you{% endif %}" role="listitem">
       <div class="exam-mgmt-teacher-bars__label">
         <strong class="is-uppercase">
           {% if teacher.color %}
@@ -25,8 +52,8 @@
         ></span>
       </div>
       <strong class="exam-mgmt-teacher-bars__value">{{ teacher.percent }}<small>%</small></strong>
-    </li>
+    </div>
     {% endfor %}
-  </ul>
+  </div>
 </section>
 {% endif %}
