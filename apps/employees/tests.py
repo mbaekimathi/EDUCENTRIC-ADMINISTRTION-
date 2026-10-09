@@ -7687,8 +7687,11 @@ class TeacherExamRecordsTests(TestCase):
             "employees:teacher_exam_record_class",
             kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
         )
-        response = self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "25"})
-        self.assertRedirects(response, class_url)
+        response = self.client.post(
+            class_url, {f"mark_{student.id}_{self.subject.id}": "25"}, follow=True
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Student marks were saved.")
         mark = ExamMark.objects.get(student=student, learning_area=self.subject)
         self.assertEqual(mark.marks, 25)
         self.assertEqual(mark.out_of_marks, 50)
@@ -7696,13 +7699,74 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(saved, 'value="25"')
         self.assertContains(saved, "50%")
         self.assertContains(saved, "Mean")
-        self.assertContains(saved, "Student marks were saved.")
 
         invalid = self.client.post(class_url, {f"mark_{student.id}_{self.subject.id}": "80"})
         self.assertEqual(invalid.status_code, 200)
-        self.assertContains(invalid, "within each subject's total marks")
+        self.assertContains(invalid, "whole number out of 50")
         mark.refresh_from_db()
         self.assertEqual(mark.marks, 25)
+
+    def test_teacher_partial_mark_post_does_not_wipe_other_students(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        parent = ParentGuardian.objects.create(
+            full_name="PAT PARTIAL",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000556",
+            email="pat.partial@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ANN",
+            last_name="PARTIAL",
+            date_of_birth="2018-01-01",
+            gender=Student.Gender.FEMALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1001",
+            class_group="1E",
+            assessment_number="A1001",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        other = Student.objects.create(
+            first_name="BOB",
+            last_name="OTHER",
+            date_of_birth="2018-06-06",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1009",
+            class_group="1E",
+            assessment_number="A1009",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=self.subject,
+            out_of_marks=50,
+        )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        ExamMark.objects.create(
+            generation=self.exam,
+            student=other,
+            learning_area=self.subject,
+            marks=40,
+            out_of_marks=50,
+        )
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+        response = self.client.post(
+            class_url, {f"mark_{student.id}_{self.subject.id}": "25"}
+        )
+        self.assertRedirects(response, class_url)
+        self.assertEqual(
+            ExamMark.objects.get(student=other, learning_area=self.subject).marks,
+            40,
+        )
 
     def test_teacher_exam_class_shows_combined_subject_section(self):
         from apps.admissions.models import ParentGuardian, Student
@@ -7781,6 +7845,78 @@ class TeacherExamRecordsTests(TestCase):
         self.assertContains(page, "MATH + ART")
         self.assertContains(page, "CA-COMB")
         self.assertContains(page, ">70<")
+
+    def test_teacher_combined_column_shows_partial_when_one_paper_marked(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        eng_p2 = LearningArea.objects.create(name="English Paper 2", code="ENG P2")
+        eng_p2.academic_levels.add(self.level)
+        ClassSubjectAllocation.objects.create(
+            academic_class=self.academic_class,
+            learning_area=eng_p2,
+            teacher=self.teacher,
+        )
+        p1_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=self.subject,
+            out_of_marks=50,
+        )
+        p2_setting = ExamSubjectSetting.objects.create(
+            academic_level=self.level,
+            learning_area=eng_p2,
+            out_of_marks=50,
+        )
+        combined = CombinedExamSubject.objects.create(
+            academic_level=self.level,
+            name="ENG 1+2",
+            code="ENG",
+        )
+        CombinedExamSubjectComponent.objects.bulk_create(
+            [
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=p1_setting,
+                    position=1,
+                ),
+                CombinedExamSubjectComponent(
+                    combined_subject=combined,
+                    subject_setting=p2_setting,
+                    position=2,
+                ),
+            ]
+        )
+        parent = ParentGuardian.objects.create(
+            full_name="ALVIN PARENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000334",
+            email="alvin.partial@example.com",
+        )
+        student = Student.objects.create(
+            first_name="ALVIN",
+            last_name="PARTIAL",
+            date_of_birth="2012-01-01",
+            gender=Student.Gender.MALE,
+            academic_level=Student.AcademicLevel.GRADE_1,
+            admission_number="1132",
+            class_group="G1E",
+            assessment_number="A1132",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        self.exam.status = GeneratedExamTimetable.Status.MARKING
+        self.exam.save(update_fields=["status"])
+        class_url = reverse(
+            "employees:teacher_exam_record_class",
+            kwargs={"exam_id": self.exam.id, "class_id": self.academic_class.id},
+        )
+        save = self.client.post(
+            class_url, {f"mark_{student.id}_{self.subject.id}": "42"}
+        )
+        self.assertRedirects(save, class_url)
+        page = self.client.get(class_url)
+        self.assertContains(page, 'value="42"')
+        self.assertContains(page, "84%")
 
     def test_teacher_mark_sheet_shows_saved_peer_marks_in_combined_section(self):
         from apps.admissions.models import ParentGuardian, Student

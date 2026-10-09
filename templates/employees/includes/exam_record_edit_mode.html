@@ -10,6 +10,11 @@
     const cancelButton = sheetRoot.querySelector("[data-exam-cancel]");
     const saveButton = sheetRoot.querySelector("[data-exam-save]");
     const inputs = form.querySelectorAll(".exam-mark-input");
+    let baselineValues = new Map();
+    let isDirty = false;
+    let isSaving = false;
+    const UNSAVED_MESSAGE =
+      "You have unsaved mark changes. Save them first or they will be lost.";
 
     function syncOutOfAttributes(preferSaved) {
       inputs.forEach(function (input) {
@@ -35,6 +40,67 @@
       );
     }
 
+    function editableMarkInputs() {
+      return Array.from(inputs).filter(function (input) {
+        return input.name && !isPeerReadonly(input);
+      });
+    }
+
+    function captureBaseline() {
+      baselineValues = new Map();
+      editableMarkInputs().forEach(function (input) {
+        baselineValues.set(input.name, String(input.value || "").trim());
+      });
+      setDirty(false);
+    }
+
+    function computeDirty() {
+      return editableMarkInputs().some(function (input) {
+        const current = String(input.value || "").trim();
+        const baseline = baselineValues.has(input.name)
+          ? baselineValues.get(input.name)
+          : String(input.defaultValue || "").trim();
+        return current !== baseline;
+      });
+    }
+
+    function setDirty(next) {
+      isDirty = Boolean(next);
+      form.classList.toggle("is-dirty", isDirty);
+      if (saveButton) {
+        saveButton.classList.toggle("is-unsaved", isDirty);
+        if (isDirty) {
+          saveButton.setAttribute("title", "Save your mark changes");
+        } else {
+          saveButton.removeAttribute("title");
+        }
+      }
+    }
+
+    function refreshDirty() {
+      if (!form.classList.contains("is-editing") || isSaving) {
+        setDirty(false);
+        return;
+      }
+      setDirty(computeDirty());
+    }
+
+    function confirmLeaveIfDirty() {
+      if (!isDirty || isSaving) return true;
+      return window.confirm(UNSAVED_MESSAGE + "\n\nLeave without saving?");
+    }
+
+    function prepareEditableFieldsForSave() {
+      // Guarantee every editable cell is posted with its current value.
+      editableMarkInputs().forEach(function (input) {
+        input.disabled = false;
+        input.readOnly = false;
+        if (!input.hasAttribute("name") && input.id) {
+          input.setAttribute("name", input.id);
+        }
+      });
+    }
+
     function setEditing(editing) {
       form.classList.toggle("is-editing", editing);
       inputs.forEach(function (input) {
@@ -44,6 +110,10 @@
       if (editButton) editButton.hidden = editing;
       if (cancelButton) cancelButton.hidden = !editing;
       if (saveButton) saveButton.hidden = !editing;
+      if (!editing) {
+        setDirty(false);
+        baselineValues = new Map();
+      }
       syncStickyOffset();
     }
 
@@ -550,13 +620,42 @@
     editButton?.addEventListener("click", function () {
       syncOutOfAttributes(false);
       setEditing(true);
-      focusMark(form.querySelector(".exam-mark-input"));
+      captureBaseline();
+      focusMark(form.querySelector(".exam-mark-input:not(.is-readonly-peer)"));
     });
 
     cancelButton?.addEventListener("click", function () {
+      if (isDirty && !window.confirm("Discard unsaved mark changes?")) {
+        return;
+      }
       form.reset();
       syncOutOfAttributes(true);
       setEditing(false);
+    });
+
+    saveButton?.addEventListener("click", function (event) {
+      if (!form.classList.contains("is-editing")) {
+        event.preventDefault();
+        return;
+      }
+      // Ensure the shared form attribute path always posts every editable cell.
+      prepareEditableFieldsForSave();
+    });
+
+    form.addEventListener("input", function (event) {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.classList.contains("exam-mark-input")) {
+        return;
+      }
+      refreshDirty();
+    });
+
+    form.addEventListener("change", function (event) {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.classList.contains("exam-mark-input")) {
+        return;
+      }
+      refreshDirty();
     });
 
     form.addEventListener("submit", function (event) {
@@ -571,9 +670,34 @@
         );
         if (!confirmed) {
           event.preventDefault();
+          return;
         }
       }
+      prepareEditableFieldsForSave();
+      isSaving = true;
+      setDirty(false);
     });
+
+    window.addEventListener("beforeunload", function (event) {
+      if (!isDirty || isSaving) return;
+      event.preventDefault();
+      event.returnValue = UNSAVED_MESSAGE;
+      return UNSAVED_MESSAGE;
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!isDirty || isSaving) return;
+      const anchor = event.target.closest("a[href]");
+      if (!anchor) return;
+      if (anchor.hasAttribute("download")) return;
+      if (anchor.getAttribute("target") === "_blank") return;
+      const href = anchor.getAttribute("href") || "";
+      if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+      if (!confirmLeaveIfDirty()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
 
     function markGrid() {
       const listRows = form.querySelectorAll("[data-student-row]");

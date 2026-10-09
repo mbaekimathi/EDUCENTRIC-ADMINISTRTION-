@@ -205,7 +205,7 @@ class BulkUpsertTests(TestCase):
             [self.student],
             [self.subject],
             {self.subject.id: 100},
-            {},
+            {f"mark_{self.student.id}_{self.subject.id}": ""},
         )
         self.assertFalse(
             ExamMark.objects.filter(
@@ -213,6 +213,47 @@ class BulkUpsertTests(TestCase):
                 student=self.student,
                 learning_area=self.subject,
             ).exists()
+        )
+
+    def test_save_exam_record_marks_partial_post_preserves_unmentioned_cells(self):
+        from apps.admissions.models import ParentGuardian, Student
+
+        parent = ParentGuardian.objects.create(
+            full_name="OTHER STUDENT",
+            relationship_to_student="MOTHER",
+            phone_number="+254700000777",
+            email="other.student@example.com",
+        )
+        other = Student.objects.create(
+            first_name="BOB",
+            last_name="OTHER",
+            date_of_birth="2018-05-05",
+            gender=Student.Gender.MALE,
+            academic_level=self.student.academic_level,
+            admission_number="1999",
+            class_group="1E",
+            assessment_number="A1999",
+            sponsorship_category=Student.SponsorshipCategory.SELF,
+            parent_guardian=parent,
+            is_active=True,
+        )
+        ExamMark.objects.create(
+            generation=self.generation,
+            student=other,
+            learning_area=self.subject,
+            marks=33,
+            out_of_marks=100,
+        )
+        _save_exam_record_marks(
+            self.generation,
+            [self.student, other],
+            [self.subject],
+            {self.subject.id: 100},
+            {f"mark_{self.student.id}_{self.subject.id}": "65"},
+        )
+        self.assertEqual(
+            ExamMark.objects.get(student=other, learning_area=self.subject).marks,
+            33,
         )
 
     def test_exam_record_marks_lookup_multi_batches_generations(self):

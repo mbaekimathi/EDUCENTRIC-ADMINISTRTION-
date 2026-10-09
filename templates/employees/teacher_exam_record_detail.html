@@ -159,12 +159,12 @@
                     autocomplete="off"
                     placeholder="—"
                     data-exam-mark
-                    {% if section.kind == "combined" and cell.editable %}data-combined-component{% endif %}
+                    {% if section.kind == "combined" %}data-combined-component{% endif %}
                     data-out-of="{{ cell.out_of }}"
                     data-current-out-of="{{ cell.current_out_of }}"
                     {% if cell.saved_out_of %}data-saved-out-of="{{ cell.saved_out_of }}"{% endif %}
                     data-subject-id="{{ cell.subject.id }}"
-                    readonly
+                    {% if not marks_editable or not cell.editable %}readonly{% endif %}
                     {% if not cell.editable %}tabindex="-1" aria-readonly="true" title="Marked by another teacher"{% endif %}
                   >
                   <span class="marks-out-suffix" aria-hidden="true">/ {{ cell.out_of }}</span>
@@ -406,23 +406,18 @@
     if (!combinedTarget) return;
     let totalRaw = 0;
     let totalOut = 0;
-    let complete = true;
+    let hasAny = false;
     row.querySelectorAll("[data-combined-component]").forEach((input) => {
       const raw = input.value.trim();
       const outOf = Number(input.getAttribute("data-out-of") || "0");
-      if (raw === "" || !outOf) {
-        complete = false;
-        return;
-      }
+      if (raw === "" || !outOf) return;
       const marks = Number(raw);
-      if (!Number.isFinite(marks)) {
-        complete = false;
-        return;
-      }
+      if (!Number.isFinite(marks)) return;
+      hasAny = true;
       totalRaw += marks;
       totalOut += outOf;
     });
-    combinedTarget.textContent = complete && totalOut ? `${Math.round((totalRaw * 100) / totalOut)}%` : "";
+    combinedTarget.textContent = hasAny && totalOut ? `${Math.round((totalRaw * 100) / totalOut)}%` : "";
   }
 
   function updateMeans() {

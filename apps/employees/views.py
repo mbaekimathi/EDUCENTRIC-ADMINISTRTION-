@@ -1269,6 +1269,8 @@ def _attach_teacher_exam_mark_sections(students, sections, marks_lookup, out_of_
                             student.id,
                             section["component_ids"],
                             out_of_by_subject,
+                            allow_legacy_single=True,
+                            allow_partial_components=True,
                         )
                         row_cells.append(
                             {
@@ -3796,7 +3798,7 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                 )
             else:
                 try:
-                    _save_exam_record_marks(
+                    save_result = _save_exam_record_marks(
                         generation,
                         students,
                         editable_subjects,
@@ -3833,7 +3835,15 @@ def teacher_exam_record_detail(request, exam_id, class_id=None):
                         students, mark_sections, marks_lookup, out_of_by_subject
                     )
                 else:
-                    success(request, "Student marks were saved.")
+                    saved_count = (save_result or {}).get("saved", 0)
+                    if saved_count:
+                        success(
+                            request,
+                            f"Student marks were saved. "
+                            f"({saved_count} score{'' if saved_count == 1 else 's'} stored)",
+                        )
+                    else:
+                        success(request, "Student marks were saved.")
                     return redirect(_with_student_sort(class_url, sort_mode))
             if not validation_failed:
                 marks_lookup = _exam_record_mark_lookup(
@@ -12075,15 +12085,17 @@ def _combined_exam_score(
     out_of_by_subject,
     *,
     allow_legacy_single=False,
+    allow_partial_components=False,
 ):
     """
     Score a combined subject from component marks.
 
     When every component is present, sum raw marks / sum out-of (current combine).
+    When ``allow_partial_components`` is on (mark sheets), combine whatever papers
+    are entered so far — e.g. English P1 only still shows a combined % for marking.
     When only one component is present and ``allow_legacy_single`` is on, treat it as
     a pre-combination sitting if its snapshotted out-of covers a full subject
     (larger than the current paper setting, or at least the full combined total).
-    Incomplete modern multi-paper entry still returns blank until all papers are in.
     """
     present = []
     for component_id in component_ids:
@@ -12102,6 +12114,10 @@ def _combined_exam_score(
         return None, None, None
 
     if len(present) < len(component_ids):
+        if allow_partial_components:
+            total_raw = sum(raw for _, raw, _ in present)
+            total_out_of = sum(out_of for _, _, out_of in present)
+            return _marks_as_percent(total_raw, total_out_of), total_raw, total_out_of
         if not allow_legacy_single or len(present) != 1:
             return None, None, None
         component_id, raw, out_of = present[0]
@@ -12124,6 +12140,7 @@ def _combined_exam_percent(
     out_of_by_subject,
     *,
     allow_legacy_single=False,
+    allow_partial_components=False,
 ):
     percent, _raw, _out = _combined_exam_score(
         marks_lookup,
@@ -12131,6 +12148,7 @@ def _combined_exam_percent(
         component_ids,
         out_of_by_subject,
         allow_legacy_single=allow_legacy_single,
+        allow_partial_components=allow_partial_components,
     )
     return percent
 
@@ -12146,6 +12164,7 @@ def _attach_exam_record_display_cells(students, display_columns, marks_lookup, o
                     column["component_ids"],
                     out_of_by_subject,
                     allow_legacy_single=True,
+                    allow_partial_components=True,
                 )
                 student.mark_cells.append(
                     {
@@ -12519,7 +12538,7 @@ def _save_exam_record_marks(
             f"limit {_MARK_SAVE_MAX_CELLS}). Save one class or fewer subjects."
         )
     if not student_ids or not subject_ids:
-        return
+        return {"saved": 0, "cleared": 0}
 
     lock_key = (
         f"{_MARK_SAVE_LOCK_PREFIX}{generation.id}:"
@@ -12535,7 +12554,11 @@ def _save_exam_record_marks(
         to_delete = []
         for student in students:
             for subject in subjects:
-                raw = (post_data.get(f"mark_{student.id}_{subject.id}") or "").strip()
+                field_name = f"mark_{student.id}_{subject.id}"
+                # Only change cells the client posted. Missing keys must not wipe saved marks.
+                if field_name not in post_data:
+                    continue
+                raw = (post_data.get(field_name) or "").strip()
                 if raw == "":
                     to_delete.append((student.id, subject.id))
                     continue
@@ -12591,6 +12614,7 @@ def _save_exam_record_marks(
                 key_fields=("student_id", "learning_area_id"),
                 update_fields=("marks", "out_of_marks"),
             )
+        return {"saved": len(to_upsert), "cleared": len(to_delete)}
     finally:
         cache.delete(lock_key)
 
@@ -12621,7 +12645,10 @@ def _save_elearning_assessment_marks(assessment, students, subjects, out_of_by_s
         to_delete = []
         for student in students:
             for subject in subjects:
-                raw = (post_data.get(f"mark_{student.id}_{subject.id}") or "").strip()
+                field_name = f"mark_{student.id}_{subject.id}"
+                if field_name not in post_data:
+                    continue
+                raw = (post_data.get(field_name) or "").strip()
                 if raw == "":
                     to_delete.append((student.id, subject.id))
                     continue

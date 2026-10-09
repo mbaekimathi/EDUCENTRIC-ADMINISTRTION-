@@ -22184,6 +22184,11 @@ table.src-table-matrix thead th.exam-matrix-sticky-total {
   align-items: center;
 }
 
+.marks-card-cta .primary-button.is-unsaved,
+[data-exam-save].is-unsaved {
+  box-shadow: 0 0 0 2px rgba(47, 111, 237, 0.28);
+}
+
 .marks-card-actions .student-sort-toggle,
 .marks-card-actions .exam-class-filter {
   min-width: 9.5rem;
@@ -22434,6 +22439,9 @@ table.src-table-matrix thead th.exam-matrix-sticky-total {
   border-color: transparent;
   background: #eef3fb;
   box-shadow: none;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  opacity: 1;
 }
 
 .marks-card-form.is-editing .exam-mark-input,
