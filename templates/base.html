@@ -20,9 +20,8 @@
   </noscript>
   <link rel="preload" href="{% static 'css/app.css' %}?v={{ app_css_version|default:'20261009marking2' }}" as="style">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ app_css_version|default:'20261009marking2' }}">
-  {% if school_profile and school_profile.has_logo_file %}
-  <link rel="preload" as="image" href="{{ school_profile.school_logo.url }}" fetchpriority="high">
-  {% endif %}
+  {% block logo_preload %}{% endblock %}
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f4fd6'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='16' font-family='Arial,sans-serif' font-weight='700' fill='white'%3EE%3C/text%3E%3C/svg%3E">
   {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}"{% if school_profile %} style="--school-accent: {{ school_profile.brand_accent }}; --blue: {{ school_profile.brand_accent }};"{% endif %}{% block body_attrs %}{% endblock %}>

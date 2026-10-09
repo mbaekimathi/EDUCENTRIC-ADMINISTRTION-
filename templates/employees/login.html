@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Employee sign in | Edu-Centric{% endblock %}
 {% block body_class %}auth-body auth-body-login{% endblock %}
+{% block logo_preload %}
+{% if school_profile and school_profile.has_logo_file %}
+<link rel="preload" as="image" href="{{ school_profile.school_logo.url }}" fetchpriority="high">
+{% endif %}
+{% endblock %}
 {% block content %}
 <main class="auth-shell auth-shell-login">
   {% include "partials/brand_panel.html" with eyebrow="Staff workspace" trust="Live secure session" %}
