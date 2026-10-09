@@ -24,17 +24,6 @@
   {% include "employees/includes/exam_management_teacher_bars.html" with teachers=exam_dashboard.marking_trend.bars title=exam_dashboard.marking_trend.bars_title subtitle=exam_dashboard.marking_trend.bars_subtitle bars_class="is-assessment-bars" %}
   {% endif %}
 
-  {% if exam_dashboard.marking_trend and exam_dashboard.marking_trend.chart %}
-  <details class="exam-mgmt-teacher-details" open>
-    <summary class="exam-mgmt-teacher-details__summary">
-      <span>Completion over time</span>
-    </summary>
-    <div class="exam-mgmt-teacher-details__body">
-      {% include "employees/includes/marking_trend_chart.html" with chart=exam_dashboard.marking_trend.chart %}
-    </div>
-  </details>
-  {% endif %}
-
   {% if exam_dashboard.marking_exam_progress %}
     {% for exam_progress in exam_dashboard.marking_exam_progress %}
     <section class="exam-mgmt-marking-exam" aria-label="{{ exam_progress.exam_title }} marking progress">
