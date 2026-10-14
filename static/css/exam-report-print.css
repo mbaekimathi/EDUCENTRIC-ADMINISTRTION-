@@ -14,12 +14,12 @@ html,
 body {
   margin: 0;
   padding: 0;
+  width: auto;
   height: auto;
   overflow: visible;
   background: #fff;
   color: #10233f;
-  width: 200mm;
-  font: 700 13pt/1.25 "DM Sans", "Segoe UI", sans-serif;
+  font: 700 10pt/1.25 "DM Sans", "Segoe UI", sans-serif;
 }
 
 .no-print,
@@ -37,7 +37,6 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 280mm;
   margin: 0;
   padding: 0;
   border: 0;
@@ -260,7 +259,6 @@ body {
 .src-table,
 table.src-table-matrix {
   width: 100%;
-  height: 100%;
   min-width: 0;
   max-width: 100%;
   table-layout: fixed;
@@ -596,7 +594,6 @@ html[data-export-mode="raw"] .export-grade-col {
 /* Subject analytics tables inside the same print document */
 .exam-analytics-table {
   width: 100%;
-  height: 100%;
   table-layout: fixed;
   margin: 0;
 }
