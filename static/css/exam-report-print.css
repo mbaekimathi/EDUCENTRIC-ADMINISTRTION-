@@ -1,7 +1,7 @@
 /* Isolated stylesheet for exam mark sheets / analytics iframe print (no sticky rules). */
 @page {
   size: A4 portrait;
-  margin: 6mm;
+  margin: 4mm;
 }
 
 *,
@@ -18,7 +18,7 @@ body {
   overflow: visible;
   background: #fff;
   color: #10233f;
-  font: 700 10pt/1.3 "DM Sans", "Segoe UI", sans-serif;
+  font: 700 12pt/1.3 "DM Sans", "Segoe UI", sans-serif;
 }
 
 .no-print,
@@ -31,10 +31,13 @@ body {
   width: 100%;
 }
 
-.exam-matrix-list {
-  display: block;
+.exam-matrix-list,
+.exam-matrix-sheet {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  margin: 0 0 5mm;
+  min-height: 280mm;
+  margin: 0;
   padding: 0;
   border: 0;
   background: #fff;
@@ -49,6 +52,11 @@ body {
 }
 
 .src-sheet {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -57,8 +65,9 @@ body {
 }
 
 .src-dual-head {
-  margin: 0 0 2mm;
-  padding: 0 0 1.4mm;
+  flex: 0 0 auto;
+  margin: 0 0 1.2mm;
+  padding: 0 0 0.8mm;
   border-bottom: 1.1pt solid #1b4fd6;
 }
 
@@ -68,15 +77,15 @@ body {
 
 .src-dual-school {
   display: grid;
-  grid-template-columns: 14mm minmax(0, 1fr);
-  gap: 2mm;
+  grid-template-columns: 11mm minmax(0, 1fr);
+  gap: 1.4mm;
   align-items: start;
 }
 
 .src-dual-head.exam-matrix-letterhead .src-dual-school.exam-matrix-list-brand {
   display: grid;
-  grid-template-columns: 14mm minmax(0, 1fr) 14mm;
-  gap: 2mm;
+  grid-template-columns: 11mm minmax(0, 1fr) 11mm;
+  gap: 1.4mm;
   align-items: center;
 }
 
@@ -100,8 +109,8 @@ body {
 
 .src-dual-logo,
 .src-dual-logo-mark {
-  width: 14mm;
-  height: 14mm;
+  width: 11mm;
+  height: 11mm;
   object-fit: contain;
 }
 
@@ -124,8 +133,8 @@ body {
 }
 
 .src-dual-copy h1 {
-  margin: 0.3mm 0 0;
-  font: 800 10pt/1.15 "Plus Jakarta Sans", "DM Sans", sans-serif;
+  margin: 0.2mm 0 0;
+  font: 800 9pt/1.1 "Plus Jakarta Sans", "DM Sans", sans-serif;
 }
 
 .src-dual-motto,
@@ -138,44 +147,52 @@ body {
 }
 
 .src-section-label {
-  margin: 0 0 1mm;
-  color: #73849e;
-  font-size: 6pt;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: none;
+}
+
+.src-results {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
 }
 
 .src-table-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   width: 100%;
+  min-height: 0;
   overflow: visible;
   border: 0.4pt solid #d0dceb;
-  border-radius: 1mm;
+  border-radius: 0;
   background: #fff;
 }
 
 .exam-matrix-list-head {
-  margin: 0 0 2mm;
-  padding: 0 0 1.4mm;
+  flex: 0 0 auto;
+  margin: 0 0 1.2mm;
+  padding: 0 0 0.8mm;
   border-bottom: 1.1pt solid #1b4fd6;
 }
 
 .exam-matrix-list-brand {
   display: grid;
-  grid-template-columns: 14mm minmax(0, 1fr) 14mm;
-  gap: 2mm;
+  grid-template-columns: 11mm minmax(0, 1fr) 11mm;
+  gap: 1.4mm;
   align-items: center;
 }
 
 .exam-matrix-list-logo-wrap,
 .exam-matrix-list-brand-spacer {
-  width: 14mm;
+  width: 11mm;
 }
 
 .exam-matrix-list-logo,
 .exam-matrix-list-logo-mark {
-  width: 14mm;
-  height: 14mm;
+  width: 11mm;
+  height: 11mm;
   object-fit: contain;
   background: #fff;
 }
@@ -205,8 +222,8 @@ body {
 }
 
 .exam-matrix-list-head h2 {
-  margin: 0.3mm 0 0;
-  font: 800 10pt/1.15 "Plus Jakarta Sans", "DM Sans", sans-serif;
+  margin: 0.2mm 0 0;
+  font: 800 9pt/1.1 "Plus Jakarta Sans", "DM Sans", sans-serif;
   text-align: center;
 }
 
@@ -231,19 +248,24 @@ body {
 }
 
 .exam-matrix-list-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   overflow: visible;
   width: 100%;
+  min-height: 0;
 }
 
 .src-table,
 table.src-table-matrix {
   width: 100%;
+  height: 100%;
   min-width: 0;
   max-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   border-spacing: 0;
-  font-size: 8.5pt;
+  font-size: 11pt;
   font-weight: 700;
 }
 
@@ -274,12 +296,12 @@ table.src-table-matrix td {
   transform: none;
   min-width: 0;
   max-width: none;
-  padding: 0.75mm 0.45mm;
+  padding: 0.7mm 0.35mm;
   border: 0.55pt solid #64748b;
   text-align: center;
   vertical-align: middle;
-  font-size: 8.5pt;
-  line-height: 1.15;
+  font-size: 11pt;
+  line-height: 1.25;
   overflow: hidden;
   word-wrap: normal;
   word-break: normal;
@@ -293,11 +315,11 @@ table.src-table-matrix td {
 }
 
 .exam-matrix-print-col-learner {
-  width: 26%;
+  width: 24%;
 }
 
 table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
-  width: 24%;
+  width: 20%;
 }
 
 .exam-matrix-print-col-class {
@@ -305,7 +327,7 @@ table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
 }
 
 .exam-matrix-print-col-summary {
-  width: 4.5%;
+  width: 4%;
 }
 
 table.src-table-matrix th.exam-matrix-sticky-total,
@@ -318,19 +340,19 @@ table.src-table-matrix td.exam-matrix-sticky-grade,
 .exam-matrix-list-table td.exam-matrix-summary-col,
 .exam-matrix-list-table th.exam-matrix-grade-col,
 .exam-matrix-list-table td.exam-matrix-grade-col {
-  padding-left: 0.9mm;
-  padding-right: 0.9mm;
+  padding-left: 0.3mm;
+  padding-right: 0.3mm;
   overflow: visible;
   white-space: nowrap;
 }
 
 /* Remaining width split evenly so every subject column prints on one portrait page. */
 table.src-table-matrix:not(.has-class-col) {
-  --exam-matrix-fixed-pct: 43%;
+  --exam-matrix-fixed-pct: 39%;
 }
 
 table.src-table-matrix.has-class-col {
-  --exam-matrix-fixed-pct: 45%;
+  --exam-matrix-fixed-pct: 39%;
 }
 
 .exam-matrix-print-col-subject {
@@ -350,13 +372,14 @@ table.src-table-matrix th.exam-matrix-learner,
 table.src-table-matrix td.exam-matrix-learner,
 .exam-matrix-list-table th.exam-matrix-learner,
 .exam-matrix-list-table td.exam-matrix-learner {
-  white-space: normal !important;
-  overflow: visible !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
   text-overflow: clip;
-  word-wrap: break-word !important;
-  word-break: normal !important;
+  word-wrap: normal !important;
+  word-break: keep-all !important;
   hyphens: manual;
-  line-height: 1.2;
+  font-size: 8pt;
+  line-height: 1.15;
   text-align: left;
 }
 
@@ -393,9 +416,10 @@ table.src-table-matrix td.exam-matrix-class.is-tone-b,
 table.src-table-matrix thead th {
   background: #e8eef8;
   color: #1e293b;
-  font-size: 7.5pt;
+  font-size: 8.5pt;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  white-space: nowrap;
   text-transform: uppercase;
   border-bottom: 1pt solid #1e293b;
 }
@@ -473,14 +497,14 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 
 .src-mark strong {
   color: #10233f;
-  font-size: 8.5pt;
+  font-size: 11pt;
   font-weight: 800;
 }
 
 .src-mark em {
   margin-left: 0.45em;
   color: #1b4fd6;
-  font-size: 6pt;
+  font-size: 8pt;
   font-style: normal;
   font-weight: 800;
 }
@@ -489,15 +513,21 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
   color: #94a3b8;
 }
 
+table.src-table-matrix td:has(.exam-matrix-mark-stack) {
+  overflow: visible;
+  padding-left: 0.45mm;
+  padding-right: 0.45mm;
+}
+
 .exam-matrix-mark-stack {
   display: inline-flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.9mm;
+  gap: 1.1mm;
   line-height: 1.1;
-  max-width: 100%;
+  max-width: none;
   white-space: nowrap;
 }
 
@@ -511,14 +541,14 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 
 .exam-matrix-mark-stack .exam-matrix-mark-score {
   color: #10233f;
-  font-size: 8.5pt;
+  font-size: 10.5pt;
   font-weight: 800;
 }
 
 .exam-matrix-mark-stack .exam-matrix-mark-grade {
   margin: 0;
   color: #1b4fd6;
-  font-size: 6pt;
+  font-size: 8.5pt;
   font-style: normal;
   font-weight: 800;
 }
@@ -532,14 +562,14 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 
 .exam-matrix-mark strong {
   color: #10233f;
-  font-size: 8.5pt;
+  font-size: 11pt;
   font-weight: 800;
 }
 
 .exam-matrix-mark em {
   margin-left: 0.45em;
   color: #1b4fd6;
-  font-size: 6pt;
+  font-size: 8pt;
   font-style: normal;
   font-weight: 800;
 }
@@ -550,7 +580,7 @@ table.src-table-matrix tbody tr.exam-matrix-mean-row td,
 
 .exam-matrix-absent {
   color: #9a3412;
-  font-size: 7pt;
+  font-size: 9pt;
   font-weight: 800;
 }
 
@@ -562,8 +592,9 @@ html[data-export-mode="raw"] .export-grade-col {
 /* Subject analytics tables inside the same print document */
 .exam-analytics-table {
   width: 100%;
+  height: 100%;
   table-layout: fixed;
-  margin: 0 0 3mm;
+  margin: 0;
 }
 
 .exam-analytics-sheet-title {
@@ -588,14 +619,14 @@ html[data-export-mode="raw"] .export-grade-col {
 
 .exam-analytics-pair strong {
   color: #10233f;
-  font-size: 8.5pt;
+  font-size: 11pt;
   font-weight: 800;
 }
 
 .exam-analytics-pair em {
   margin: 0;
   color: #1b4fd6;
-  font-size: 6.2pt;
+  font-size: 8pt;
   font-style: normal;
   font-weight: 800;
 }
