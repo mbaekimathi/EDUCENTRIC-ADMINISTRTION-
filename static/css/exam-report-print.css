@@ -1,7 +1,7 @@
 /* Isolated stylesheet for exam mark sheets / analytics iframe print (no sticky rules). */
 @page {
   size: A4 portrait;
-  margin: 5mm;
+  margin: 6mm;
 }
 
 *,
@@ -14,9 +14,10 @@ html,
 body {
   margin: 0;
   padding: 0;
-  width: auto;
+  width: 198mm;
+  max-width: 198mm;
   height: auto;
-  overflow: visible;
+  overflow: hidden;
   background: #fff;
   color: #10233f;
   font: 700 10pt/1.25 "DM Sans", "Segoe UI", sans-serif;
@@ -310,11 +311,11 @@ table.src-table-matrix td {
 }
 
 .exam-matrix-print-col-pos {
-  width: 3.2%;
+  width: 3.5%;
 }
 
 .exam-matrix-print-col-learner {
-  width: 26%;
+  width: 24%;
 }
 
 table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
@@ -322,11 +323,23 @@ table.src-table-matrix.has-class-col .exam-matrix-print-col-learner {
 }
 
 .exam-matrix-print-col-class {
-  width: 4.5%;
+  width: 5%;
 }
 
 .exam-matrix-print-col-summary {
   width: 5%;
+}
+
+col.exam-matrix-print-col-summary:nth-last-child(3) {
+  width: 5.5%;
+}
+
+col.exam-matrix-print-col-summary:nth-last-child(2) {
+  width: 4.5%;
+}
+
+col.exam-matrix-print-col-summary:nth-last-child(1) {
+  width: 6.5%;
 }
 
 table.src-table-matrix th.exam-matrix-sticky-total,
@@ -339,10 +352,10 @@ table.src-table-matrix td.exam-matrix-sticky-grade,
 .exam-matrix-list-table td.exam-matrix-summary-col,
 .exam-matrix-list-table th.exam-matrix-grade-col,
 .exam-matrix-list-table td.exam-matrix-grade-col {
-  padding-left: 0.25mm;
-  padding-right: 0.25mm;
+  padding-left: 0.3mm;
+  padding-right: 0.3mm;
   overflow: hidden;
-  font-size: 10.5pt;
+  font-size: 8pt;
   white-space: nowrap;
 }
 
@@ -352,7 +365,7 @@ table.src-table-matrix:not(.has-class-col) {
 }
 
 table.src-table-matrix.has-class-col {
-  --exam-matrix-fixed-pct: 45%;
+  --exam-matrix-fixed-pct: 47%;
 }
 
 .exam-matrix-print-col-subject {
@@ -378,7 +391,7 @@ table.src-table-matrix td.exam-matrix-learner,
   word-wrap: normal !important;
   word-break: keep-all !important;
   hyphens: manual;
-  font-size: 9pt;
+  font-size: 8pt;
   line-height: 1.15;
   text-align: left;
 }
@@ -416,11 +429,11 @@ table.src-table-matrix td.exam-matrix-class.is-tone-b,
 table.src-table-matrix thead th {
   background: #e8eef8;
   color: #1e293b;
-  font-size: 7.5pt;
+  font-size: 6.5pt;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.05;
-  white-space: normal;
+  white-space: nowrap;
   overflow: hidden;
   text-transform: uppercase;
   border-bottom: 1pt solid #1e293b;
@@ -543,14 +556,14 @@ table.src-table-matrix td:has(.exam-matrix-mark-stack) {
 
 .exam-matrix-mark-stack .exam-matrix-mark-score {
   color: #10233f;
-  font-size: 9.5pt;
+  font-size: 8.5pt;
   font-weight: 800;
 }
 
 .exam-matrix-mark-stack .exam-matrix-mark-grade {
   margin: 0;
   color: #1b4fd6;
-  font-size: 7.5pt;
+  font-size: 7pt;
   font-style: normal;
   font-weight: 800;
 }

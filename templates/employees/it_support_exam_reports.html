@@ -1501,7 +1501,7 @@
   if (!printButtons.length && !exportPrintButtons.length) return;
 
   const printStylesheetUrl = new URL(
-    "{% static 'css/exam-report-print.css' %}?v=20261014i",
+    "{% static 'css/exam-report-print.css' %}?v=20261016b",
     window.location.href
   ).href;
   const printFontStylesheet =
@@ -1552,14 +1552,16 @@
 
     const doc = frame.contentDocument || frame.contentWindow.document;
     const layoutLock =
-      "@page{size:A4 portrait;margin:5mm;}" +
-      "html,body{width:auto;height:auto;margin:0;}" +
-      "table.src-table-matrix{width:100%;height:auto;table-layout:fixed;}" +
-      ".exam-matrix-mark-stack{display:inline-block !important;white-space:nowrap !important;text-align:center !important;}" +
+      "@page{size:A4 portrait;margin:6mm;}" +
+      "html,body{width:198mm;max-width:198mm;height:auto;margin:0;overflow:hidden;}" +
+      "table.src-table-matrix{width:198mm;max-width:198mm;height:auto;table-layout:fixed;}" +
+      "th,td{overflow:hidden !important;}" +
+      ".exam-matrix-learner{white-space:nowrap !important;overflow:hidden !important;font-size:8pt !important;}" +
+      "thead th{white-space:nowrap !important;overflow:hidden !important;font-size:6.5pt !important;}" +
+      ".exam-matrix-mark-stack{display:inline-block !important;max-width:100% !important;white-space:nowrap !important;text-align:center !important;}" +
       ".exam-matrix-mark-score,.exam-matrix-mark-grade{display:inline !important;white-space:nowrap !important;}" +
-      ".exam-matrix-mark-grade{margin-left:0.3em !important;color:#1b4fd6 !important;font-size:7.5pt !important;font-style:normal !important;}" +
-      ".exam-matrix-mark-score{font-size:9.5pt !important;}" +
-      "th,td{overflow:hidden !important;}";
+      ".exam-matrix-mark-grade{margin-left:0.25em !important;color:#1b4fd6 !important;font-size:7pt !important;font-style:normal !important;}" +
+      ".exam-matrix-mark-score{font-size:8.5pt !important;}";
     const safeCss = ((cssText || "") + layoutLock).replace(/<\/style/gi, "<\\/style");
     doc.open();
     doc.write(`<!DOCTYPE html><html lang="en" data-export-mode="${mode}"><head><meta charset="utf-8">
